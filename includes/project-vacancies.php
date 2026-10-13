@@ -10,6 +10,31 @@ declare(strict_types=1);
  * - 'rejected' -> Ditolak (Tidak disetujui Admin)
  * - 'active' -> Tayang Aktif (Sudah disetujui & dipublikasikan)
  */
+if (!function_exists('gig_is_remote_work')) {
+    function gig_is_remote_work(array $jobOrProject): bool
+    {
+        if (isset($jobOrProject['is_remote'])) {
+            return (bool)$jobOrProject['is_remote'];
+        }
+        $mode = strtolower(trim((string)($jobOrProject['work_type'] ?? ($jobOrProject['workType'] ?? ''))));
+        if (str_contains($mode, 'remote')) {
+            return true;
+        }
+        $loc = strtolower(trim((string)($jobOrProject['location'] ?? '')));
+        if (str_contains($loc, 'remote')) {
+            return true;
+        }
+        return false;
+    }
+}
+
+if (!function_exists('gig_work_type_label')) {
+    function gig_work_type_label(array $jobOrProject): string
+    {
+        return gig_is_remote_work($jobOrProject) ? 'Remote' : 'On-site/Hybrid';
+    }
+}
+
 function gig_project_vacancies_base(): array
 {
     return [
@@ -25,9 +50,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 1,
             'quota' => 1,
             'location' => 'Jakarta Selatan',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '01 Sep 2026',
             'skills' => ['Figma', 'UI/UX', 'Design System', 'Prototyping'],
             'desc' => 'Dibutuhkan UI/UX designer berpengalaman untuk merancang prototype interaktif dashboard KarirHub dengan tampilan modern.',
+            'deliverables' => 'Prototype interaktif 12+ layar, design system component kit di Figma, dan panduan handoff developer.',
             'deadline' => '20 Sep 2026',
             'adminNote' => 'Lowongan telah diverifikasi dan disetujui oleh Admin KarirHub pada 01 Sep 2026.',
             'employer' => 'PT ABC',
@@ -46,9 +75,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 1,
             'quota' => 1,
             'location' => 'Bandung',
+            'work_type' => 'On-site/Hybrid',
+            'workType' => 'On-site/Hybrid',
+            'is_remote' => false,
             'posted' => '03 Sep 2026',
             'skills' => ['PHP', 'REST API', 'Webhook', 'MySQL'],
             'desc' => 'Mengembangkan endpoint webhook dan mengintegrasikan provider SMS/WA ke core sistem.',
+            'deliverables' => 'Endpoint REST API webhook, integrasi modul notifikasi SMS & WhatsApp, serta dokumentasi integrasi API.',
             'deadline' => '20 Sep 2026',
             'adminNote' => 'Lowongan disetujui Admin pada 03 Sep 2026.',
             'employer' => 'PT ABC',
@@ -67,12 +100,41 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Bandung',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '07 Sep 2026',
             'skills' => ['Copywriting', 'Social Media', 'Content Plan'],
             'desc' => 'Menyusun strategi konten peluncuran fitur Gig Worker untuk meningkatkan awareness.',
+            'deliverables' => 'Content plan 30 hari, copy editorial postingan media sosial, dan laporan performa engagement kampanye.',
             'deadline' => '28 Sep 2026',
             'adminNote' => 'Permohonan lowongan dalam antrean verifikasi Admin. Estimasi waktu 1x24 jam.',
             'employer' => 'PT ABC',
+            'vacancy_type' => 'project',
+            'entity_type' => 'perusahaan',
+        ],
+        [
+            'id' => 'GIG-2026-09-005',
+            'title' => 'Desain UI/UX Mobile App E-Commerce UMKM',
+            'category' => 'Desain & Kreatif',
+            'status' => 'active',
+            'statusLabel' => 'Tayang Aktif',
+            'budget' => 'Rp 6.500.000',
+            'duration' => '2 Minggu',
+            'applicantsCount' => 2,
+            'acceptedCount' => 1,
+            'quota' => 1,
+            'location' => 'Yogyakarta',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
+            'posted' => '04 Sep 2026',
+            'skills' => ['Figma', 'Mobile UI', 'Design System', 'User Flow'],
+            'desc' => 'Merancang alur checkout intuitif dan komponen antarmuka katalog produk aplikasi mobile e-commerce UMKM.',
+            'deliverables' => 'Wireframe & High Fidelity Screens, alur checkout, dan halaman katalog produk di Figma.',
+            'deadline' => '22 Sep 2026',
+            'adminNote' => 'Disetujui Admin pada 04 Sep 2026.',
+            'employer' => 'CV Visual Studio Creative',
             'vacancy_type' => 'project',
             'entity_type' => 'perusahaan',
         ],
@@ -88,9 +150,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Jakarta Pusat',
+            'work_type' => 'On-site/Hybrid',
+            'workType' => 'On-site/Hybrid',
+            'is_remote' => false,
             'posted' => '06 Sep 2026',
             'skills' => ['Google Ads', 'Meta Ads', 'SEO', 'Analytics'],
             'desc' => 'Memimpin tim pemasaran digital dan performa kampanye akuisisi pengguna.',
+            'deliverables' => 'Laporan strategi akuisisi pengguna bulanan dan optimasi conversion funnel digital.',
             'deadline' => '27 Sep 2026',
             'adminNote' => 'Dalam antrean verifikasi Admin.',
             'employer' => 'PT Mega Media Indonesia',
@@ -109,9 +175,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Surabaya',
+            'work_type' => 'On-site/Hybrid',
+            'workType' => 'On-site/Hybrid',
+            'is_remote' => false,
             'posted' => '08 Sep 2026',
             'skills' => ['Akuntansi', 'Taxation', 'Excel', 'Accurate'],
             'desc' => 'Mengelola pembukuan rutin, laporan pajak bulanan, dan klaim pengeluaran operasional.',
+            'deliverables' => 'Laporan keuangan bulanan, rekonsiliasi kas, dan berkas pelaporan pajak PPh.',
             'deadline' => '30 Sep 2026',
             'adminNote' => 'Revisi dari Admin: Harap sertakan persyaratan sertifikasi perpajakan (Brevet A/B).',
             'employer' => 'PT Mutualplus Global',
@@ -130,9 +200,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Jakarta Selatan',
+            'work_type' => 'On-site/Hybrid',
+            'workType' => 'On-site/Hybrid',
+            'is_remote' => false,
             'posted' => '08 Sep 2026',
             'skills' => ['Scheduling', 'Social Media', 'Canva', 'Administrative'],
             'desc' => 'Membantu pengelolaan jadwal harian, riset materi seminar, dan drafting postingan media sosial personal.',
+            'deliverables' => 'Jadwal agenda mingguan tertata dan 5 materi postingan media sosial mingguan.',
             'deadline' => '30 Sep 2026',
             'adminNote' => 'Permohonan lowongan dalam antrean verifikasi Admin.',
             'employer' => 'Wendy Danendra',
@@ -151,9 +225,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Surabaya',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '05 Sep 2026',
             'skills' => ['Python', 'Web Scraping'],
             'desc' => 'Melakukan pengumpulan data massal dari platform eksternal.',
+            'deliverables' => 'Dataset terstruktur hasil scraping dan script Python ekstraksi data.',
             'deadline' => '15 Sep 2026',
             'adminNote' => 'Penolakan dari Admin: Lowongan tidak memenuhi Syarat & Ketentuan KarirHub terkait perlindungan data pribadi dan hak cipta.',
             'employer' => 'Vino',
@@ -172,9 +250,13 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 1,
             'quota' => 1,
             'location' => 'Riau',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '16 Sep 2026',
             'skills' => ['Python', 'Pandas', 'Data Science', 'Teaching'],
             'desc' => 'Membimbing privat 2x seminggu untuk penguasaan Python dasar hingga pengolahan data.',
+            'deliverables' => 'Silabus pembelajaran privat, modul latihan kode mingguan, dan evaluasi capaian belajar.',
             'deadline' => '07 Okt 2026',
             'adminNote' => 'Disetujui Admin pada 16 Sep 2026.',
             'employer' => 'Hendra Saputra',
@@ -193,6 +275,9 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'DKI Jakarta',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '10 Sep 2026',
             'skills' => ['React Native', 'Mobile App', 'REST API', 'Redux'],
             'desc' => 'Membangun antarmuka mobile e-commerce responsif untuk iOS dan Android lengkap dengan integrasi payment gateway dan katalog produk.',
@@ -215,6 +300,9 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 1,
             'quota' => 1,
             'location' => 'Yogyakarta',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '12 Sep 2026',
             'skills' => ['Figma', 'Illustrator', 'Branding', 'Logo Design'],
             'desc' => 'Pembuatan logo vector, pilihan tipografi, palette warna, serta 15 template postingan Instagram untuk UMKM kuliner.',
@@ -237,6 +325,9 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Semarang',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '15 Sep 2026',
             'skills' => ['Excel / Spreadsheet', 'Python Data Processing', 'Data Cleaning'],
             'desc' => 'Pembersihan dan standarisasi 50.000+ baris data transaksi penjualan toko online untuk analisis laporan triwulan.',
@@ -248,6 +339,31 @@ function gig_project_vacancies_base(): array
         ],
         [
             'id' => 'GIG-2026-09-012',
+            'title' => 'Audit Design System & Aksesibilitas Web Portal',
+            'category' => 'Desain & Kreatif',
+            'status' => 'active',
+            'statusLabel' => 'Tayang Aktif',
+            'budget' => 'Rp 5.000.000',
+            'duration' => '10 Hari',
+            'applicantsCount' => 3,
+            'acceptedCount' => 1,
+            'quota' => 1,
+            'location' => 'Jakarta Pusat',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
+            'posted' => '16 Sep 2026',
+            'skills' => ['Design System', 'Accessibility (WCAG)', 'Figma', 'UI Audit'],
+            'desc' => 'Audit aksesibilitas kontras rasio WCAG 2.1 AA dan penataan token warna design system web portal.',
+            'deliverables' => 'Dokumen laporan evaluasi WCAG 2.1 AA, token warna Figma, dan panduan perbaikan komponen.',
+            'deadline' => '30 Sep 2026',
+            'adminNote' => 'Disetujui Admin pada 16 Sep 2026.',
+            'employer' => 'PT Nusantara Media Technologi',
+            'vacancy_type' => 'project',
+            'entity_type' => 'perusahaan',
+        ],
+        [
+            'id' => 'GIG-2026-09-014',
             'title' => 'Pengembangan Backend Microservices & API Gateway (Node.js)',
             'category' => 'IT & Pemrograman',
             'status' => 'active',
@@ -258,6 +374,9 @@ function gig_project_vacancies_base(): array
             'acceptedCount' => 0,
             'quota' => 1,
             'location' => 'Tangerang Selatan',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
             'posted' => '18 Sep 2026',
             'skills' => ['Node.js', 'Express', 'Docker', 'Redis', 'PostgreSQL'],
             'desc' => 'Refactoring arsitektur backend monolith menjadi microservices modular berbasis Docker dan Redis cache.',

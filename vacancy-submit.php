@@ -48,6 +48,9 @@ $location = $locDetail !== '' ? $locDetail : trim($locCity . ', ' . $locProvince
 if ($location === '' || strcasecmp($location, 'Lokasi belum diisi') === 0) {
     $location = gig_random_location();
 }
+if ($locType === 'remote' && !str_contains(strtolower($location), 'remote')) {
+    $location .= ' (Remote)';
+}
 
 $vacancy = [
     'title' => $title,
@@ -58,6 +61,8 @@ $vacancy = [
     'deliverables' => (string)($payload['target'] ?? ''),
     'qualifications' => (string)($payload['qualifications'] ?? ''),
     'work_type' => $locType === 'remote' ? 'Remote' : 'On-site/Hybrid',
+    'workType' => $locType === 'remote' ? 'Remote' : 'On-site/Hybrid',
+    'is_remote' => ($locType === 'remote'),
     'industry' => (string)($payload['industry'] ?? ''),
     'experience_level' => (string)($payload['experience_level'] ?? ''),
     'visibility' => (string)($payload['visibility'] ?? 'public'),

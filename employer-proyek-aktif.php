@@ -136,7 +136,12 @@ require __DIR__ . '/includes/employer-layout-start.php';
         <div class="active-proj-header">
           <div>
             <div class="active-proj-title">
-              <span>Redesign UI/UX Dashboard Prototype KarirHub</span>
+              <span><?php echo htmlspecialchars((string)($p1['title'] ?? 'Redesign UI/UX Dashboard Prototype KarirHub'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <?php if (gig_is_remote_work($p1)): ?>
+                <span class="badge-status" style="padding:4px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">🌐 Remote</span>
+              <?php else: ?>
+                <span class="badge-status" style="padding:4px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">🏢 On-site / Hybrid</span>
+              <?php endif; ?>
               <?php if ($isExpiredP1 && !$completedP1): ?>
                 <span class="badge-status cancelled" style="padding:4px 12px;border-radius:9999px;font-size:0.75rem;font-weight:700;">Tidak Selesai</span>
               <?php else: ?>
@@ -150,7 +155,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
               <?php endif; ?>
             </div>
             <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">
-              Mulai: <strong style="color:#334155;"><?php echo htmlspecialchars($p1['hired_label'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi Disepakati: <strong style="color:#334155;"><?php echo htmlspecialchars($p1['duration'], ENT_QUOTES, 'UTF-8'); ?></strong>
+              Mulai: <strong style="color:#334155;"><?php echo htmlspecialchars($p1['hired_label'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi Disepakati: <strong style="color:#334155;"><?php echo htmlspecialchars($p1['duration'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Lokasi: <strong style="color:#334155;"><?php echo htmlspecialchars((string)($p1['location'] ?? 'Jakarta Selatan'), ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
           </div>
         </div>
@@ -170,7 +175,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
           <div class="proj-deliverable-box" style="flex:1.2;min-width:240px;background:#ffffff;border:1px solid #cbd5e1;padding:12px 14px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
             <div style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Target Deliverable</div>
             <div style="font-size:0.83rem;color:#1e293b;font-weight:600;line-height:1.4;">
-              Redesign UI/UX Aplikasi Mobile &amp; Design System Component Kit
+              <?php echo htmlspecialchars((string)($p1['deliverables'] ?? 'Prototype interaktif 12+ layar, design system component kit di Figma, dan panduan handoff developer'), ENT_QUOTES, 'UTF-8'); ?>
             </div>
           </div>
 
@@ -352,7 +357,12 @@ require __DIR__ . '/includes/employer-layout-start.php';
         <div class="active-proj-header">
           <div>
             <div class="active-proj-title">
-              <span>Integrasi REST API Modul Notifikasi SMS &amp; WhatsApp</span>
+              <span><?php echo htmlspecialchars((string)($p2['title'] ?? 'Integrasi REST API Modul Notifikasi SMS & WhatsApp'), ENT_QUOTES, 'UTF-8'); ?></span>
+              <?php if (gig_is_remote_work($p2)): ?>
+                <span class="badge-status" style="padding:4px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">🌐 Remote</span>
+              <?php else: ?>
+                <span class="badge-status" style="padding:4px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">🏢 On-site / Hybrid</span>
+              <?php endif; ?>
               <?php if ($isExpiredP2 && !$completedP2): ?>
                 <span class="badge-status cancelled" style="padding:4px 12px;border-radius:9999px;font-size:0.75rem;font-weight:700;">Tidak Selesai</span>
               <?php else: ?>
@@ -366,7 +376,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
               <?php endif; ?>
             </div>
             <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">
-              Mulai: <strong style="color:#334155;"><?php echo htmlspecialchars($p2['hired_label'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi Disepakati: <strong style="color:#334155;"><?php echo htmlspecialchars($p2['duration'], ENT_QUOTES, 'UTF-8'); ?></strong>
+              Mulai: <strong style="color:#334155;"><?php echo htmlspecialchars($p2['hired_label'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi Disepakati: <strong style="color:#334155;"><?php echo htmlspecialchars($p2['duration'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Lokasi: <strong style="color:#334155;"><?php echo htmlspecialchars((string)($p2['location'] ?? 'Bandung, Jawa Barat'), ENT_QUOTES, 'UTF-8'); ?></strong>
             </div>
           </div>
         </div>
@@ -386,7 +396,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
           <div class="proj-deliverable-box" style="flex:1.2;min-width:240px;background:#ffffff;border:1px solid #cbd5e1;padding:12px 14px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
             <div style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Target Deliverable</div>
             <div style="font-size:0.83rem;color:#1e293b;font-weight:600;line-height:1.4;">
-              Integrasi Payment Gateway &amp; Microservices API REST Implementation
+              <?php echo htmlspecialchars((string)($p2['deliverables'] ?? 'Endpoint REST API webhook, integrasi modul notifikasi SMS & WhatsApp, serta dokumentasi integrasi API'), ENT_QUOTES, 'UTF-8'); ?>
             </div>
           </div>
 

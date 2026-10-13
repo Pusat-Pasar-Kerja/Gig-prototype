@@ -270,7 +270,11 @@ require __DIR__ . '/includes/employer-layout-start.php';
         <a class="btn-action-sm" href="employer-lowongan.php" style="margin-bottom:10px;display:inline-flex;">← Kembali ke Lowongan</a>
         <h1 class="jobd-title"><?php echo htmlspecialchars((string)$job['title'], ENT_QUOTES, 'UTF-8'); ?></h1>
         <div class="jobd-meta">
-          <span class="jobd-pill"><?php echo htmlspecialchars((string)($job['workType'] ?? 'Full time'), ENT_QUOTES, 'UTF-8'); ?></span>
+          <?php if (gig_is_remote_work($job)): ?>
+            <span class="jobd-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;font-weight:700;">🌐 Project Remote</span>
+          <?php else: ?>
+            <span class="jobd-pill" style="background:#f8fafc;color:#475569;border-color:#e2e8f0;font-weight:700;">🏢 On-site / Hybrid</span>
+          <?php endif; ?>
           <span>•</span>
           <span>Dibuat <?php echo htmlspecialchars((string)$job['posted'], ENT_QUOTES, 'UTF-8'); ?></span>
           <span>•</span>
@@ -278,10 +282,11 @@ require __DIR__ . '/includes/employer-layout-start.php';
         </div>
       </div>
     </div>
-    <div class="jobd-kpi">
+    <div class="jobd-kpi" style="grid-template-columns:repeat(4,minmax(130px,1fr));">
       <div><span class="lbl">Tayang</span><span class="val"><?php echo htmlspecialchars((string)$job['posted'], ENT_QUOTES, 'UTF-8'); ?></span></div>
       <div><span class="lbl">Kadaluarsa</span><span class="val"><?php echo htmlspecialchars((string)$job['deadline'], ENT_QUOTES, 'UTF-8'); ?></span></div>
       <div><span class="lbl">Lokasi</span><span class="val"><?php echo htmlspecialchars((string)$job['location'], ENT_QUOTES, 'UTF-8'); ?></span></div>
+      <div><span class="lbl">Mode Pengerjaan</span><span class="val" style="color:<?php echo gig_is_remote_work($job) ? '#1d4ed8' : '#0f172a'; ?>;"><?php echo gig_is_remote_work($job) ? '🌐 Remote' : '🏢 On-site / Hybrid'; ?></span></div>
     </div>
   </div>
 
@@ -373,11 +378,19 @@ require __DIR__ . '/includes/employer-layout-start.php';
       <?php endforeach; ?>
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px;margin-top:16px;">
-      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Gaji</span><strong><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
-      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Durasi</span><strong><?php echo htmlspecialchars((string)$job['duration'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Gaji / Budget</span><strong><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Durasi Target</span><strong><?php echo htmlspecialchars((string)$job['duration'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Lokasi</span><strong><?php echo htmlspecialchars((string)$job['location'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Mode Pengerjaan</span><strong><?php echo gig_is_remote_work($job) ? '🌐 Remote (Kerja Jarak Jauh)' : '🏢 On-site / Hybrid'; ?></strong></div>
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Status Verifikasi</span><strong><?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?></strong></div>
+      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Tipe Pekerjaan</span><strong><?php echo htmlspecialchars((string)($job['workType'] ?? 'Full time / Milestone-based'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
     </div>
+    <?php if (!empty($job['deliverables'])): ?>
+    <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+      <span style="font-size:0.74rem;color:#64748b;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">Target / Deliverables Proyek</span>
+      <div style="font-size:0.88rem;color:#1e293b;font-weight:600;line-height:1.5;"><?php echo nl2br(htmlspecialchars((string)$job['deliverables'], ENT_QUOTES, 'UTF-8')); ?></div>
+    </div>
+    <?php endif; ?>
   </section>
 </div>
 

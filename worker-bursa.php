@@ -14,6 +14,7 @@ $q = trim((string)($_GET['q'] ?? ''));
 $selectedCat = trim((string)($_GET['category'] ?? 'all'));
 $selectedBudget = trim((string)($_GET['budget'] ?? 'all'));
 $selectedLocation = trim((string)($_GET['location'] ?? 'all'));
+$selectedMode = trim((string)($_GET['mode'] ?? 'all'));
 
 $vacancies = $allActiveVacancies;
 
@@ -22,6 +23,20 @@ if ($q !== '') {
     $vacancies = array_values(array_filter($vacancies, static function ($job) use ($q) {
         $hay = strtolower($job['title'] . ' ' . $job['category'] . ' ' . implode(' ', $job['skills']) . ' ' . $job['desc'] . ' ' . $job['client']);
         return str_contains($hay, strtolower($q));
+    }));
+}
+
+// Filter by Work Mode (Remote / On-site)
+if ($selectedMode !== '' && $selectedMode !== 'all') {
+    $vacancies = array_values(array_filter($vacancies, static function ($job) use ($selectedMode) {
+        $isRemote = gig_is_remote_work($job);
+        if ($selectedMode === 'remote') {
+            return $isRemote;
+        }
+        if ($selectedMode === 'onsite') {
+            return !$isRemote;
+        }
+        return true;
     }));
 }
 
@@ -538,6 +553,14 @@ a.proyek-card-item:hover .apply-cta {
       '5m_10m' => '5 Juta - 10 Juta',
       'over_10m' => 'Di atas 10 Juta',
     ];
+
+    $remoteCount = count(array_filter($allActiveVacancies, static fn($j) => gig_is_remote_work($j)));
+    $onsiteCount = count($allActiveVacancies) - $remoteCount;
+    $modeMap = [
+      'all' => ['label' => 'Semua Mode', 'count' => count($allActiveVacancies)],
+      'remote' => ['label' => '🌐 Remote', 'count' => $remoteCount],
+      'onsite' => ['label' => '🏢 On-site / Hybrid', 'count' => $onsiteCount],
+    ];
   ?>
 
   <section class="page-title-block">
@@ -554,6 +577,8 @@ a.proyek-card-item:hover .apply-cta {
       <form method="get" action="" class="filter-search-form">
         <input type="hidden" name="category" value="<?php echo htmlspecialchars($selectedCat, ENT_QUOTES, 'UTF-8'); ?>">
         <input type="hidden" name="budget" value="<?php echo htmlspecialchars($selectedBudget, ENT_QUOTES, 'UTF-8'); ?>">
+        <input type="hidden" name="location" value="<?php echo htmlspecialchars($selectedLocation, ENT_QUOTES, 'UTF-8'); ?>">
+        <input type="hidden" name="mode" value="<?php echo htmlspecialchars($selectedMode, ENT_QUOTES, 'UTF-8'); ?>">
         <div class="filter-search-box">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" name="q" placeholder="Cari kata kunci lowongan..." value="<?php echo htmlspecialchars($q, ENT_QUOTES, 'UTF-8'); ?>" />
@@ -561,10 +586,26 @@ a.proyek-card-item:hover .apply-cta {
       </form>
 
       <div class="filter-group">
+        <div class="filter-group-title">Mode Kerja</div>
+        <ul class="filter-link-list">
+          <?php foreach ($modeMap as $modeKey => $modeInfo): ?>
+            <?php $isModeActive = ($selectedMode === $modeKey || ($modeKey === 'all' && ($selectedMode === '' || $selectedMode === 'all'))); ?>
+            <li>
+              <a class="filter-link <?php echo $isModeActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $modeKey]), ENT_QUOTES, 'UTF-8'); ?>">
+                <span class="filter-radio-dot"></span>
+                <span style="flex:1;"><?php echo htmlspecialchars($modeInfo['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="filter-pill-count"><?php echo (int)$modeInfo['count']; ?></span>
+              </a>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+
+      <div class="filter-group">
         <div class="filter-group-title">Lokasi</div>
         <ul class="filter-link-list">
           <li>
-            <a class="filter-link <?php echo ($selectedLocation === 'all' || $selectedLocation === '') ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => 'all']), ENT_QUOTES, 'UTF-8'); ?>">
+            <a class="filter-link <?php echo ($selectedLocation === 'all' || $selectedLocation === '') ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => 'all', 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
               <span class="filter-radio-dot"></span>
               <span style="flex:1;">Semua Lokasi</span>
               <span class="filter-pill-count"><?php echo count($allActiveVacancies); ?></span>
@@ -576,7 +617,7 @@ a.proyek-card-item:hover .apply-cta {
               $isLocActive = strtolower($selectedLocation) === strtolower($locLabel);
             ?>
             <li>
-              <a class="filter-link <?php echo $isLocActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $locLabel]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isLocActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $locLabel, 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span style="flex:1;"><?php echo htmlspecialchars($locLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="filter-pill-count"><?php echo (int)$loc['count']; ?></span>
@@ -592,7 +633,7 @@ a.proyek-card-item:hover .apply-cta {
           <?php foreach ($catMap as $catKey => $catLabel): ?>
             <?php $isActive = (strtolower($selectedCat) === strtolower($catKey) || ($catKey === 'all' && $selectedCat === 'all')); ?>
             <li>
-              <a class="filter-link <?php echo $isActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $catKey, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $catKey, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span style="flex:1;"><?php echo htmlspecialchars($catLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="filter-pill-count"><?php echo (int)($catCounts[$catKey] ?? 0); ?></span>
@@ -608,7 +649,7 @@ a.proyek-card-item:hover .apply-cta {
           <?php foreach ($budgetMap as $budgetKey => $budgetLabel): ?>
             <?php $isBudgetActive = $selectedBudget === $budgetKey || ($selectedBudget === '' && $budgetKey === 'all'); ?>
             <li>
-              <a class="filter-link <?php echo $isBudgetActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $budgetKey, 'q' => $q, 'location' => $selectedLocation]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isBudgetActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $budgetKey, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></span>
               </a>
@@ -651,7 +692,15 @@ a.proyek-card-item:hover .apply-cta {
                             $locDisplay = gig_random_location((string)($job['id'] ?? ''));
                         }
                       ?>
-                      <div class="card-employer-sub">📍 <?php echo htmlspecialchars($locDisplay, ENT_QUOTES, 'UTF-8'); ?></div>
+                      <div class="card-employer-sub" style="display:flex;align-items:center;gap:6px;">
+                        <span>📍 <?php echo htmlspecialchars($locDisplay, ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span>•</span>
+                        <?php if (gig_is_remote_work($job)): ?>
+                          <span style="color:#1d4ed8;font-weight:700;">🌐 Remote</span>
+                        <?php else: ?>
+                          <span style="color:#475569;font-weight:600;">🏢 On-site</span>
+                        <?php endif; ?>
+                      </div>
                     </div>
                   </div>
                   <span class="card-cat-badge"><?php echo htmlspecialchars(gig_bursa_relative_posted((string)($job['posted'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></span>
@@ -664,7 +713,14 @@ a.proyek-card-item:hover .apply-cta {
                     <div class="card-salary-label">Gaji</div>
                     <div class="card-salary-value"><?php echo htmlspecialchars($cleanBudget, ENT_QUOTES, 'UTF-8'); ?></div>
                   </div>
-                  <div class="meta-pill-duration"><?php echo htmlspecialchars((string)($job['duration'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                    <div class="meta-pill-duration"><?php echo htmlspecialchars((string)($job['duration'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                    <?php if (gig_is_remote_work($job)): ?>
+                      <span style="font-size:0.7rem;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:2px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;">🌐 Remote</span>
+                    <?php else: ?>
+                      <span style="font-size:0.7rem;font-weight:700;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;padding:2px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;">🏢 On-site</span>
+                    <?php endif; ?>
+                  </div>
                 </div>
 
                 <div class="card-skills-label">Keahlian</div>

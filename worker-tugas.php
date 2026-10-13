@@ -139,6 +139,11 @@ $activeProjects = gig_worker_ongoing_active_projects($username, $workerEmail);
             <a href="worker-project-detail.php?id=<?php echo urlencode((string)$proj['id']); ?>" style="color:inherit;text-decoration:none;">
               <?php echo htmlspecialchars((string)$proj['title'], ENT_QUOTES, 'UTF-8'); ?>
             </a>
+            <?php if (gig_is_remote_work($proj)): ?>
+              <span class="badge-status" style="padding:3px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">🌐 Remote</span>
+            <?php else: ?>
+              <span class="badge-status" style="padding:3px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">🏢 On-site / Hybrid</span>
+            <?php endif; ?>
             <?php if ($isExpired): ?>
               <span style="display:inline-block;padding:3px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;background:#fee2e2;color:#b91c1c;">Tidak Selesai</span>
             <?php else: ?>
@@ -147,7 +152,8 @@ $activeProjects = gig_worker_ongoing_active_projects($username, $workerEmail);
           </div>
           <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">
             Mulai: <strong><?php echo htmlspecialchars((string)$proj['hired_label'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull;
-            Durasi Disepakati: <strong><?php echo htmlspecialchars((string)$proj['duration'], ENT_QUOTES, 'UTF-8'); ?></strong>
+            Durasi Disepakati: <strong><?php echo htmlspecialchars((string)$proj['duration'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull;
+            Lokasi: <strong><?php echo htmlspecialchars((string)($proj['location'] ?? 'Indonesia'), ENT_QUOTES, 'UTF-8'); ?></strong>
           </div>
         </div>
       </div>
@@ -169,7 +175,7 @@ $activeProjects = gig_worker_ongoing_active_projects($username, $workerEmail);
         <div class="proj-deliverable-box" style="flex:1.2;min-width:240px;background:#ffffff;border:1px solid #cbd5e1;padding:10px 14px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
           <div style="font-size:0.7rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Target Deliverable</div>
           <div style="font-size:0.82rem;color:#1e293b;font-weight:600;line-height:1.35;">
-            <?php echo htmlspecialchars((string)$proj['deliverable_note'], ENT_QUOTES, 'UTF-8'); ?>
+            <?php echo htmlspecialchars((string)($proj['deliverables'] ?? ($proj['deliverable_note'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>
           </div>
         </div>
 

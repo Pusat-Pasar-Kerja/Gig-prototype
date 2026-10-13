@@ -279,8 +279,13 @@ require __DIR__ . '/includes/worker-layout-start.php';
           <h1 class="detail-title"><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h1>
 
           <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; color: #64748b;">
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span>📍</span> <strong><?php echo htmlspecialchars($displayLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
+              <?php if (gig_is_remote_work($job)): ?>
+                <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:700;">🌐 Project Remote</span>
+              <?php else: ?>
+                <span style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;padding:2px 8px;border-radius:9999px;font-size:0.75rem;font-weight:700;">🏢 On-site / Hybrid</span>
+              <?php endif; ?>
             </div>
             <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
               <span>📅 Diposting <?php echo htmlspecialchars($job['posted'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -360,7 +365,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
       <!-- 1. RINCIAN PROYEK -->
       <section class="detail-section-card">
         <h3 style="margin-bottom: 16px;">Rincian Proyek</h3>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px 16px; font-size: 0.86rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px 16px; font-size: 0.86rem;">
           <div>
             <div style="color: #64748b; font-size: 0.8rem; margin-bottom: 4px;">Kategori Proyek</div>
             <strong style="color: #0f172a;"><?php echo htmlspecialchars($job['category'], ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -376,6 +381,12 @@ require __DIR__ . '/includes/worker-layout-start.php';
           <div>
             <div style="color: #64748b; font-size: 0.8rem; margin-bottom: 4px;">Lokasi</div>
             <strong style="color: #0f172a;"><?php echo htmlspecialchars($displayLocation, ENT_QUOTES, 'UTF-8'); ?></strong>
+          </div>
+          <div>
+            <div style="color: #64748b; font-size: 0.8rem; margin-bottom: 4px;">Mode Pengerjaan</div>
+            <strong style="color: <?php echo gig_is_remote_work($job) ? '#1d4ed8' : '#0f172a'; ?>; font-weight: 800;">
+              <?php echo gig_is_remote_work($job) ? '🌐 Remote (Kerja Jarak Jauh)' : '🏢 On-site / Hybrid'; ?>
+            </strong>
           </div>
         </div>
       </section>
@@ -395,8 +406,8 @@ require __DIR__ . '/includes/worker-layout-start.php';
       <section class="detail-section-card">
         <h3>Target/Deliverable Proyek</h3>
         <?php if (!empty($job['deliverables'])): ?>
-          <p style="font-size: 0.92rem; line-height: 1.6; color: #334155; margin-bottom: 12px;">
-            <?php echo htmlspecialchars($job['deliverables'], ENT_QUOTES, 'UTF-8'); ?>
+          <p style="font-size: 0.92rem; line-height: 1.6; color: #334155; margin-bottom: 12px; font-weight: 600;">
+            <?php echo nl2br(htmlspecialchars($job['deliverables'], ENT_QUOTES, 'UTF-8')); ?>
           </p>
         <?php else: ?>
           <p style="font-size: 0.9rem; line-height: 1.6; color: #334155;">

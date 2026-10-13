@@ -139,7 +139,14 @@ require __DIR__ . '/includes/employer-layout-start.php';
             <span style="font-size:0.75rem;color:#1e40af;font-weight:700;">Tenggat: <?php echo htmlspecialchars($soonest['deadline'], ENT_QUOTES, 'UTF-8'); ?></span>
           </div>
 
-          <h3 style="font-size:0.95rem;font-weight:800;color:#1e293b;margin:0 0 4px 0;"><?php echo htmlspecialchars($soonest['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
+          <h3 style="font-size:0.95rem;font-weight:800;color:#1e293b;margin:0 0 4px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span><?php echo htmlspecialchars($soonest['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php if (gig_is_remote_work($soonest)): ?>
+              <span style="font-size:0.68rem;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:2px 7px;border-radius:6px;">🌐 Remote</span>
+            <?php else: ?>
+              <span style="font-size:0.68rem;font-weight:700;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;padding:2px 7px;border-radius:6px;">🏢 On-site</span>
+            <?php endif; ?>
+          </h3>
           <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;">Mitra Gig: <strong><?php echo htmlspecialchars($soonest['worker_name'], ENT_QUOTES, 'UTF-8'); ?></strong> · <?php echo htmlspecialchars($soonest['worker_role'], ENT_QUOTES, 'UTF-8'); ?> · Mulai <?php echo htmlspecialchars($soonest['hired_label'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo htmlspecialchars($soonest['duration'], ENT_QUOTES, 'UTF-8'); ?>)</div>
 
           <div style="display:flex;gap:8px;text-align:center;" class="js-project-countdown" data-deadline="<?php echo htmlspecialchars($soonest['deadline_iso'], ENT_QUOTES, 'UTF-8'); ?>" id="dash-shortest-countdown">
@@ -170,7 +177,14 @@ require __DIR__ . '/includes/employer-layout-start.php';
         <?php foreach ($otherActive as $other): ?>
         <div style="margin-top:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:0.84rem;font-weight:700;color:var(--text-dark);"><?php echo htmlspecialchars($other['title'], ENT_QUOTES, 'UTF-8'); ?></div>
+            <div style="font-size:0.84rem;font-weight:700;color:var(--text-dark);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span><?php echo htmlspecialchars($other['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+              <?php if (gig_is_remote_work($other)): ?>
+                <span style="font-size:0.68rem;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;padding:1px 6px;border-radius:6px;">🌐 Remote</span>
+              <?php else: ?>
+                <span style="font-size:0.68rem;font-weight:700;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;padding:1px 6px;border-radius:6px;">🏢 On-site</span>
+              <?php endif; ?>
+            </div>
             <div style="font-size:0.74rem;color:var(--text-muted);">Mitra: <?php echo htmlspecialchars($other['worker_name'], ENT_QUOTES, 'UTF-8'); ?> · Mulai <?php echo htmlspecialchars($other['hired_label'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($other['duration'], ENT_QUOTES, 'UTF-8'); ?> · Sisa <?php echo (int)$other['days_left']; ?> hari (Tenggat: <?php echo htmlspecialchars($other['deadline'], ENT_QUOTES, 'UTF-8'); ?>)</div>
           </div>
           <a class="btn-action-sm" href="employer-proyek-aktif.php" style="text-decoration:none;">Pantau →</a>

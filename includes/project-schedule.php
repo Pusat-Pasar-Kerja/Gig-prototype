@@ -499,6 +499,11 @@ function gig_demo_active_projects(): array
             'worker_role' => 'Lead UI/UX Designer',
             'budget' => 'Rp 8.500.000',
             'duration' => $uiDuration,
+            'location' => 'Jakarta Selatan',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
+            'category' => 'Desain & Kreatif',
             'hired_at' => $hireUi->format('Y-m-d H:i:s'),
             'hired_label' => gig_format_id_date($hireUi),
             'deadline' => gig_format_id_date($endUi),
@@ -511,7 +516,8 @@ function gig_demo_active_projects(): array
             'status_label' => 'Sedang Berjalan',
             'status_badge_class' => 'badge-status active',
             'deliverable_status' => 'Review Prototype UI/UX',
-            'deliverable_note' => 'Sedang pengujian internal oleh tim Pemberi Kerja',
+            'deliverable_note' => 'Prototype interaktif 12+ layar, design system component kit di Figma, dan panduan handoff developer',
+            'deliverables' => 'Prototype interaktif 12+ layar, design system component kit di Figma, dan panduan handoff developer',
             'is_completed' => false,
             'countdown_id' => 'countdown-proj-ui',
         ],
@@ -528,6 +534,11 @@ function gig_demo_active_projects(): array
             'worker_role' => 'Lead UI/UX Designer',
             'budget' => 'Rp 6.500.000',
             'duration' => $mobDuration,
+            'location' => 'Yogyakarta',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
+            'category' => 'Desain & Kreatif',
             'hired_at' => $hireMob->format('Y-m-d H:i:s'),
             'hired_label' => gig_format_id_date($hireMob),
             'deadline' => gig_format_id_date($endMob),
@@ -540,7 +551,8 @@ function gig_demo_active_projects(): array
             'status_label' => 'Sedang Berjalan',
             'status_badge_class' => 'badge-status active',
             'deliverable_status' => 'Wireframe & High Fidelity Screens',
-            'deliverable_note' => 'Penyusunan alur checkout dan halaman katalog produk',
+            'deliverable_note' => 'Wireframe & High Fidelity Screens, alur checkout, dan halaman katalog produk di Figma',
+            'deliverables' => 'Wireframe & High Fidelity Screens, alur checkout, dan halaman katalog produk di Figma',
             'is_completed' => false,
             'countdown_id' => 'countdown-proj-mob',
         ],
@@ -557,6 +569,11 @@ function gig_demo_active_projects(): array
             'worker_role' => 'Cloud API Engineer',
             'budget' => 'Rp 5.000.000',
             'duration' => $auditDuration,
+            'location' => 'Jakarta Pusat',
+            'work_type' => 'Remote',
+            'workType' => 'Remote',
+            'is_remote' => true,
+            'category' => 'Desain & Kreatif',
             'hired_at' => $hireAudit->format('Y-m-d H:i:s'),
             'hired_label' => gig_format_id_date($hireAudit),
             'deadline' => gig_format_id_date($endAudit),
@@ -569,7 +586,8 @@ function gig_demo_active_projects(): array
             'status_label' => 'Sedang Berjalan',
             'status_badge_class' => 'badge-status active',
             'deliverable_status' => 'Evaluasi WCAG 2.1 & Token Warna',
-            'deliverable_note' => 'Peninjauan komponen kontras rasio dan responsivitas',
+            'deliverable_note' => 'Dokumen laporan evaluasi WCAG 2.1 AA, token warna Figma, dan panduan perbaikan komponen',
+            'deliverables' => 'Dokumen laporan evaluasi WCAG 2.1 AA, token warna Figma, dan panduan perbaikan komponen',
             'is_completed' => false,
             'countdown_id' => 'countdown-proj-audit',
         ],
@@ -586,6 +604,11 @@ function gig_demo_active_projects(): array
             'worker_role' => 'Backend API Developer',
             'budget' => 'Rp 6.000.000',
             'duration' => $apiDuration,
+            'location' => 'Bandung',
+            'work_type' => 'On-site/Hybrid',
+            'workType' => 'On-site/Hybrid',
+            'is_remote' => false,
+            'category' => 'IT & Pemrograman',
             'hired_at' => $hireApi->format('Y-m-d H:i:s'),
             'hired_label' => gig_format_id_date($hireApi),
             'deadline' => gig_format_id_date($endApi),
@@ -597,15 +620,88 @@ function gig_demo_active_projects(): array
             'progress' => 90,
             'status_label' => 'Sedang Berjalan',
             'status_badge_class' => 'badge-status active',
-            'deliverable_status' => 'UAT & Endpoint Test Selesai',
-            'deliverable_note' => 'Menunggu verifikasi rilis resmi',
+            'deliverable_status' => 'Endpoint Webhook & Integrasi Provider Siap',
+            'deliverable_note' => 'Endpoint REST API webhook, integrasi modul notifikasi SMS & WhatsApp, serta dokumentasi integrasi API',
+            'deliverables' => 'Endpoint REST API webhook, integrasi modul notifikasi SMS & WhatsApp, serta dokumentasi integrasi API',
             'is_completed' => false,
             'countdown_id' => 'countdown-proj-api',
         ],
     ];
 
+    // Include dynamically hired projects from posted vacancies
+    if (function_exists('gig_get_all_applications')) {
+        $existingVacIds = array_column($projects, 'id');
+        $existingContracts = array_column($projects, 'contract_id');
+        foreach (gig_get_all_applications() as $app) {
+            $status = (string)($app['status'] ?? '');
+            if (!gig_is_hired_status($status)) {
+                continue;
+            }
+            $vacId = (string)($app['vacancy_id'] ?? '');
+            $cid = 'CTR-' . (string)($app['id'] ?? $vacId);
+            if (in_array($vacId, $existingVacIds, true) || in_array($cid, $existingContracts, true)) {
+                continue;
+            }
+            $vac = gig_find_vacancy($vacId);
+            if (!$vac) {
+                continue;
+            }
+            $hireDate = new DateTimeImmutable(!empty($app['updated_at']) ? (string)$app['updated_at'] : (!empty($app['created_at']) ? (string)$app['created_at'] : 'now'));
+            $durationStr = !empty($vac['duration']) ? (string)$vac['duration'] : '2 Minggu';
+            $endDate = gig_add_duration($hireDate, $durationStr);
+            $cdPart = gig_countdown_parts($endDate);
+            $isRem = gig_is_remote_work($vac);
+            $wt = gig_work_type_label($vac);
+
+            $projects[] = [
+                'contract_id' => $cid,
+                'id' => $vacId,
+                'title' => (string)($vac['title'] ?? 'Proyek'),
+                'employer' => (string)($vac['employer'] ?? ($app['employer_username'] ?? 'Pemberi Kerja')),
+                'employer_category' => (string)($vac['category'] ?? 'Partner KarirHub'),
+                'employer_phone' => '0812-3456-7890',
+                'employer_email' => 'contact@perusahaan.co.id',
+                'worker_id' => (string)($app['worker_id'] ?? ''),
+                'worker_name' => (string)($app['worker_name'] ?? 'Gig Worker'),
+                'worker_role' => (string)($vac['category'] ?? 'Gig Worker'),
+                'budget' => (string)($vac['budget'] ?? 'Rp 5.000.000'),
+                'duration' => $durationStr,
+                'location' => (string)($vac['location'] ?? 'Jakarta Selatan'),
+                'work_type' => $wt,
+                'workType' => $wt,
+                'is_remote' => $isRem,
+                'category' => (string)($vac['category'] ?? ''),
+                'deliverables' => (string)($vac['deliverables'] ?? 'Hasil akhir proyek diserahkan sesuai kesepakatan ruang lingkup kerja.'),
+                'hired_at' => $hireDate->format('Y-m-d H:i:s'),
+                'hired_label' => gig_format_id_date($hireDate),
+                'deadline' => gig_format_id_date($endDate),
+                'deadline_iso' => $endDate->format(DateTimeInterface::ATOM),
+                'days_left' => $cdPart['days'],
+                'hours_left' => $cdPart['hours'],
+                'mins_left' => $cdPart['mins'],
+                'secs_left' => $cdPart['secs'],
+                'progress' => 50,
+                'status_label' => 'Sedang Berjalan',
+                'status_badge_class' => 'badge-status active',
+                'deliverable_status' => 'Pengerjaan Proyek Aktif',
+                'deliverable_note' => (string)($vac['deliverables'] ?? 'Pengerjaan deliverable sedang berlangsung sesuai kesepakatan lowongan.'),
+                'is_completed' => false,
+                'countdown_id' => 'countdown-proj-' . strtolower(preg_replace('/[^a-z0-9]/', '', $cid)),
+            ];
+        }
+    }
+
     $completionMap = gig_worker_project_completions_map();
     foreach ($projects as &$proj) {
+        $vac = gig_find_vacancy((string)$proj['id']);
+        if ($vac) {
+            if (empty($proj['location'])) $proj['location'] = (string)($vac['location'] ?? 'Jakarta Selatan');
+            if (empty($proj['work_type'])) $proj['work_type'] = gig_work_type_label($vac);
+            $proj['workType'] = $proj['work_type'];
+            $proj['is_remote'] = gig_is_remote_work($vac);
+            if (empty($proj['deliverables'])) $proj['deliverables'] = (string)($vac['deliverables'] ?? '');
+            if (empty($proj['category'])) $proj['category'] = (string)($vac['category'] ?? '');
+        }
         $contractId = (string)$proj['contract_id'];
         $baseDeadline = new DateTimeImmutable((string)$proj['deadline_iso']);
         $approvedDays = gig_project_total_approved_extension_days($contractId);

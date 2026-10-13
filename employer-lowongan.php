@@ -101,7 +101,7 @@ $colors = ['#2563eb', '#0891b2', '#7c3aed', '#059669', '#ea580c', '#db2777'];
         <thead>
           <tr>
             <th>Lowongan</th>
-            <th>Lokasi</th>
+            <th>Lokasi &amp; Mode</th>
             <th>Status Rekrutmen</th>
             <th>Kandidat</th>
             <th>Status Verifikasi</th>
@@ -124,7 +124,14 @@ $colors = ['#2563eb', '#0891b2', '#7c3aed', '#059669', '#ea580c', '#db2777'];
                 </div>
               </div>
             </td>
-            <td><?php echo htmlspecialchars($job['location'], ENT_QUOTES, 'UTF-8'); ?></td>
+            <td>
+              <div style="font-weight:700;color:#0f172a;margin-bottom:4px;"><?php echo htmlspecialchars($job['location'], ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php if (gig_is_remote_work($job)): ?>
+                <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:9999px;font-size:0.72rem;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">🌐 Remote</span>
+              <?php else: ?>
+                <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:9999px;font-size:0.72rem;font-weight:700;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">🏢 On-site</span>
+              <?php endif; ?>
+            </td>
             <td><?php echo (int)$job['acceptedCount'] > 0 ? 'Sudah terisi' : 'Belum terisi'; ?></td>
             <td>
               <?php if ($job['status'] === 'active' && (int)$job['applicantsCount'] > 0): ?>

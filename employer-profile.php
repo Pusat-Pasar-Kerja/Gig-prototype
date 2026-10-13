@@ -193,16 +193,27 @@ if ($role === 'employer') {
       ?>
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
           <div>
-            <span style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; font-weight: 700; padding: 3px 10px; border-radius: 9999px; margin-bottom: 6px; display: inline-block;">
-              <?php echo htmlspecialchars($job['category'], ENT_QUOTES, 'UTF-8'); ?>
-            </span>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+              <span style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; font-weight: 700; padding: 3px 10px; border-radius: 9999px; display: inline-block;">
+                <?php echo htmlspecialchars($job['category'], ENT_QUOTES, 'UTF-8'); ?>
+              </span>
+              <?php if (gig_is_remote_work($job)): ?>
+                <span style="font-size: 0.72rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">
+                  🌐 Remote
+                </span>
+              <?php else: ?>
+                <span style="font-size: 0.72rem; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">
+                  🏢 On-site
+                </span>
+              <?php endif; ?>
+            </div>
             <h4 style="font-size: 0.98rem; font-weight: 800; color: #0f172a; margin: 4px 0;">
               <a href="<?php echo htmlspecialchars($jobLink, ENT_QUOTES, 'UTF-8'); ?>" style="color: inherit; text-decoration: none;">
                 <?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?>
               </a>
             </h4>
             <div style="font-size: 0.82rem; color: #64748b;">
-              Gaji: <strong style="color: #1d4ed8;"><?php echo htmlspecialchars($job['budget'], ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi: <?php echo htmlspecialchars($job['duration'], ENT_QUOTES, 'UTF-8'); ?> &bull; Penempatan: 1 Gig Worker
+              Gaji: <strong style="color: #1d4ed8;"><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi: <?php echo htmlspecialchars($job['duration'], ENT_QUOTES, 'UTF-8'); ?> &bull; Lokasi: <?php echo htmlspecialchars((string)($job['location'] ?? 'Indonesia'), ENT_QUOTES, 'UTF-8'); ?>
             </div>
           </div>
 

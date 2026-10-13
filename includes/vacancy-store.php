@@ -313,12 +313,22 @@ function gig_vacancy_normalize(array $vacancy): array
     $vacancy['quota'] = 1;
     $vacancy['budget'] = gig_vacancy_budget_range((string)($vacancy['budget'] ?? ''));
 
+    $rawWorkType = trim((string)($vacancy['work_type'] ?? ($vacancy['workType'] ?? '')));
+    $isRemote = false;
+    if (isset($vacancy['is_remote'])) {
+        $isRemote = (bool)$vacancy['is_remote'];
+    } elseif (strcasecmp($rawWorkType, 'remote') === 0 || str_contains(strtolower($rawWorkType), 'remote')) {
+        $isRemote = true;
+    }
+
     // Keep "Lokasi" as a concrete city/province value, never plain "Remote" or "Lokasi belum diisi".
     $rawLocation = trim((string)($vacancy['location'] ?? ''));
     $idSeed = (string)($vacancy['id'] ?? ($vacancy['title'] ?? ''));
     if (preg_match('/^remote\s*\((.+)\)$/i', $rawLocation, $m) === 1) {
         $vacancy['location'] = trim((string)$m[1]);
+        $isRemote = true;
     } elseif (strcasecmp($rawLocation, 'remote') === 0) {
+        $isRemote = true;
         $city = trim((string)($vacancy['location_city'] ?? ''));
         $province = trim((string)($vacancy['location_province'] ?? ''));
         $resolved = trim($city . ', ' . $province, ', ');
@@ -326,6 +336,10 @@ function gig_vacancy_normalize(array $vacancy): array
     } elseif ($rawLocation === '' || strcasecmp($rawLocation, 'Lokasi belum diisi') === 0) {
         $vacancy['location'] = gig_random_location($idSeed);
     }
+
+    $vacancy['is_remote'] = $isRemote;
+    $vacancy['work_type'] = $isRemote ? 'Remote' : ($rawWorkType !== '' ? $rawWorkType : 'On-site/Hybrid');
+    $vacancy['workType']  = $vacancy['work_type'];
 
     $vacancyType = strtolower((string)($vacancy['vacancy_type'] ?? ''));
     $entityType  = strtolower((string)($vacancy['entity_type'] ?? ''));
@@ -403,7 +417,27 @@ function gig_vacancy_load_all(?string $statusFilter = null): array
     gig_vacancy_ensure_schema();
     $db = gig_db();
     if ($db === null) {
-        return [];
+        if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+            session_start();
+        }
+        require_once __DIR__ . '/project-vacancies.php';
+        $baseItems = gig_project_vacancies_base();
+        $sessionItems = $_SESSION['project_vacancies'] ?? [];
+        $all = [];
+        foreach ($sessionItems as $id => $item) {
+            $all[$id] = gig_vacancy_normalize($item);
+        }
+        foreach ($baseItems as $item) {
+            $id = (string)($item['id'] ?? '');
+            if (!isset($all[$id])) {
+                $all[$id] = gig_vacancy_normalize($item);
+            }
+        }
+        $out = array_values($all);
+        if ($statusFilter !== null && $statusFilter !== '') {
+            $out = array_values(array_filter($out, static fn($v) => ($v['status'] ?? '') === $statusFilter));
+        }
+        return $out;
     }
     // Enforce SLA: project vacancies pending over 3 business days auto-approved.
     gig_vacancy_apply_auto_sla($db);
@@ -442,11 +476,13 @@ function gig_vacancy_save_submission(string $employerUsername, array $vacancy): 
 {
     gig_vacancy_ensure_schema();
     $db = gig_db();
-    if ($db === null) {
-        return null;
-    }
     $id = 'GIG-' . date('Y-m') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
     $budgetRaw = trim((string)($vacancy['budget'] ?? ''));
+
+    $rawWorkType = trim((string)($vacancy['work_type'] ?? ($vacancy['workType'] ?? '')));
+    $isRemote = !empty($vacancy['is_remote']) || strcasecmp($rawWorkType, 'remote') === 0;
+    $workType = $isRemote ? 'Remote' : ($rawWorkType !== '' ? $rawWorkType : 'On-site/Hybrid');
+
     $record = [
         'id' => $id,
         'title' => (string)($vacancy['title'] ?? ''),
@@ -459,11 +495,13 @@ function gig_vacancy_save_submission(string $employerUsername, array $vacancy): 
         'acceptedCount' => 0,
         'quota' => 1,
         'location' => (string)($vacancy['location'] ?? 'Lokasi belum diisi'),
+        'work_type' => $workType,
+        'workType' => $workType,
+        'is_remote' => $isRemote,
         'posted' => date('d M Y'),
         'skills' => $vacancy['skills'] ?? [],
         'desc' => (string)($vacancy['desc'] ?? ''),
         'deadline' => (string)($vacancy['deadline'] ?? ''),
-        'work_type' => (string)($vacancy['work_type'] ?? ''),
         'industry' => (string)($vacancy['industry'] ?? ''),
         'experience_level' => (string)($vacancy['experience_level'] ?? ''),
         'visibility' => (string)($vacancy['visibility'] ?? 'public'),
@@ -471,12 +509,24 @@ function gig_vacancy_save_submission(string $employerUsername, array $vacancy): 
         'employer' => $employerUsername,
         'deliverables' => (string)($vacancy['deliverables'] ?? ''),
     ];
+
+    if ($db === null) {
+        if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+            session_start();
+        }
+        if (!isset($_SESSION['project_vacancies']) || !is_array($_SESSION['project_vacancies'])) {
+            $_SESSION['project_vacancies'] = [];
+        }
+        $_SESSION['project_vacancies'][$id] = gig_vacancy_normalize($record);
+        return $id;
+    }
+
     if (!gig_vacancy_upsert_row($db, $record, 'submission')) {
         return null;
     }
 
     try {
-        $payload = json_encode($vacancy, JSON_UNESCAPED_UNICODE);
+        $payload = json_encode($record, JSON_UNESCAPED_UNICODE);
         $stmt = $db->prepare(
             "INSERT INTO `project_vacancy_submissions`
              (`id`, `employer_username`, `title`, `category`, `status`, `status_label`, `payload_json`, `admin_note`)
@@ -500,15 +550,25 @@ function gig_vacancy_set_status(string $vacancyId, string $status, string $admin
 {
     gig_vacancy_ensure_schema();
     $db = gig_db();
-    if ($db === null) {
-        return false;
-    }
     $allowed = ['draft', 'review', 'revision', 'rejected', 'active'];
     if (!in_array($status, $allowed, true)) {
         return false;
     }
     $labels = gig_vacancy_status_labels();
     $label = $labels[$status] ?? $status;
+
+    if ($db === null) {
+        if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+            session_start();
+        }
+        if (isset($_SESSION['project_vacancies'][$vacancyId])) {
+            $_SESSION['project_vacancies'][$vacancyId]['status'] = $status;
+            $_SESSION['project_vacancies'][$vacancyId]['statusLabel'] = $label;
+            $_SESSION['project_vacancies'][$vacancyId]['adminNote'] = $adminNote;
+            return true;
+        }
+        return false;
+    }
 
     try {
         $stmt = $db->prepare("SELECT * FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
