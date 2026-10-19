@@ -79,7 +79,7 @@ $navItems = [
       </div>
 
 <?php
-require_once __DIR__ . '/project-applications.php';
+$username = $username ?? (string)($_SESSION['username'] ?? $_SESSION['siapkerja_name'] ?? 'Theressa Zaratrusha');
 $workerNotifs = gig_get_worker_notifications($username);
 $unreadWorkerNotifs = count(array_filter($workerNotifs, fn($n) => empty($n['is_read'])));
 ?>

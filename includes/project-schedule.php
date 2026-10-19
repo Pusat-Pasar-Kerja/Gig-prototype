@@ -628,8 +628,15 @@ function gig_demo_active_projects(): array
         ],
     ];
 
-    // Include dynamically hired projects from posted vacancies
-    if (function_exists('gig_get_all_applications')) {
+    static $recursionLock = false;
+    if ($recursionLock) {
+        return $projects;
+    }
+    $recursionLock = true;
+
+    try {
+        // Include dynamically hired projects from posted vacancies
+        if (function_exists('gig_get_all_applications')) {
         $existingVacIds = array_column($projects, 'id');
         $existingContracts = array_column($projects, 'contract_id');
         foreach (gig_get_all_applications() as $app) {
@@ -730,6 +737,9 @@ function gig_demo_active_projects(): array
         }
     }
     unset($proj);
+    } finally {
+        $recursionLock = false;
+    }
 
     return $projects;
 }

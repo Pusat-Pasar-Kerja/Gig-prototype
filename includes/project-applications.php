@@ -338,6 +338,12 @@ function gig_seed_all_demo_data_to_db(): void
 
 function gig_seed_demo_applications_if_needed(): void
 {
+    static $seeded = false;
+    if ($seeded) {
+        return;
+    }
+    $seeded = true;
+
     gig_apps_session_start();
     if (empty($_SESSION['gig_applications_seeded'])) {
 
@@ -432,6 +438,12 @@ function gig_seed_demo_applications_if_needed(): void
 
 function gig_ensure_demo_notifications(): void
 {
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+    $ensured = true;
+
     gig_apps_session_start();
     $deadlineMsg = gig_deadline_notice_message('GIG-2026-09-001');
     $patches = [

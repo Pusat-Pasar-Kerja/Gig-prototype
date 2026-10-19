@@ -6,7 +6,8 @@ require_once __DIR__ . '/user-avatars.php';
 $pageTitle = $pageTitle ?? 'Dashboard Pemberi Kerja';
 $pageKey = $pageKey ?? 'overview';
 $breadcrumbCurrent = $breadcrumbCurrent ?? 'Beranda';
-$userInitials = strtoupper(substr($username, 0, 2));
+$username = $username ?? (string)($_SESSION['username'] ?? $_SESSION['siapkerja_name'] ?? 'PT ABC');
+$userInitials = strtoupper(substr($username !== '' ? $username : 'PT', 0, 2));
 $companyLabel = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
 $employerAvatarUrl = gig_resolve_user_avatar(null, 'employer');
 
