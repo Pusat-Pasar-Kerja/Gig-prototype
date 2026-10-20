@@ -137,7 +137,12 @@ require __DIR__ . '/includes/employer-layout-start.php';
             <a class="btn-outline-blue" href="worker-profile.php?id=<?php echo urlencode($applicant['id']); ?>" style="padding:4px 12px;font-size:0.8rem;">Lihat Profil</a>
             
             <?php if ($status === 'declined_by_worker'): ?>
-              <span style="padding:6px 14px;border-radius:9999px;background:#f1f5f9;color:#64748b;font-weight:700;font-size:0.8rem;">✕ Dibatalkan oleh Worker</span>
+              <span style="padding:6px 14px;border-radius:9999px;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:0.8rem;border:1px solid #fecaca;">✕ Ditolak oleh Worker</span>
+              <?php if (!empty($app['rejection_reason'])): ?>
+                <div style="font-size:0.75rem;color:#7f1d1d;max-width:240px;text-align:right;margin-top:2px;font-style:italic;">
+                  Alasan: &ldquo;<?php echo htmlspecialchars((string)$app['rejection_reason'], ENT_QUOTES, 'UTF-8'); ?>&rdquo;
+                </div>
+              <?php endif; ?>
             <?php elseif ($status === 'rejected_by_employer'): ?>
               <span style="padding:6px 14px;border-radius:9999px;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:0.8rem;">✕ Lamaran Ditolak</span>
             <?php else: ?>

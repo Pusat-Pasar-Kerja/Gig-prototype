@@ -8,15 +8,28 @@ require_once __DIR__ . '/includes/project-offers.php';
 require_once __DIR__ . '/includes/project-applications.php';
 
 $flashMsg = '';
+$flashErr = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_action'])) {
     $appId  = trim((string)($_POST['app_id'] ?? ''));
     $action = trim((string)($_POST['confirm_action'] ?? ''));
+    $rejectionReason = trim((string)($_POST['rejection_reason'] ?? ''));
     if ($appId !== '' && in_array($action, ['confirm', 'decline'], true)) {
-        $res = gig_worker_confirm_application($appId, $action, $username);
-        if (!empty($res['ok'])) {
-            $flashMsg = ($action === 'confirm')
-                ? 'Selamat! Anda resmi direkrut untuk proyek ini. Pemberi kerja telah diberitahukan.'
-                : 'Penawaran proyek telah ditolak. Pemberi kerja telah diberitahukan.';
+        if ($action === 'decline' && $rejectionReason === '') {
+            $flashMsg = 'Alasan penolakan penawaran proyek wajib diisi (maksimal 100 karakter).';
+            $flashErr = true;
+        } elseif ($action === 'decline' && mb_strlen($rejectionReason) > 100) {
+            $flashMsg = 'Alasan penolakan maksimal 100 karakter.';
+            $flashErr = true;
+        } else {
+            $res = gig_worker_confirm_application($appId, $action, $username, $rejectionReason);
+            if (!empty($res['ok'])) {
+                $flashMsg = ($action === 'confirm')
+                    ? 'Selamat! Anda resmi direkrut untuk proyek ini. Pemberi kerja telah diberitahukan.'
+                    : 'Penawaran proyek telah ditolak. Pemberi kerja telah diberitahukan alasan penolakan Anda.';
+            } else {
+                $flashMsg = $res['error'] ?? 'Gagal memproses penawaran.';
+                $flashErr = true;
+            }
         }
     }
 }
@@ -376,7 +389,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
   </div>
 
   <?php if ($flashMsg !== ''): ?>
-    <div class="flash-ok"><?php echo htmlspecialchars($flashMsg, ENT_QUOTES, 'UTF-8'); ?></div>
+    <div class="<?php echo !empty($flashErr) ? 'flash-err' : 'flash-ok'; ?>" style="<?php echo !empty($flashErr) ? 'background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 16px;border-radius:10px;font-size:0.86rem;margin-bottom:18px;font-weight:600;' : ''; ?>"><?php echo htmlspecialchars($flashMsg, ENT_QUOTES, 'UTF-8'); ?></div>
   <?php endif; ?>
 
   <div class="penawaran-notice">
@@ -473,6 +486,17 @@ require __DIR__ . '/includes/worker-layout-start.php';
                 Proyek ini sudah resmi aktif dan dapat dipantau di Tugas Aktif.
               <?php elseif ($appStatus === 'declined_by_worker'): ?>
                 Anda telah menolak penawaran proyek ini.
+                <?php 
+                  $rejReason = (string)($appMatch['rejection_reason'] ?? '');
+                  if ($rejReason === '' && isset($_SESSION['gig_applications'][$appId]['rejection_reason'])) {
+                      $rejReason = (string)$_SESSION['gig_applications'][$appId]['rejection_reason'];
+                  }
+                  if ($rejReason !== ''):
+                ?>
+                  <div style="font-size:0.78rem;color:#b91c1c;margin-top:4px;font-style:italic;">
+                    Alasan: &ldquo;<?php echo htmlspecialchars($rejReason, ENT_QUOTES, 'UTF-8'); ?>&rdquo;
+                  </div>
+                <?php endif; ?>
               <?php else: ?>
                 Penawaran dikirimkan pemberi kerja. Buka detail proyek untuk meninjau persyaratan.
               <?php endif; ?>
@@ -488,7 +512,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
                   <input type="hidden" name="app_id" value="<?php echo htmlspecialchars($appId, ENT_QUOTES, 'UTF-8'); ?>" />
                   <button type="submit" name="confirm_action" value="confirm" class="btn-act-green">Terima Penawaran</button>
                   <a class="btn-act-outline" href="<?php echo htmlspecialchars($detailUrl, ENT_QUOTES, 'UTF-8'); ?>">Profil &amp; Detail Proyek</a>
-                  <button type="submit" name="confirm_action" value="decline" class="btn-act-danger" onclick="return confirm('Tolak penawaran proyek ini?')">Tolak Penawaran</button>
+                  <button type="button" class="btn-act-danger" onclick="openRejectOfferModal('<?php echo htmlspecialchars($appId, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes((string)$offer['project_title']), ENT_QUOTES, 'UTF-8'); ?>')">Tolak Penawaran</button>
                 </form>
               <?php endif; ?>
             </div>
@@ -498,6 +522,147 @@ require __DIR__ . '/includes/worker-layout-start.php';
     </div>
   <?php endif; ?>
 </div>
+
+<!-- REJECT OFFER MODAL -->
+<div id="reject-offer-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#ffffff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 20px 40px rgba(0,0,0,0.2);overflow:hidden;">
+    <div style="background:#dc2626;color:#ffffff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.2rem;">⚠️</span>
+        <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#ffffff;">Tolak Penawaran Proyek</h3>
+      </div>
+      <button type="button" onclick="closeRejectOfferModal()" style="background:transparent;border:none;color:#ffffff;font-size:1.4rem;cursor:pointer;line-height:1;padding:0 4px;">&times;</button>
+    </div>
+    <form method="post" action="" id="reject-offer-form" style="margin:0;" onsubmit="return validateRejectForm()">
+      <div style="padding:20px 24px;">
+        <input type="hidden" name="app_id" id="reject-modal-app-id" value="" />
+        <input type="hidden" name="confirm_action" value="decline" />
+        
+        <p style="margin:0 0 14px 0;font-size:0.88rem;color:#475569;line-height:1.5;">
+          Anda akan menolak penawaran untuk proyek <strong id="reject-modal-project-title" style="color:#0f172a;"></strong>.
+        </p>
+
+        <div style="margin-bottom:8px;">
+          <label for="reject-reason-input" style="display:block;font-size:0.84rem;font-weight:700;color:#1e293b;margin-bottom:6px;">
+            Alasan Penolakan <span style="color:#dc2626;">*</span>
+          </label>
+          <textarea 
+            id="reject-reason-input" 
+            name="rejection_reason" 
+            rows="3" 
+            maxlength="100" 
+            required
+            placeholder="Tulis alasan penolakan Anda di sini (contoh: Jadwal sudah penuh / Ruang lingkup tidak sesuai)..."
+            style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;font-size:0.86rem;font-family:inherit;resize:none;outline:none;transition:border-color 0.2s, box-shadow 0.2s;"
+            oninput="updateRejectCharCount(this)"
+          ></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:0.75rem;color:#64748b;">
+            <span>Maksimal 100 karakter (wajib diisi)</span>
+            <span id="reject-char-counter"><strong id="reject-char-val">0</strong> / 100</span>
+          </div>
+          <div id="reject-error-msg" style="display:none;color:#dc2626;font-size:0.78rem;font-weight:600;margin-top:6px;">
+            Alasan penolakan wajib diisi.
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 24px;display:flex;justify-content:flex-end;gap:10px;">
+        <button type="button" onclick="closeRejectOfferModal()" style="padding:9px 18px;font-size:0.86rem;font-weight:600;border-radius:8px;border:1px solid #cbd5e1;background:#ffffff;color:#475569;cursor:pointer;">
+          Batal
+        </button>
+        <button type="submit" id="reject-submit-btn" style="padding:9px 20px;font-size:0.86rem;font-weight:700;border-radius:8px;border:none;background:#dc2626;color:#ffffff;cursor:pointer;box-shadow:0 2px 6px rgba(220,38,38,0.3);">
+          ✕ Tolak Penawaran
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openRejectOfferModal(appId, projectTitle) {
+  const modal = document.getElementById('reject-offer-modal');
+  const appIdInput = document.getElementById('reject-modal-app-id');
+  const titleEl = document.getElementById('reject-modal-project-title');
+  const reasonInput = document.getElementById('reject-reason-input');
+  const charVal = document.getElementById('reject-char-val');
+  const errMsg = document.getElementById('reject-error-msg');
+
+  if (appIdInput) appIdInput.value = appId;
+  if (titleEl) titleEl.textContent = '"' + projectTitle + '"';
+  if (reasonInput) {
+    reasonInput.value = '';
+    reasonInput.style.borderColor = '#cbd5e1';
+  }
+  if (charVal) charVal.textContent = '0';
+  if (errMsg) errMsg.style.display = 'none';
+
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(function() { if (reasonInput) reasonInput.focus(); }, 50);
+  }
+}
+
+function closeRejectOfferModal() {
+  const modal = document.getElementById('reject-offer-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateRejectCharCount(textarea) {
+  const val = textarea.value || '';
+  const len = val.length;
+  const charVal = document.getElementById('reject-char-val');
+  const counter = document.getElementById('reject-char-counter');
+  const errMsg = document.getElementById('reject-error-msg');
+  
+  if (charVal) charVal.textContent = len;
+  if (errMsg && val.trim().length > 0) errMsg.style.display = 'none';
+
+  if (len >= 100) {
+    if (counter) counter.style.color = '#dc2626';
+  } else {
+    if (counter) counter.style.color = '#64748b';
+  }
+}
+
+function validateRejectForm() {
+  const reasonInput = document.getElementById('reject-reason-input');
+  const errMsg = document.getElementById('reject-error-msg');
+  const val = (reasonInput ? reasonInput.value : '').trim();
+
+  if (!val) {
+    if (errMsg) {
+      errMsg.textContent = 'Alasan penolakan wajib diisi.';
+      errMsg.style.display = 'block';
+    }
+    if (reasonInput) {
+      reasonInput.style.borderColor = '#dc2626';
+      reasonInput.focus();
+    }
+    return false;
+  }
+
+  if (val.length > 100) {
+    if (errMsg) {
+      errMsg.textContent = 'Alasan penolakan maksimal 100 karakter.';
+      errMsg.style.display = 'block';
+    }
+    if (reasonInput) {
+      reasonInput.style.borderColor = '#dc2626';
+      reasonInput.focus();
+    }
+    return false;
+  }
+
+  return true;
+}
+
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('reject-offer-modal');
+  if (modal && e.target === modal) {
+    closeRejectOfferModal();
+  }
+});
+</script>
 
 <?php require __DIR__ . '/includes/worker-layout-end.php'; ?>
 

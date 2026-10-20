@@ -137,6 +137,12 @@ require __DIR__ . '/includes/worker-layout-start.php';
             <div style="font-size:0.9rem;font-weight:800;color:#2563eb;margin-top:2px;"><?php echo htmlspecialchars($cleanBid, ENT_QUOTES, 'UTF-8'); ?></div>
           </div>
         </div>
+
+        <?php if ($status === 'declined_by_worker' && !empty($app['rejection_reason'])): ?>
+          <div style="margin-top:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fee2e2;font-size:0.8rem;color:#991b1b;">
+            <strong>Alasan Penolakan:</strong> &ldquo;<?php echo htmlspecialchars((string)$app['rejection_reason'], ENT_QUOTES, 'UTF-8'); ?>&rdquo;
+          </div>
+        <?php endif; ?>
       </div>
     <?php endforeach; ?>
   </div>

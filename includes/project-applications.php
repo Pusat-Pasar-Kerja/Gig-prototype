@@ -97,6 +97,7 @@ function gig_apps_ensure_tables(?PDO $pdo): void
         ");
         // Add vacancy_id column if it was created before this migration
         try { $pdo->exec("ALTER TABLE `employer_notifications` ADD COLUMN `vacancy_id` VARCHAR(50) NOT NULL DEFAULT '' AFTER `message`"); } catch (Throwable) {}
+        try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `rejection_reason` VARCHAR(150) NOT NULL DEFAULT '' AFTER `note`"); } catch (Throwable) {}
 
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS `worker_notifications` (
@@ -711,10 +712,40 @@ function gig_employer_respond_application(string $appId, string $decision, strin
 /**
  * Gig Worker confirms or declines the accepted project application/offer.
  */
-function gig_worker_confirm_application(string $appId, string $action, string $workerId): array
+function gig_worker_confirm_application(string $appId, string $action, string $workerId, string $rejectionReason = ''): array
 {
     gig_apps_session_start();
     $app = gig_get_application_by_id($appId);
+    if (!$app) {
+        if (str_starts_with($appId, 'APP-')) {
+            $vacId = substr($appId, 4);
+            $vac = gig_find_vacancy($vacId);
+            if ($vac) {
+                $wName = !empty($_SESSION['siapkerja_name']) ? (string)$_SESSION['siapkerja_name'] : '';
+                if ($wName === '' && function_exists('gig_find_worker')) {
+                    $wProf = gig_find_worker($workerId);
+                    $wName = (string)($wProf['name'] ?? '');
+                }
+                if ($wName === '') {
+                    $wName = ucfirst($workerId);
+                }
+                $app = [
+                    'id' => $appId,
+                    'vacancy_id' => $vacId,
+                    'worker_id' => $workerId,
+                    'worker_name' => $wName,
+                    'employer_username' => (string)($vac['employer'] ?? ($vac['client'] ?? 'Pemberi Kerja')),
+                    'bid_amount' => (string)($vac['budget'] ?? 'Rp 5.000.000'),
+                    'status' => 'pending',
+                    'note' => '',
+                    'rejection_reason' => '',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ];
+                $_SESSION['gig_applications'][$appId] = $app;
+            }
+        }
+    }
     if (!$app) {
         return ['ok' => false, 'error' => 'Data lamaran/penawaran tidak ditemukan.'];
     }
@@ -753,16 +784,25 @@ function gig_worker_confirm_application(string $appId, string $action, string $w
         );
 
     } else {
+        $reason = trim($rejectionReason);
+        if ($reason === '') {
+            return ['ok' => false, 'error' => 'Alasan penolakan penawaran wajib diisi (maksimal 100 karakter).'];
+        }
+        if (mb_strlen($reason) > 100) {
+            return ['ok' => false, 'error' => 'Alasan penolakan maksimal 100 karakter.'];
+        }
+
         $newStatus = 'declined_by_worker';
         $app['status'] = $newStatus;
+        $app['rejection_reason'] = $reason;
         $app['updated_at'] = date('Y-m-d H:i:s');
 
-        // Notify Employer that worker declined
+        // Notify Employer that worker declined with reason included
         gig_add_employer_notification(
             $app['employer_username'],
             'worker_declined',
             '⚠️ Penawaran Ditolak oleh ' . $app['worker_name'],
-            'Gig Worker ' . $app['worker_name'] . ' MENOLAK penawaran/kesepakatan untuk proyek "' . $projectTitle . '". Lowongan proyek tetap dibuka bagi kandidat lain.',
+            'Gig Worker ' . $app['worker_name'] . ' MENOLAK penawaran untuk proyek "' . $projectTitle . '". Alasan penolakan: "' . $reason . '". Lowongan proyek tetap dibuka bagi kandidat lain.',
             (string)($app['vacancy_id'] ?? '')
         );
 
@@ -771,7 +811,7 @@ function gig_worker_confirm_application(string $appId, string $action, string $w
             $workerId,
             'declined',
             'Penawaran Ditolak',
-            'Anda telah menolak penawaran proyek "' . $projectTitle . '". Pemberi kerja telah diberitahukan.',
+            'Anda telah menolak penawaran proyek "' . $projectTitle . '". Alasan: "' . $reason . '". Pemberi kerja telah diberitahukan.',
             (string)($app['vacancy_id'] ?? '')
         );
     }
@@ -780,9 +820,14 @@ function gig_worker_confirm_application(string $appId, string $action, string $w
     if ($pdo) {
         try {
             gig_apps_ensure_tables($pdo);
-            $stmt = $pdo->prepare("UPDATE `project_applications` SET `status` = :st, `updated_at` = NOW() WHERE `id` = :id");
-            $stmt->execute([':st' => $newStatus, ':id' => $appId]);
-        } catch (Throwable $ignored) {}
+            $stmt = $pdo->prepare("UPDATE `project_applications` SET `status` = :st, `rejection_reason` = :rr, `updated_at` = NOW() WHERE `id` = :id");
+            $stmt->execute([':st' => $newStatus, ':rr' => (string)($app['rejection_reason'] ?? ''), ':id' => $appId]);
+        } catch (Throwable $ignored) {
+            try {
+                $stmt = $pdo->prepare("UPDATE `project_applications` SET `status` = :st, `updated_at` = NOW() WHERE `id` = :id");
+                $stmt->execute([':st' => $newStatus, ':id' => $appId]);
+            } catch (Throwable) {}
+        }
     }
 
     $_SESSION['gig_applications'][$appId] = $app;
