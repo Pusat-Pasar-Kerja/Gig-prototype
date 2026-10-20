@@ -49,9 +49,9 @@ $colors = ['#2563eb', '#0891b2', '#7c3aed', '#059669', '#ea580c', '#db2777'];
       </article>
       <article class="mini-stat">
         <div>
-          <div class="lbl">Dikirim</div>
+          <div class="lbl">Menunggu Verifikasi</div>
           <div class="num"><?php echo $reviewCount; ?></div>
-          <div class="sub">Menunggu verifikasi</div>
+          <div class="sub">Dalam proses verifikasi</div>
         </div>
         <div class="ico">⏱️</div>
       </article>

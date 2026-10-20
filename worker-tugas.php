@@ -398,7 +398,13 @@ function closeContactModal() {
       if (!iso) return;
       const start = startIso ? new Date(startIso).getTime() : NaN;
       const end = new Date(iso).getTime();
-      const remainingMs = Math.max(0, end - Date.now());
+      let remainingMs = end - Date.now();
+      // Prototype safeguard: active projects countdown never runs out
+      if (remainingMs <= 0) {
+        const fallbackCycleMs = 7 * 86400000;
+        remainingMs = fallbackCycleMs + (remainingMs % fallbackCycleMs);
+        if (remainingMs <= 0) remainingMs = fallbackCycleMs;
+      }
       let ms = remainingMs;
       const days = Math.floor(ms / 86400000);
       ms -= days * 86400000;

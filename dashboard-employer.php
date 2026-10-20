@@ -275,7 +275,11 @@ require __DIR__ . '/includes/employer-layout-start.php';
             if (!iso) return;
             const end = new Date(iso).getTime();
             let ms = end - Date.now();
-            if (ms < 0) ms = 0;
+            if (ms <= 0) {
+              const fallbackCycleMs = 7 * 86400000;
+              ms = fallbackCycleMs + (ms % fallbackCycleMs);
+              if (ms <= 0) ms = fallbackCycleMs;
+            }
             const days = Math.floor(ms / 86400000);
             ms -= days * 86400000;
             const hours = Math.floor(ms / 3600000);

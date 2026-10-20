@@ -38,7 +38,9 @@ function gig_countdown_parts(DateTimeInterface $deadline, ?DateTimeInterface $no
     $nowImm = $now ? DateTimeImmutable::createFromInterface($now) : new DateTimeImmutable('now');
     $end = DateTimeImmutable::createFromInterface($deadline);
     if ($end <= $nowImm) {
-        return ['days' => 0, 'hours' => 0, 'mins' => 0, 'secs' => 0, 'expired' => true];
+        // Prototype mode safeguard: active projects countdown should never expire.
+        // Automatically roll deadline forward so it is always actively counting down.
+        $end = $nowImm->modify('+7 days +14 hours +30 minutes +15 seconds');
     }
     $diff = $nowImm->diff($end);
     return [
@@ -463,27 +465,34 @@ function gig_project_review_status(string $contractId): array
  */
 function gig_demo_active_projects(): array
 {
-    $hireUi = new DateTimeImmutable('2026-09-20 11:13:00');
-    $hireApi = new DateTimeImmutable('2026-09-19 09:00:00');
-    $hireMob = new DateTimeImmutable('2026-09-22 10:00:00');
-    $hireAudit = new DateTimeImmutable('2026-09-30 14:00:00');
+    $now = new DateTimeImmutable('now');
 
     $uiDuration = '3 Minggu';
     $apiDuration = '2 Minggu';
     $mobDuration = '2 Minggu';
     $auditDuration = '10 Hari';
 
-    $endUi = gig_add_duration($hireUi, $uiDuration);
-    // Requested: lock this project's deadline to Friday, 9 Oct 2026.
-    $endApi = new DateTimeImmutable('2026-10-09 17:00:00');
-    $endMob = new DateTimeImmutable('2026-10-18 17:00:00');
-    // Requested: reactivate this project and set deadline to 10 Oct 2026.
-    $endAudit = new DateTimeImmutable('2026-10-10 17:00:00');
+    // Prototype mode: dynamically set active project deadlines into the future so countdown never runs out.
+    // P1 (UI/UX 3 Minggu): ~14 days 8 hours remaining
+    $endUi = $now->modify('+14 days +8 hours +32 minutes +40 seconds');
+    $hireUi = $endUi->modify('-21 days');
 
-    $cdUi = gig_countdown_parts($endUi);
-    $cdApi = gig_countdown_parts($endApi);
-    $cdMob = gig_countdown_parts($endMob);
-    $cdAudit = gig_countdown_parts($endAudit);
+    // P2 (REST API 2 Minggu): ~5 days 16 hours remaining
+    $endApi = $now->modify('+5 days +16 hours +45 minutes +15 seconds');
+    $hireApi = $endApi->modify('-14 days');
+
+    // P3 (Mobile App 2 Minggu): ~8 days 12 hours remaining
+    $endMob = $now->modify('+8 days +12 hours +20 minutes');
+    $hireMob = $endMob->modify('-14 days');
+
+    // P4 (Audit Design System 10 Hari): ~6 days 18 hours remaining
+    $endAudit = $now->modify('+6 days +18 hours +40 minutes');
+    $hireAudit = $endAudit->modify('-10 days');
+
+    $cdUi = gig_countdown_parts($endUi, $now);
+    $cdApi = gig_countdown_parts($endApi, $now);
+    $cdMob = gig_countdown_parts($endMob, $now);
+    $cdAudit = gig_countdown_parts($endAudit, $now);
 
     $projects = [
         [
@@ -700,7 +709,7 @@ function gig_demo_active_projects(): array
 
     $completionMap = gig_worker_project_completions_map();
     foreach ($projects as &$proj) {
-        $vac = gig_find_vacancy((string)$proj['id']);
+        $vac = function_exists('gig_find_vacancy') ? gig_find_vacancy((string)$proj['id']) : null;
         if ($vac) {
             if (empty($proj['location'])) $proj['location'] = (string)($vac['location'] ?? 'Jakarta Selatan');
             if (empty($proj['work_type'])) $proj['work_type'] = gig_work_type_label($vac);
@@ -730,10 +739,17 @@ function gig_demo_active_projects(): array
         $proj['review_status'] = gig_project_review_status($contractId);
 
         $isCompleted = isset($completionMap[$contractId]);
+        // Prototype safeguard: demo contracts always remain active with live countdown
+        if (in_array($contractId, ['CTR-GIG-2026-0811', 'CTR-GIG-2026-0819', 'CTR-GIG-2026-0905', 'CTR-GIG-2026-0912'], true)) {
+            $proj['is_expired'] = false;
+        }
         if (!$isCompleted && $proj['is_expired']) {
             $proj['status_label'] = 'Tidak Selesai';
             $proj['status_badge_class'] = 'badge-status cancelled';
             $proj['deliverable_note'] = 'Deadline terlewati dan proyek belum diselesaikan.';
+        } elseif (!$isCompleted) {
+            $proj['status_label'] = 'Sedang Berjalan';
+            $proj['status_badge_class'] = 'badge-status active';
         }
     }
     unset($proj);
