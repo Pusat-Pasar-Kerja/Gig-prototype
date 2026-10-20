@@ -113,7 +113,7 @@ endif;
 
 $displayName = trim((string)($worker['display_name'] ?? '')) !== '' ? (string)$worker['display_name'] : (string)$worker['username'];
 $domicile = trim((string)($worker['domicile'] ?? '')) !== '' ? (string)$worker['domicile'] : '-';
-$skills = is_array($worker['skills'] ?? null) ? $worker['skills'] : [];
+$skills = gig_normalize_skills($worker['skills'] ?? []);
 $projects = is_array($worker['previous_projects'] ?? null) ? $worker['previous_projects'] : [];
 $portfolio = is_array($worker['portfolio'] ?? null) ? $worker['portfolio'] : [];
 $status = (string)($worker['status'] ?? 'pending');
@@ -539,6 +539,7 @@ $extractPortfolioLinks = static function (array $portItem): array {
                     <p>
                       Nama: <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?><br>
                       Bidang: <?php echo htmlspecialchars((string)($worker['bidang_keahlian'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?><br>
+                      Skill: <?php echo htmlspecialchars(gig_format_skills_summary($worker['skills'] ?? []), ENT_QUOTES, 'UTF-8'); ?><br>
                       Lokasi: <?php echo htmlspecialchars($domicile, ENT_QUOTES, 'UTF-8'); ?>
                     </p>
                   </div>
@@ -547,6 +548,7 @@ $extractPortfolioLinks = static function (array $portItem): array {
                     <p>
                       Nama: <?php echo htmlspecialchars((string)($editPayload['name'] ?? $displayName), ENT_QUOTES, 'UTF-8'); ?><br>
                       Bidang: <?php echo htmlspecialchars((string)($editPayload['title'] ?? ($worker['bidang_keahlian'] ?? '-')), ENT_QUOTES, 'UTF-8'); ?><br>
+                      Skill: <?php echo htmlspecialchars(gig_format_skills_summary($editPayload['skills'] ?? ($worker['skills'] ?? [])), ENT_QUOTES, 'UTF-8'); ?><br>
                       Lokasi: <?php echo htmlspecialchars((string)($editPayload['location'] ?? $domicile), ENT_QUOTES, 'UTF-8'); ?>
                     </p>
                   </div>
@@ -649,7 +651,28 @@ $extractPortfolioLinks = static function (array $portItem): array {
         <div class="profile-row"><div class="k">Domisili</div><div class="v"><?php echo htmlspecialchars($domicile, ENT_QUOTES, 'UTF-8'); ?></div></div>
         <div class="profile-row"><div class="k">Bidang</div><div class="v"><?php echo htmlspecialchars((string)$worker['bidang_keahlian'], ENT_QUOTES, 'UTF-8'); ?></div></div>
         <div class="profile-row"><div class="k">Kontak</div><div class="v"><?php echo htmlspecialchars((string)$worker['contact_email'], ENT_QUOTES, 'UTF-8'); ?><br><?php echo htmlspecialchars((string)$worker['contact_wa'], ENT_QUOTES, 'UTF-8'); ?></div></div>
-        <div class="profile-row"><div class="k">Skill</div><div class="v"><?php echo htmlspecialchars($skills !== [] ? implode(', ', $skills) : '-', ENT_QUOTES, 'UTF-8'); ?></div></div>
+        <div class="profile-row">
+          <div class="k">Skill</div>
+          <div class="v">
+            <?php if ($skills === []): ?>
+              -
+            <?php else: ?>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">
+                <?php foreach ($skills as $sk): ?>
+                  <?php
+                    $skName = gig_skill_name($sk);
+                    $skLvl = gig_skill_level($sk);
+                    $skStyle = gig_skill_level_badge_style($skLvl);
+                  ?>
+                  <span style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #cbd5e1;padding:2px 8px;border-radius:6px;font-size:0.75rem;">
+                    <strong><?php echo htmlspecialchars($skName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <span style="background:<?php echo $skStyle['bg']; ?>;color:<?php echo $skStyle['color']; ?>;padding:1px 5px;border-radius:4px;font-size:0.68rem;font-weight:700;"><?php echo htmlspecialchars($skLvl, ENT_QUOTES, 'UTF-8'); ?></span>
+                  </span>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+          </div>
+        </div>
         <div class="profile-row"><div class="k">Video</div><div class="v"><?php echo !empty($worker['video_url']) ? '<a href="' . htmlspecialchars((string)$worker['video_url'], ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener">Lihat video</a>' : '-'; ?></div></div>
         <div class="profile-row"><div class="k">Dikirim</div><div class="v"><?php echo htmlspecialchars((string)($worker['created_at'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></div></div>
         <div class="profile-row"><div class="k">Status</div><div class="v"><span style="background:<?php echo htmlspecialchars($statusBg, ENT_QUOTES, 'UTF-8'); ?>;color:<?php echo htmlspecialchars($statusColor, ENT_QUOTES, 'UTF-8'); ?>;padding:4px 10px;border-radius:999px;font-size:0.74rem;font-weight:800;white-space:nowrap;"><?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?></span></div></div>

@@ -119,8 +119,16 @@ require __DIR__ . '/includes/employer-layout-start.php';
               </div>
               <div class="applicant-applied-role">Proyek yang dilamar: <strong><?php echo htmlspecialchars($applicant['applied_project'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
               <div class="project-skill-tags">
-                <?php foreach (array_slice($applicant['skills'], 0, 3) as $skillTag): ?>
-                  <span class="skill-tag-item"><?php echo htmlspecialchars((string)$skillTag, ENT_QUOTES, 'UTF-8'); ?></span>
+                <?php foreach (array_slice(gig_normalize_skills($applicant['skills'] ?? []), 0, 3) as $skillTag): ?>
+                  <?php
+                    $sNm = gig_skill_name($skillTag);
+                    $sLvl = gig_skill_level($skillTag);
+                    $sSt = gig_skill_level_badge_style($sLvl);
+                  ?>
+                  <span class="skill-tag-item" style="display:inline-flex;align-items:center;gap:4px;">
+                    <span><?php echo htmlspecialchars($sNm, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span style="font-size:0.65rem;font-weight:700;color:<?php echo $sSt['color']; ?>;background:<?php echo $sSt['bg']; ?>;padding:1px 4px;border-radius:4px;border:1px solid <?php echo $sSt['border']; ?>;"><?php echo htmlspecialchars($sLvl, ENT_QUOTES, 'UTF-8'); ?></span>
+                  </span>
                 <?php endforeach; ?>
               </div>
               <div class="applicant-lock-hint">

@@ -75,7 +75,33 @@ function gig_edit_parse_period_to_dates(string $period): array
 }
 
 $currentBidang = $_POST['bidang_keahlian'] ?? ($existingReg['bidang_keahlian'] ?? ($worker['title'] ?? ''));
-$currentSkillsRaw = $_POST['skills'] ?? (is_array($existingReg['skills'] ?? null) ? implode(', ', $existingReg['skills']) : (is_array($worker['skills'] ?? null) ? implode(', ', $worker['skills']) : ''));
+
+$currentSkillsList = [];
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    if (isset($_POST['skill_name']) && is_array($_POST['skill_name'])) {
+        $postNames = $_POST['skill_name'];
+        $postLevels = $_POST['skill_level'] ?? [];
+        foreach ($postNames as $k => $nm) {
+            $nm = trim((string)$nm);
+            $lvl = trim((string)($postLevels[$k] ?? 'Menengah'));
+            if ($nm !== '') {
+                $currentSkillsList[] = ['name' => $nm, 'level' => $lvl];
+            }
+        }
+    } elseif (isset($_POST['skills'])) {
+        $currentSkillsList = gig_normalize_skills($_POST['skills']);
+    }
+} else {
+    if (!empty($existingReg['skills'])) {
+        $currentSkillsList = gig_normalize_skills($existingReg['skills']);
+    } elseif (!empty($worker['skills'])) {
+        $currentSkillsList = gig_normalize_skills($worker['skills']);
+    }
+}
+if ($currentSkillsList === []) {
+    $currentSkillsList = [['name' => '', 'level' => 'Menengah']];
+}
+
 $currentSummary = $_POST['profile_summary'] ?? ($existingReg['profile_summary'] ?? ($worker['proposal'] ?? ''));
 $currentContactChoice = $_POST['contact_choice'] ?? ($existingReg['contact_choice'] ?? 'siapkerja');
 $currentContactEmail = $_POST['contact_email_new'] ?? ($existingReg['contact_email'] ?? '');
@@ -220,7 +246,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reasonCode = trim((string)($_POST['reason_code'] ?? ''));
     $reasonDetail = trim((string)($_POST['reason_detail'] ?? ''));
     $bidangKeahlian = trim((string)($_POST['bidang_keahlian'] ?? ''));
-    $skillsRaw = trim((string)($_POST['skills'] ?? ''));
+
+    // Process structured skills
+    $skillsList = [];
+    if (isset($_POST['skill_name']) && is_array($_POST['skill_name'])) {
+        $postNames = $_POST['skill_name'];
+        $postLevels = $_POST['skill_level'] ?? [];
+        foreach ($postNames as $k => $nm) {
+            $nm = trim((string)$nm);
+            $lvl = trim((string)($postLevels[$k] ?? 'Menengah'));
+            if (!in_array($lvl, ['Pemula', 'Menengah', 'Mahir', 'Ahli'], true)) {
+                $lvl = 'Menengah';
+            }
+            if ($nm !== '') {
+                $skillsList[] = ['name' => $nm, 'level' => $lvl];
+            }
+        }
+    } elseif (!empty($_POST['skills'])) {
+        $skillsList = gig_normalize_skills($_POST['skills']);
+    }
+
     $profileSummary = trim((string)($_POST['profile_summary'] ?? ''));
     $contactChoice = trim((string)($_POST['contact_choice'] ?? 'siapkerja'));
     $contactEmail = $contactChoice === 'new' ? trim((string)($_POST['contact_email_new'] ?? '')) : (string)($siapkerja['email'] ?? '');
@@ -310,8 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($bidangKeahlian === '') {
         $errorMessage = 'Pilih Bidang Keahlian utama sebelum mengirim pengajuan.';
-    } elseif ($skillsRaw === '') {
-        $errorMessage = 'Isi minimal satu skill pada kolom Skill / Keahlian Spesifik.';
+    } elseif ($skillsList === []) {
+        $errorMessage = 'Isi minimal satu skill dan tingkat keahlian pada kolom Keahlian Spesifik.';
     } elseif ($contactChoice === 'new' && ($contactEmail === '' || $contactWa === '')) {
         $errorMessage = 'Jika memilih kontak baru, email dan nomor WhatsApp wajib diisi.';
     } elseif ($changeSummary === '') {
@@ -321,13 +366,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($hasPendingEdit) {
         $errorMessage = 'Masih ada pengajuan edit profil yang menunggu verifikasi admin. Selesaikan dulu pengajuan sebelumnya.';
     } else {
-        $skillsArr = array_values(array_filter(array_map('trim', explode(',', $skillsRaw))));
         $displayName = (string)($existingReg['display_name'] ?? ($siapkerja['nama'] ?? ($worker['name'] ?? $username)));
         $domicile = (string)($existingReg['domicile'] ?? ($siapkerja['lokasi'] ?? ($worker['location'] ?? '')));
 
         $payload = [
             'bidang_keahlian' => $bidangKeahlian,
-            'skills' => $skillsArr,
+            'skills' => $skillsList,
             'contact_choice' => $contactChoice,
             'contact_email' => $contactEmail,
             'contact_wa' => $contactWa,
@@ -645,20 +689,46 @@ require __DIR__ . '/includes/worker-layout-start.php';
     </div>
 
     <div style="margin-bottom:28px;">
-      <h2 style="font-size:1.1rem;font-weight:800;color:#0f172a;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">3. Bidang Keahlian & Skill</h2>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;color:#1e293b;margin-bottom:6px;">Bidang Keahlian <span style="color:#ef4444;">*</span></label>
-          <select name="bidang_keahlian" required style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
-            <option value="">-- Pilih Bidang Keahlian --</option>
-            <?php foreach (['Desain UI/UX','Digital Marketing','Pengembangan Website','Pengembangan Aplikasi Mobile','Data Entry & Administrasi','Penulisan Konten','Video Editing & Motion Graphic','Fotografi & Videografi','Penerjemah','Tutor/Instruktur','Customer Service','Lainnya'] as $b): ?>
-              <option value="<?php echo htmlspecialchars($b, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentBidang === $b ? 'selected' : ''; ?>><?php echo htmlspecialchars($b, ENT_QUOTES, 'UTF-8'); ?></option>
-            <?php endforeach; ?>
-          </select>
+      <h2 style="font-size:1.1rem;font-weight:800;color:#0f172a;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">3. Bidang Keahlian &amp; Skill Spesifik</h2>
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.82rem;font-weight:700;color:#1e293b;margin-bottom:6px;">Bidang Keahlian Utama <span style="color:#ef4444;">*</span></label>
+        <select name="bidang_keahlian" required style="width:100%;max-width:520px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+          <option value="">-- Pilih Bidang Keahlian --</option>
+          <?php foreach (['Desain UI/UX','Digital Marketing','Pengembangan Website','Pengembangan Aplikasi Mobile','Data Entry & Administrasi','Penulisan Konten','Video Editing & Motion Graphic','Fotografi & Videografi','Penerjemah','Tutor/Instruktur','Customer Service','Lainnya'] as $b): ?>
+            <option value="<?php echo htmlspecialchars($b, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentBidang === $b ? 'selected' : ''; ?>><?php echo htmlspecialchars($b, ENT_QUOTES, 'UTF-8'); ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;font-weight:700;color:#1e293b;margin-bottom:6px;">
+          <span>Skill / Keahlian Spesifik &amp; Tingkat Keahlian <span style="color:#ef4444;">*</span></span>
+          <span style="font-size:0.75rem;font-weight:600;color:#64748b;">(Minimal 1 keahlian)</span>
+        </label>
+        <p style="font-size:0.8rem;color:#64748b;margin:0 0 12px 0;">
+          Tentukan keahlian spesifik yang Anda kuasai beserta tingkat penguasaannya (Pemula, Menengah, Mahir, Ahli). Anda dapat menambah lebih dari 1 keahlian.
+        </p>
+
+        <div id="skillsEditRepeater" style="display:flex;flex-direction:column;gap:10px;">
+          <?php foreach ($currentSkillsList as $sIdx => $sItem): ?>
+            <div class="skill-row-item" style="display:flex;gap:10px;align-items:center;">
+              <input type="text" name="skill_name[]" placeholder="Nama keahlian (contoh: Figma, React, Copywriting, SQL)" value="<?php echo htmlspecialchars((string)($sItem['name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required style="flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+              <select name="skill_level[]" style="width:160px;min-width:140px;flex-shrink:0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+                <?php foreach (gig_skill_levels() as $lvlOpt): ?>
+                  <option value="<?php echo $lvlOpt; ?>" <?php echo (string)($sItem['level'] ?? '') === $lvlOpt ? 'selected' : ''; ?>>
+                    <?php echo $lvlOpt; ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <button type="button" onclick="removeSkillEditRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;font-size:1.1rem;flex-shrink:0;" title="Hapus keahlian">✕</button>
+            </div>
+          <?php endforeach; ?>
         </div>
-        <div>
-          <label style="display:block;font-size:0.82rem;font-weight:700;color:#1e293b;margin-bottom:6px;">Skill / Keahlian Spesifik <span style="color:#ef4444;">*</span></label>
-          <input type="text" name="skills" required value="<?php echo htmlspecialchars((string)$currentSkillsRaw, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Figma, React, Node.js" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+
+        <div style="margin-top:12px;">
+          <button type="button" onclick="addSkillEditRow()" style="border:1px dashed #2563eb;background:#eff6ff;color:#1d4ed8;padding:8px 16px;border-radius:8px;font-size:0.84rem;font-weight:700;cursor:pointer;">
+            + Tambah Keahlian
+          </button>
         </div>
       </div>
     </div>
@@ -953,6 +1023,45 @@ function addProjectItem() {
     <button type="button" onclick="addFileToProject(${idx})" style="margin-top:8px;border:1px dashed #2563eb;background:#eff6ff;color:#1d4ed8;padding:6px 10px;border-radius:8px;font-size:0.8rem;">+ Tambah Link Output Proyek</button>
   `;
   container.appendChild(card);
+}
+
+function addSkillEditRow(name = '', level = 'Menengah') {
+  const container = document.getElementById('skillsEditRepeater');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'skill-row-item';
+  row.style.cssText = 'display:flex;gap:10px;align-items:center;';
+  
+  const levels = ['Pemula', 'Menengah', 'Mahir', 'Ahli'];
+  let optionsHtml = '';
+  levels.forEach(lvl => {
+    optionsHtml += `<option value="${lvl}" ${lvl === level ? 'selected' : ''}>${lvl}</option>`;
+  });
+  
+  row.innerHTML = `
+    <input type="text" name="skill_name[]" placeholder="Nama keahlian (contoh: Figma, React, Copywriting, SQL)" value="${name.replace(/"/g, '&quot;')}" required style="flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+    <select name="skill_level[]" style="width:160px;min-width:140px;flex-shrink:0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;">
+      ${optionsHtml}
+    </select>
+    <button type="button" onclick="removeSkillEditRow(this)" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;font-size:1.1rem;flex-shrink:0;" title="Hapus keahlian">✕</button>
+  `;
+  container.appendChild(row);
+  const input = row.querySelector('input');
+  if (input) input.focus();
+}
+
+function removeSkillEditRow(btn) {
+  const container = document.getElementById('skillsEditRepeater');
+  if (!container) return;
+  const rows = container.querySelectorAll('.skill-row-item');
+  if (rows.length <= 1) {
+    const firstInput = rows[0].querySelector('input');
+    if (firstInput) firstInput.value = '';
+    const firstSelect = rows[0].querySelector('select');
+    if (firstSelect) firstSelect.value = 'Menengah';
+    return;
+  }
+  btn.closest('.skill-row-item').remove();
 }
 
 function openVerifyModal() {

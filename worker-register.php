@@ -76,7 +76,33 @@ function gig_parse_period_to_dates(string $period): array {
 }
 
 $currentBidang = $_POST['bidang_keahlian'] ?? ($existingReg['bidang_keahlian'] ?? ($workerProfile['title'] ?? ''));
-$currentSkills = $_POST['skills'] ?? (is_array($existingReg['skills'] ?? null) ? implode(', ', $existingReg['skills']) : ($existingReg['skills'] ?? (is_array($workerProfile['skills'] ?? null) ? implode(', ', $workerProfile['skills']) : '')));
+
+$currentSkillsList = [];
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    if (isset($_POST['skill_name']) && is_array($_POST['skill_name'])) {
+        $postNames = $_POST['skill_name'];
+        $postLevels = $_POST['skill_level'] ?? [];
+        foreach ($postNames as $k => $nm) {
+            $nm = trim((string)$nm);
+            $lvl = trim((string)($postLevels[$k] ?? 'Menengah'));
+            if ($nm !== '') {
+                $currentSkillsList[] = ['name' => $nm, 'level' => $lvl];
+            }
+        }
+    } elseif (isset($_POST['skills'])) {
+        $currentSkillsList = gig_normalize_skills($_POST['skills']);
+    }
+} else {
+    if (!empty($existingReg['skills'])) {
+        $currentSkillsList = gig_normalize_skills($existingReg['skills']);
+    } elseif (!empty($workerProfile['skills'])) {
+        $currentSkillsList = gig_normalize_skills($workerProfile['skills']);
+    }
+}
+if ($currentSkillsList === []) {
+    $currentSkillsList = [['name' => '', 'level' => 'Menengah']];
+}
+
 $currentContactChoice = $_POST['contact_choice'] ?? ($existingReg['contact_choice'] ?? 'siapkerja');
 $currentContactEmail = $_POST['contact_email_new'] ?? ($existingReg['contact_email'] ?? '');
 $currentContactWa = $_POST['contact_wa_new'] ?? ($existingReg['contact_wa'] ?? '');
@@ -181,7 +207,26 @@ $errorMessage = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["action"] === "register_gig_worker") {
     $bidangKeahlian = trim((string)($_POST["bidang_keahlian"] ?? ""));
-    $skillsRaw = trim((string)($_POST["skills"] ?? ""));
+
+    // Process structured skills
+    $skillsList = [];
+    if (isset($_POST['skill_name']) && is_array($_POST['skill_name'])) {
+        $postNames = $_POST['skill_name'];
+        $postLevels = $_POST['skill_level'] ?? [];
+        foreach ($postNames as $k => $nm) {
+            $nm = trim((string)$nm);
+            $lvl = trim((string)($postLevels[$k] ?? 'Menengah'));
+            if (!in_array($lvl, ['Pemula', 'Menengah', 'Mahir', 'Ahli'], true)) {
+                $lvl = 'Menengah';
+            }
+            if ($nm !== '') {
+                $skillsList[] = ['name' => $nm, 'level' => $lvl];
+            }
+        }
+    } elseif (!empty($_POST['skills'])) {
+        $skillsList = gig_normalize_skills($_POST['skills']);
+    }
+
     $contactChoice = trim((string)($_POST["contact_choice"] ?? "siapkerja"));
     $contactEmail = $contactChoice === 'new' ? trim((string)($_POST["contact_email_new"] ?? "")) : $siapkerja['email'];
     $contactWa = $contactChoice === 'new' ? trim((string)($_POST["contact_wa_new"] ?? "")) : $siapkerja['wa'];
@@ -297,11 +342,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
         $errorMessage = "Harap centang persetujuan kebenaran data sebelum mengirim pendaftaran.";
     } elseif ($bidangKeahlian === "") {
         $errorMessage = "Harap pilih Bidang Keahlian Anda.";
-    } elseif ($skillsRaw === "") {
-        $errorMessage = "Harap cantumkan minimal 1 Skill / Keahlian spesifik.";
+    } elseif ($skillsList === []) {
+        $errorMessage = "Harap cantumkan minimal 1 Skill / Keahlian spesifik beserta tingkat keahliannya.";
     } else {
-        $skillsList = array_map('trim', explode(',', $skillsRaw));
-        
         $existingStatus = gig_worker_registration_status($username);
         $registrationData = [
             'username'          => $username,
@@ -822,35 +865,59 @@ $backHref = $isEditMode
         <p class="form-section-subtitle">Tentukan spesialisasi utama dan daftar keahlian teknis Anda.</p>
       </div>
 
-      <div class="form-grid-2col">
-        <div class="form-group">
-          <label class="form-label" for="bidang_keahlian">Bidang Keahlian Utama <span style="color:#ef4444;">*</span></label>
-          <?php 
-            $bidangOpts = [
-              "UI/UX Design & Product Interface",
-              "Web Development (Frontend / Backend / Fullstack)",
-              "Mobile Application Development",
-              "Digital Marketing & Social Media Strategy",
-              "Data Analytics & Data Entry",
-              "Copywriting, Content Writing & Translation",
-              "Graphic Design, Video Editing & Multimedia",
-              "Administrative & Virtual Assistant"
-            ];
-          ?>
-          <select id="bidang_keahlian" name="bidang_keahlian" class="form-select" required>
-            <option value="">-- Pilih Bidang Keahlian --</option>
-            <?php foreach ($bidangOpts as $bOpt): ?>
-              <option value="<?php echo htmlspecialchars($bOpt, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentBidang === $bOpt ? 'selected' : ''; ?>>
-                <?php echo htmlspecialchars($bOpt, ENT_QUOTES, 'UTF-8'); ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
+      <div class="form-group" style="margin-bottom:24px;">
+        <label class="form-label" for="bidang_keahlian">Bidang Keahlian Utama <span style="color:#ef4444;">*</span></label>
+        <?php 
+          $bidangOpts = [
+            "UI/UX Design & Product Interface",
+            "Web Development (Frontend / Backend / Fullstack)",
+            "Mobile Application Development",
+            "Digital Marketing & Social Media Strategy",
+            "Data Analytics & Data Entry",
+            "Copywriting, Content Writing & Translation",
+            "Graphic Design, Video Editing & Multimedia",
+            "Administrative & Virtual Assistant"
+          ];
+        ?>
+        <select id="bidang_keahlian" name="bidang_keahlian" class="form-select" required style="max-width:540px;">
+          <option value="">-- Pilih Bidang Keahlian --</option>
+          <?php foreach ($bidangOpts as $bOpt): ?>
+            <option value="<?php echo htmlspecialchars($bOpt, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $currentBidang === $bOpt ? 'selected' : ''; ?>>
+              <?php echo htmlspecialchars($bOpt, ENT_QUOTES, 'UTF-8'); ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Skill / Keahlian Spesifik &amp; Tingkat Keahlian <span style="color:#ef4444;">*</span></span>
+          <span style="font-size:0.75rem;font-weight:600;color:#64748b;">(Minimal 1 keahlian)</span>
+        </label>
+        <p style="font-size:0.82rem;color:#64748b;margin:0 0 12px 0;">
+          Masukkan skill yang Anda kuasai dan tentukan tingkat keahlian (Pemula, Menengah, Mahir, Ahli). Anda dapat menambahkan lebih dari 1 keahlian.
+        </p>
+
+        <div id="skillsRepeater" style="display:flex;flex-direction:column;gap:10px;">
+          <?php foreach ($currentSkillsList as $sIdx => $sItem): ?>
+            <div class="skill-row-item" style="display:flex;gap:10px;align-items:center;">
+              <input type="text" name="skill_name[]" class="form-input" style="flex:1;" placeholder="Nama keahlian (contoh: Figma, React, Copywriting, SQL)" value="<?php echo htmlspecialchars((string)($sItem['name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required />
+              <select name="skill_level[]" class="form-select" style="width:160px;min-width:140px;flex-shrink:0;">
+                <?php foreach (gig_skill_levels() as $lvlOpt): ?>
+                  <option value="<?php echo $lvlOpt; ?>" <?php echo (string)($sItem['level'] ?? '') === $lvlOpt ? 'selected' : ''; ?>>
+                    <?php echo $lvlOpt; ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <button type="button" class="btn-remove-skill" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;font-size:1.1rem;flex-shrink:0;transition:all 0.2s;" title="Hapus keahlian" onclick="removeSkillRow(this)">✕</button>
+            </div>
+          <?php endforeach; ?>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="skills">Skill / Keahlian Spesifik <span style="color:#ef4444;">*</span></label>
-          <input type="text" id="skills" name="skills" class="form-input" value="<?php echo htmlspecialchars($currentSkills, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Figma, React, Node.js" required />
-          <span class="form-hint">Pisahkan skill dengan tanda koma ( , )</span>
+        <div style="margin-top:12px;">
+          <button type="button" id="btnAddSkill" class="btn-add-item" onclick="addSkillRow()">
+            + Tambah Keahlian
+          </button>
         </div>
       </div>
 
@@ -1356,6 +1423,45 @@ $backHref = $isEditMode
         const inputs = rows[0].querySelectorAll('input');
         inputs.forEach(i => i.value = '');
       }
+    }
+
+    function addSkillRow(name = '', level = 'Menengah') {
+      const container = document.getElementById('skillsRepeater');
+      if (!container) return;
+      const row = document.createElement('div');
+      row.className = 'skill-row-item';
+      row.style.cssText = 'display:flex;gap:10px;align-items:center;';
+      
+      const levels = ['Pemula', 'Menengah', 'Mahir', 'Ahli'];
+      let optionsHtml = '';
+      levels.forEach(lvl => {
+        optionsHtml += `<option value="${lvl}" ${lvl === level ? 'selected' : ''}>${lvl}</option>`;
+      });
+      
+      row.innerHTML = `
+        <input type="text" name="skill_name[]" class="form-input" style="flex:1;" placeholder="Nama keahlian (contoh: Figma, React, Copywriting, SQL)" value="${name.replace(/"/g, '&quot;')}" required />
+        <select name="skill_level[]" class="form-select" style="width:160px;min-width:140px;flex-shrink:0;">
+          ${optionsHtml}
+        </select>
+        <button type="button" class="btn-remove-skill" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;font-size:1.1rem;flex-shrink:0;transition:all 0.2s;" title="Hapus keahlian" onclick="removeSkillRow(this)">✕</button>
+      `;
+      container.appendChild(row);
+      const input = row.querySelector('input');
+      if (input) input.focus();
+    }
+
+    function removeSkillRow(btn) {
+      const container = document.getElementById('skillsRepeater');
+      if (!container) return;
+      const rows = container.querySelectorAll('.skill-row-item');
+      if (rows.length <= 1) {
+        const firstInput = rows[0].querySelector('input');
+        if (firstInput) firstInput.value = '';
+        const firstSelect = rows[0].querySelector('select');
+        if (firstSelect) firstSelect.value = 'Menengah';
+        return;
+      }
+      btn.closest('.skill-row-item').remove();
     }
 
     function syncRegisterConsentState() {

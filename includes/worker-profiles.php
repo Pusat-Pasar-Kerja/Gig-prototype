@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/db.php';
+
 /**
  * Calculates a numeric timeline score for a project period string (newest period = higher score).
  */
@@ -66,6 +68,186 @@ function gig_sort_experience_timeline(array &$experience): void
 }
 
 /**
+ * Standard expertise levels for Gig Worker skills.
+ *
+ * @return list<string>
+ */
+function gig_skill_levels(): array
+{
+    return ['Pemula', 'Menengah', 'Mahir', 'Ahli'];
+}
+
+/**
+ * Normalizes skill entries into a uniform list of ['name' => string, 'level' => string].
+ * Supports JSON string, comma-separated string, array of strings, or array of associative arrays.
+ *
+ * @param mixed $skills
+ * @return list<array{name: string, level: string}>
+ */
+function gig_normalize_skills(mixed $skills): array
+{
+    if ($skills === null || $skills === false || $skills === '') {
+        return [];
+    }
+
+    if (is_string($skills)) {
+        $trimmed = trim($skills);
+        if ($trimmed === '') {
+            return [];
+        }
+        $decoded = json_decode($trimmed, true);
+        if (is_array($decoded)) {
+            $skills = $decoded;
+        } else {
+            $skills = array_filter(array_map('trim', explode(',', $trimmed)));
+        }
+    }
+
+    if (!is_array($skills)) {
+        return [];
+    }
+
+    $validLevels = ['Pemula', 'Menengah', 'Mahir', 'Ahli'];
+    $normalized = [];
+
+    foreach ($skills as $item) {
+        $name = '';
+        $level = 'Menengah';
+
+        if (is_array($item)) {
+            $name = trim((string)($item['name'] ?? $item['skill'] ?? ''));
+            $lvlInput = trim((string)($item['level'] ?? $item['expertise'] ?? ''));
+            if ($lvlInput !== '') {
+                foreach ($validLevels as $vl) {
+                    if (strcasecmp($vl, $lvlInput) === 0) {
+                        $level = $vl;
+                        break;
+                    }
+                }
+            }
+        } elseif (is_string($item)) {
+            $str = trim($item);
+            if (preg_match('/^(.*?)\s*[\(\[]\s*(Pemula|Menengah|Mahir|Ahli|Beginner|Intermediate|Advanced|Expert)\s*[\)\]]$/i', $str, $matches)) {
+                $name = trim($matches[1]);
+                $matchedLvl = strtolower($matches[2]);
+                if (in_array($matchedLvl, ['pemula', 'beginner'], true)) {
+                    $level = 'Pemula';
+                } elseif (in_array($matchedLvl, ['menengah', 'intermediate'], true)) {
+                    $level = 'Menengah';
+                } elseif (in_array($matchedLvl, ['mahir', 'advanced'], true)) {
+                    $level = 'Mahir';
+                } elseif (in_array($matchedLvl, ['ahli', 'expert'], true)) {
+                    $level = 'Ahli';
+                }
+            } else {
+                $name = $str;
+                $level = 'Menengah';
+            }
+        }
+
+        if ($name !== '') {
+            $normalized[] = [
+                'name'  => $name,
+                'level' => $level,
+            ];
+        }
+    }
+
+    return $normalized;
+}
+
+/**
+ * Returns the name of a skill item.
+ *
+ * @param mixed $skill
+ * @return string
+ */
+function gig_skill_name(mixed $skill): string
+{
+    if (is_array($skill)) {
+        return trim((string)($skill['name'] ?? $skill['skill'] ?? ''));
+    }
+    if (is_string($skill)) {
+        if (preg_match('/^(.*?)\s*[\(\[]\s*(Pemula|Menengah|Mahir|Ahli)\s*[\)\]]$/i', trim($skill), $m)) {
+            return trim($m[1]);
+        }
+        return trim($skill);
+    }
+    return '';
+}
+
+/**
+ * Returns the expertise level of a skill item.
+ *
+ * @param mixed $skill
+ * @return string
+ */
+function gig_skill_level(mixed $skill): string
+{
+    if (is_array($skill)) {
+        $lvl = trim((string)($skill['level'] ?? $skill['expertise'] ?? 'Menengah'));
+        return $lvl !== '' ? $lvl : 'Menengah';
+    }
+    if (is_string($skill)) {
+        if (preg_match('/[\(\[]\s*(Pemula|Menengah|Mahir|Ahli)\s*[\)\]]$/i', trim($skill), $m)) {
+            return ucfirst(strtolower($m[1]));
+        }
+    }
+    return 'Menengah';
+}
+
+/**
+ * Returns color tokens for an expertise level badge.
+ *
+ * @param string $level
+ * @return array{bg: string, color: string, border: string}
+ */
+function gig_skill_level_badge_style(string $level): array
+{
+    return match (strtolower(trim($level))) {
+        'pemula', 'beginner' => [
+            'bg'     => '#f1f5f9',
+            'color'  => '#475569',
+            'border' => '#cbd5e1',
+        ],
+        'mahir', 'advanced' => [
+            'bg'     => '#ecfdf5',
+            'color'  => '#047857',
+            'border' => '#a7f3d0',
+        ],
+        'ahli', 'expert' => [
+            'bg'     => '#faf5ff',
+            'color'  => '#7e22ce',
+            'border' => '#e9d5ff',
+        ],
+        default => [
+            'bg'     => '#eff6ff',
+            'color'  => '#1d4ed8',
+            'border' => '#bfdbfe',
+        ],
+    };
+}
+
+/**
+ * Formats a list of skills into a readable summary string (e.g. "Figma (Mahir), React (Menengah)").
+ *
+ * @param mixed $skills
+ * @return string
+ */
+function gig_format_skills_summary(mixed $skills): string
+{
+    $normalized = gig_normalize_skills($skills);
+    if ($normalized === []) {
+        return '-';
+    }
+    $parts = [];
+    foreach ($normalized as $item) {
+        $parts[] = $item['name'] . ' (' . $item['level'] . ')';
+    }
+    return implode(', ', $parts);
+}
+
+/**
  * Shared Gig Worker account profiles.
  * Contact details stay hidden until both sides have agreed to work together.
  * Individual review ratings are whole integers (1–5).
@@ -99,7 +281,13 @@ function gig_worker_profiles(): array
             'bid' => 'Rp 8.000.000',
             'eta' => '14 Hari Kerja',
             'proposal' => '',
-            'skills' => ['Figma Design', 'UI/UX Prototyping', 'Design System', 'Usability Testing', 'Wireframing'],
+            'skills' => [
+                ['name' => 'Figma Design', 'level' => 'Mahir'],
+                ['name' => 'UI/UX Prototyping', 'level' => 'Mahir'],
+                ['name' => 'Design System', 'level' => 'Ahli'],
+                ['name' => 'Usability Testing', 'level' => 'Menengah'],
+                ['name' => 'Wireframing', 'level' => 'Mahir'],
+            ],
             'social_media' => [
                 ['platform' => 'LinkedIn', 'url' => 'https://linkedin.com/in/theressaz'],
                 ['platform' => 'GitHub', 'url' => 'https://github.com/theressaz'],
@@ -225,7 +413,13 @@ function gig_worker_profiles(): array
             'bid' => 'Rp 6.000.000',
             'eta' => '10 Hari Kerja',
             'proposal' => 'Siap mengintegrasikan webhook gateway dan memastikan load testing API mampu menangani 5000+ request per menit.',
-            'skills' => ['PHP / Laravel', 'REST API', 'MySQL', 'Webhook', 'Node.js'],
+            'skills' => [
+                ['name' => 'PHP / Laravel', 'level' => 'Ahli'],
+                ['name' => 'REST API', 'level' => 'Mahir'],
+                ['name' => 'MySQL', 'level' => 'Mahir'],
+                ['name' => 'Webhook', 'level' => 'Menengah'],
+                ['name' => 'Node.js', 'level' => 'Menengah'],
+            ],
             'contact' => [
                 'wa' => '0813-8899-7711',
                 'email' => 'rian.dev@email.com',
@@ -332,7 +526,13 @@ function gig_worker_profiles(): array
             'bid' => 'Rp 4.500.000',
             'eta' => '20 Hari Kerja',
             'proposal' => 'Menyediakan paket 20 konten carousel edukatif, naskah reels/TikTok, dan kalender konten terstruktur.',
-            'skills' => ['Copywriting', 'Social Media', 'Content Plan', 'Canva', 'Instagram Ads'],
+            'skills' => [
+                ['name' => 'Copywriting', 'level' => 'Ahli'],
+                ['name' => 'Social Media', 'level' => 'Mahir'],
+                ['name' => 'Content Plan', 'level' => 'Mahir'],
+                ['name' => 'Canva', 'level' => 'Menengah'],
+                ['name' => 'Instagram Ads', 'level' => 'Pemula'],
+            ],
             'contact' => [
                 'wa' => '0857-1122-3344',
                 'email' => 'siti.marketing@email.com',
@@ -413,7 +613,12 @@ function gig_worker_profiles(): array
             'bid' => 'Rp 7.500.000',
             'eta' => '10 Hari Kerja',
             'proposal' => 'Siap deliver cepat dalam 10 hari lengkap dengan usability testing dan panduan style guide.',
-            'skills' => ['UI Design', 'Wireframing', 'Figma', 'Style Guide'],
+            'skills' => [
+                ['name' => 'UI Design', 'level' => 'Mahir'],
+                ['name' => 'Wireframing', 'level' => 'Mahir'],
+                ['name' => 'Figma', 'level' => 'Mahir'],
+                ['name' => 'Style Guide', 'level' => 'Menengah'],
+            ],
             'contact' => [
                 'wa' => '0819-2233-4455',
                 'email' => 'budi.design@email.com',
@@ -493,7 +698,13 @@ function gig_worker_profiles(): array
             'bid' => 'Rp 6.500.000',
             'eta' => '7 Hari Kerja',
             'proposal' => 'Spesialis integrasi cloud API dan microservices. Telah menyelesaikan puluhan integrasi gateway serupa.',
-            'skills' => ['Node.js', 'REST API', 'Microservices', 'AWS', 'Redis'],
+            'skills' => [
+                ['name' => 'Node.js', 'level' => 'Ahli'],
+                ['name' => 'REST API', 'level' => 'Mahir'],
+                ['name' => 'Microservices', 'level' => 'Menengah'],
+                ['name' => 'AWS', 'level' => 'Menengah'],
+                ['name' => 'Redis', 'level' => 'Menengah'],
+            ],
             'contact' => [
                 'wa' => '0821-9988-7766',
                 'email' => 'dimas.code@email.com',
@@ -573,7 +784,12 @@ function gig_worker_profiles(): array
             'bid' => 'Rp 5.000.000',
             'eta' => '14 Hari Kerja',
             'proposal' => 'Portofolio mencakup campaign viral BUMN dan startup teknologi. Siap mulai riset audience segera.',
-            'skills' => ['Digital Campaign', 'SEO Writing', 'Brand Story', 'Analytics'],
+            'skills' => [
+                ['name' => 'Digital Campaign', 'level' => 'Mahir'],
+                ['name' => 'SEO Writing', 'level' => 'Menengah'],
+                ['name' => 'Brand Story', 'level' => 'Mahir'],
+                ['name' => 'Analytics', 'level' => 'Menengah'],
+            ],
             'contact' => [
                 'wa' => '0878-3344-5566',
                 'email' => 'mega.content@email.com',
@@ -776,7 +992,7 @@ function gig_find_worker(string $id): ?array
             if (!empty($custom['name'])) $profiles[$cleanId]['name'] = $custom['name'];
             if (!empty($custom['title'])) $profiles[$cleanId]['title'] = $custom['title'];
             if (!empty($custom['location'])) $profiles[$cleanId]['location'] = $custom['location'];
-            if (!empty($custom['skills'])) $profiles[$cleanId]['skills'] = $custom['skills'];
+            if (!empty($custom['skills'])) $profiles[$cleanId]['skills'] = gig_normalize_skills($custom['skills']);
             if (!empty($custom['proposal'])) $profiles[$cleanId]['proposal'] = $custom['proposal'];
             if (!empty($custom['video_url'])) $profiles[$cleanId]['video_url'] = $custom['video_url'];
             if (!empty($custom['contact'])) {
@@ -798,7 +1014,7 @@ function gig_find_worker(string $id): ?array
                 $profiles[$cleanId]['location'] = $reg['domicile'];
             }
             if (!empty($reg['skills'])) {
-                $profiles[$cleanId]['skills'] = is_array($reg['skills']) ? $reg['skills'] : array_map('trim', explode(',', $reg['skills']));
+                $profiles[$cleanId]['skills'] = gig_normalize_skills($reg['skills']);
             }
             if (!empty($reg['profile_summary'])) {
                 $profiles[$cleanId]['proposal'] = $reg['profile_summary'];
@@ -869,7 +1085,7 @@ function gig_find_worker(string $id): ?array
             'verified' => true,
             'agreed' => true,
             'category' => 'general',
-            'skills' => is_array($reg['skills'] ?? null) ? $reg['skills'] : array_map('trim', explode(',', $reg['skills'] ?? 'Figma, Web Development')),
+            'skills' => gig_normalize_skills($reg['skills'] ?? ['Figma', 'Web Development']),
             'contact' => [
                 'wa' => $reg['contact_wa'] ?? $siapkerja['wa'],
                 'email' => $reg['contact_email'] ?? $siapkerja['email'],
@@ -1011,7 +1227,9 @@ function gig_get_worker_registration(string $username): ?array
                 $row['previous_projects'] = json_decode((string)$row['previous_projects'], true) ?: [];
                 $row['portfolio'] = json_decode((string)$row['portfolio'], true) ?: [];
                 $row['social_media'] = json_decode((string)($row['social_media'] ?? ''), true) ?: [];
-                $row['skills'] = array_filter(array_map('trim', explode(',', (string)$row['skills'])));
+                $rawSkills = $row['skills'] ?? '';
+                $decodedSkills = json_decode((string)$rawSkills, true);
+                $row['skills'] = is_array($decodedSkills) ? gig_normalize_skills($decodedSkills) : gig_normalize_skills($rawSkills);
                 if (session_status() === PHP_SESSION_ACTIVE) {
                     $_SESSION['gig_worker_registration_data_' . $username] = $row;
                     if ((string)($row['status'] ?? 'approved') === 'approved') {
@@ -1033,6 +1251,9 @@ function gig_get_worker_registration(string $username): ?array
         if (!is_array($row['social_media'] ?? null)) {
             $row['social_media'] = json_decode((string)($row['social_media'] ?? ''), true) ?: [];
         }
+        if (!empty($row['skills'])) {
+            $row['skills'] = gig_normalize_skills($row['skills']);
+        }
         return $row;
     }
 
@@ -1049,6 +1270,14 @@ function gig_save_worker_registration(string $username, array $data): bool
 
     $db = gig_db();
     if ($db === null) {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $data['skills'] = gig_normalize_skills($data['skills'] ?? []);
+            $_SESSION['gig_worker_registration_data_' . $username] = $data;
+            if ((string)($data['status'] ?? 'pending') === 'approved') {
+                $_SESSION['gig_worker_registered_' . $username] = true;
+            }
+            return true;
+        }
         return false;
     }
 
@@ -1084,7 +1313,7 @@ function gig_save_worker_registration(string $username, array $data): bool
         $stmt->execute([
             ':u'        => $username,
             ':bidang'   => $data['bidang_keahlian'] ?? '',
-            ':skills'   => is_array($data['skills'] ?? null) ? implode(', ', $data['skills']) : ($data['skills'] ?? ''),
+            ':skills'   => json_encode(gig_normalize_skills($data['skills'] ?? [])),
             ':choice'   => $data['contact_choice'] ?? 'siapkerja',
             ':email'    => $data['contact_email'] ?? '',
             ':wa'       => $data['contact_wa'] ?? '',

@@ -117,7 +117,9 @@ function gig_admin_list_worker_registrations(?string $statusFilter = null): arra
         foreach ($rows as &$row) {
             $row['previous_projects'] = json_decode((string)($row['previous_projects'] ?? ''), true) ?: [];
             $row['portfolio'] = json_decode((string)($row['portfolio'] ?? ''), true) ?: [];
-            $row['skills'] = array_filter(array_map('trim', explode(',', (string)($row['skills'] ?? ''))));
+            $rawSkills = (string)($row['skills'] ?? '');
+            $decodedSkills = json_decode($rawSkills, true);
+            $row['skills'] = is_array($decodedSkills) ? gig_normalize_skills($decodedSkills) : gig_normalize_skills($rawSkills);
         }
         unset($row);
         return $rows;

@@ -128,7 +128,7 @@ if ($role === 'worker') {
           $socialMediaList = $worker['social_media'];
       }
       $bidangValue = trim((string)($regData['bidang_keahlian'] ?? ($worker['title'] ?? '')));
-      $skillsList = !empty($regData['skills']) && is_array($regData['skills']) ? $regData['skills'] : ($worker['skills'] ?? []);
+      $skillsList = gig_normalize_skills(!empty($regData['skills']) ? $regData['skills'] : ($worker['skills'] ?? []));
     ?>
 
     <!-- SEGMENT 2: MEDIA SOSIAL GIG WORKER -->
@@ -162,17 +162,27 @@ if ($role === 'worker') {
     <section class="section-card">
       <h2>Bidang Keahlian &amp; Skill Spesifik</h2>
       <?php if ($bidangValue !== ''): ?>
-        <div style="margin-bottom:14px;">
-          <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Bidang Keahlian Utama</div>
+        <div style="margin-bottom:18px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Bidang Keahlian Utama</div>
           <span class="chip gold" style="font-size:0.88rem;padding:6px 14px;"><?php echo htmlspecialchars($bidangValue, ENT_QUOTES, 'UTF-8'); ?></span>
         </div>
       <?php endif; ?>
       <?php if ($skillsList !== []): ?>
         <div>
-          <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Skill / Keahlian Spesifik</div>
-          <div class="skill-row">
+          <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Daftar Keahlian &amp; Tingkat Penguasaan</div>
+          <div class="skill-row" style="display:flex;flex-wrap:wrap;gap:10px;">
             <?php foreach ($skillsList as $skill): ?>
-              <span class="skill-tag"><?php echo htmlspecialchars((string)$skill, ENT_QUOTES, 'UTF-8'); ?></span>
+              <?php
+                $sName = gig_skill_name($skill);
+                $sLvl = gig_skill_level($skill);
+                $sStyle = gig_skill_level_badge_style($sLvl);
+              ?>
+              <div class="skill-tag" style="display:inline-flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:6px 12px;">
+                <span style="font-weight:700;color:#0f172a;font-size:0.86rem;"><?php echo htmlspecialchars($sName, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span style="background:<?php echo $sStyle['bg']; ?>;color:<?php echo $sStyle['color']; ?>;border:1px solid <?php echo $sStyle['border']; ?>;padding:2px 8px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;">
+                  <?php echo htmlspecialchars($sLvl, ENT_QUOTES, 'UTF-8'); ?>
+                </span>
+              </div>
             <?php endforeach; ?>
           </div>
         </div>

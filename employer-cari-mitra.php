@@ -386,11 +386,24 @@ require __DIR__ . '/includes/employer-layout-start.php';
 
           <!-- Skills / Expertise -->
           <div class="mitra-skills-list">
-            <?php foreach (array_slice($w['skills'], 0, 3) as $skillTag): ?>
-              <span class="mitra-skill-badge"><?php echo htmlspecialchars((string)$skillTag, ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php 
+              $wSkills = gig_normalize_skills($w['skills'] ?? []);
+              $skillsSlice = array_slice($wSkills, 0, 3);
+              $extraCount = count($wSkills) - count($skillsSlice);
+            ?>
+            <?php foreach ($skillsSlice as $skillTag): ?>
+              <?php
+                $sTagNm = gig_skill_name($skillTag);
+                $sTagLvl = gig_skill_level($skillTag);
+                $sTagSt = gig_skill_level_badge_style($sTagLvl);
+              ?>
+              <span class="mitra-skill-badge" style="display:inline-flex;align-items:center;gap:4px;">
+                <span><?php echo htmlspecialchars($sTagNm, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span style="font-size:0.65rem;font-weight:700;color:<?php echo $sTagSt['color']; ?>;background:<?php echo $sTagSt['bg']; ?>;padding:1px 4px;border-radius:4px;border:1px solid <?php echo $sTagSt['border']; ?>;"><?php echo htmlspecialchars($sTagLvl, ENT_QUOTES, 'UTF-8'); ?></span>
+              </span>
             <?php endforeach; ?>
-            <?php if (count($w['skills']) > 3): ?>
-              <span class="mitra-skill-badge" style="background:#e2e8f0;color:#475569;">+<?php echo count($w['skills']) - 3; ?></span>
+            <?php if ($extraCount > 0): ?>
+              <span class="mitra-skill-badge" style="background:#e2e8f0;color:#475569;">+<?php echo $extraCount; ?></span>
             <?php endif; ?>
           </div>
 
