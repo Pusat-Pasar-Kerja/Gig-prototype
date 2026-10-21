@@ -1337,4 +1337,187 @@ function gig_save_worker_registration(string $username, array $data): bool
     return true;
 }
 
+/**
+ * Compiles an exhaustive search payload for a worker profile covering EVERYTHING:
+ * Name, title, category, location, bio/proposal, all skills & levels, all experiences,
+ * output deliverables, all portfolios, clients, deliverable files, all employer reviews,
+ * comments, badges, social media links, video profile demos, contact details, and SIAPKerja background.
+ *
+ * @param array $worker
+ * @return array{full_text: string, facets: array<string, mixed>}
+ */
+function gig_worker_search_metadata(array $worker): array
+{
+    $wId = strtolower(trim((string)($worker['id'] ?? '')));
+    $reg = function_exists('gig_get_worker_registration') ? (gig_get_worker_registration($wId) ?? []) : [];
+    $siap = function_exists('gig_get_siapkerja_profile') ? gig_get_siapkerja_profile($wId) : [];
+
+    // Category mapping
+    $cat = strtolower((string)($worker['category'] ?? ''));
+    $catLabels = [
+        'ui-ux' => 'UI/UX & Desain Grafis Frontend Prototype Wireframe',
+        'backend' => 'Backend & API Cloud Database Developer Microservices REST Server',
+        'marketing' => 'Digital Marketing Pemasaran Konten Copywriting Media Sosial Campaign',
+    ];
+    $catLabel = $catLabels[$cat] ?? 'Freelancer';
+
+    // Skills
+    $rawSkills = !empty($worker['skills']) ? $worker['skills'] : ($reg['skills'] ?? []);
+    $skillsList = function_exists('gig_normalize_skills') ? gig_normalize_skills($rawSkills) : [];
+    $skillFacets = [];
+    foreach ($skillsList as $s) {
+        $nm = gig_skill_name($s);
+        $lvl = gig_skill_level($s);
+        $skillFacets[] = [
+            'name' => $nm,
+            'level' => $lvl,
+            'label' => $nm . ' (' . $lvl . ')'
+        ];
+    }
+
+    // Experiences
+    $experiences = !empty($worker['experience']) ? $worker['experience'] : ($reg['previous_projects'] ?? ($siap['pengalaman_siapkerja'] ?? []));
+    $expFacets = [];
+    if (is_array($experiences)) {
+        foreach ($experiences as $e) {
+            $eFiles = [];
+            if (!empty($e['files']) && is_array($e['files'])) {
+                foreach ($e['files'] as $f) {
+                    $eFiles[] = trim(($f['name'] ?? '') . ' ' . ($f['type'] ?? ''));
+                }
+            }
+            $expFacets[] = [
+                'role' => (string)($e['role'] ?? ''),
+                'project' => (string)($e['project'] ?? ($e['institution'] ?? '')),
+                'period' => (string)($e['period'] ?? ''),
+                'summary' => (string)($e['summary'] ?? ''),
+                'output_title' => (string)($e['output_title'] ?? ''),
+                'files' => implode(', ', $eFiles)
+            ];
+        }
+    }
+
+    // Portfolios
+    $portfolios = !empty($worker['portfolio']) ? $worker['portfolio'] : ($reg['portfolio'] ?? []);
+    $portFacets = [];
+    if (is_array($portfolios)) {
+        foreach ($portfolios as $p) {
+            $pFiles = [];
+            if (!empty($p['files']) && is_array($p['files'])) {
+                foreach ($p['files'] as $f) {
+                    $pFiles[] = trim(($f['name'] ?? '') . ' ' . ($f['type'] ?? '') . ' ' . ($f['size'] ?? ''));
+                }
+            }
+            $portFacets[] = [
+                'title' => (string)($p['title'] ?? ''),
+                'type' => (string)($p['type'] ?? ''),
+                'client' => (string)($p['client'] ?? ''),
+                'year' => (string)($p['year'] ?? ''),
+                'deliverable' => (string)($p['deliverable'] ?? ''),
+                'files' => implode(', ', $pFiles)
+            ];
+        }
+    }
+
+    // Reviews
+    $reviews = !empty($worker['reviews']) ? $worker['reviews'] : [];
+    $revFacets = [];
+    if (is_array($reviews)) {
+        foreach ($reviews as $r) {
+            $revFacets[] = [
+                'employer' => (string)($r['employer'] ?? ''),
+                'project' => (string)($r['project'] ?? ''),
+                'comment' => (string)($r['comment'] ?? ''),
+                'date' => (string)($r['date'] ?? ''),
+                'badges' => is_array($r['badges'] ?? null) ? implode(', ', $r['badges']) : ''
+            ];
+        }
+    }
+
+    // Social Media
+    $social = !empty($worker['social_media']) ? $worker['social_media'] : ($reg['social_media'] ?? []);
+    $socList = [];
+    if (is_array($social)) {
+        foreach ($social as $sm) {
+            $p = (string)($sm['platform'] ?? '');
+            $u = (string)($sm['url'] ?? '');
+            if ($p !== '' || $u !== '') {
+                $socList[] = trim($p . ' ' . $u);
+            }
+        }
+    }
+
+    // Contact
+    $contactWa = (string)($worker['contact']['wa'] ?? $reg['contact_wa'] ?? '');
+    $contactEmail = (string)($worker['contact']['email'] ?? $reg['contact_email'] ?? '');
+
+    // Video
+    $videoUrl = (string)($worker['video_url'] ?? $reg['video_url'] ?? '');
+
+    // Bio & Proposal
+    $bio = (string)($worker['proposal'] ?? $reg['profile_summary'] ?? '');
+    $appliedProject = (string)($worker['applied_project'] ?? '');
+    $bid = (string)($worker['bid'] ?? '');
+    $eta = (string)($worker['eta'] ?? '');
+
+    // SIAPKerja background (only if worker doesn't have custom experience)
+    $siapStrings = [];
+    if (empty($worker['experience']) && !empty($siap['pengalaman_siapkerja']) && is_array($siap['pengalaman_siapkerja'])) {
+        foreach ($siap['pengalaman_siapkerja'] as $skExp) {
+            $siapStrings[] = ($skExp['role'] ?? '') . ' ' . ($skExp['institution'] ?? '') . ' ' . ($skExp['summary'] ?? '');
+        }
+    }
+
+    // Construct flat text corpus for fast matching
+    $textParts = [
+        $wId,
+        (string)($worker['name'] ?? $reg['display_name'] ?? ($siap['nama'] ?? '')),
+        (string)($worker['title'] ?? $reg['bidang_keahlian'] ?? ''),
+        $cat,
+        $catLabel,
+        (string)($worker['location'] ?? $reg['domicile'] ?? ($siap['lokasi'] ?? '')),
+        $bio,
+        $appliedProject,
+        $bid,
+        $eta,
+        $contactWa,
+        $contactEmail,
+        $videoUrl,
+        implode(' ', $socList),
+        implode(' ', $siapStrings),
+    ];
+
+    foreach ($skillFacets as $sf) {
+        $textParts[] = $sf['name'] . ' ' . $sf['level'] . ' ' . $sf['label'];
+    }
+    foreach ($expFacets as $ef) {
+        $textParts[] = $ef['role'] . ' ' . $ef['project'] . ' ' . $ef['period'] . ' ' . $ef['summary'] . ' ' . $ef['output_title'] . ' ' . $ef['files'];
+    }
+    foreach ($portFacets as $pf) {
+        $textParts[] = $pf['title'] . ' ' . $pf['type'] . ' ' . $pf['client'] . ' ' . $pf['year'] . ' ' . $pf['deliverable'] . ' ' . $pf['files'];
+    }
+    foreach ($revFacets as $rf) {
+        $textParts[] = $rf['employer'] . ' ' . $rf['project'] . ' ' . $rf['comment'] . ' ' . $rf['date'] . ' ' . $rf['badges'];
+    }
+
+    $corpus = strtolower(preg_replace('/\s+/', ' ', implode(' ', array_filter($textParts))));
+
+    return [
+        'full_text' => $corpus,
+        'facets' => [
+            'name' => (string)($worker['name'] ?? ''),
+            'title' => (string)($worker['title'] ?? ''),
+            'location' => (string)($worker['location'] ?? ''),
+            'bio' => $bio,
+            'skills' => $skillFacets,
+            'experiences' => $expFacets,
+            'portfolios' => $portFacets,
+            'reviews' => $revFacets,
+            'social' => $socList,
+            'contact' => trim($contactWa . ' ' . $contactEmail),
+        ]
+    ];
+}
+
+
 

@@ -341,10 +341,14 @@ require __DIR__ . '/includes/employer-layout-start.php';
               <?php if (count($cards) === 0): ?>
                 <div class="jobd-empty">Tidak ada data.</div>
               <?php endif; ?>
-              <?php foreach ($cards as $c): ?>
+              <?php foreach ($cards as $c): 
+                $candSearchCorpus = function_exists('gig_worker_search_metadata') 
+                  ? gig_worker_search_metadata($c['profile'])['full_text'] 
+                  : strtolower($c['name'] . ' ' . $c['title']);
+              ?>
                 <div
                   class="jobd-card candidate-card"
-                  data-search="<?php echo htmlspecialchars(strtolower($c['name'] . ' ' . $c['title']), ENT_QUOTES, 'UTF-8'); ?>"
+                  data-search="<?php echo htmlspecialchars($candSearchCorpus, ENT_QUOTES, 'UTF-8'); ?>"
                   data-app-id="<?php echo htmlspecialchars($c['id'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-worker-id="<?php echo htmlspecialchars($c['worker_id'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-name="<?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?>"

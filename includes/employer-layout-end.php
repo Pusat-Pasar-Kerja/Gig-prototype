@@ -587,11 +587,21 @@ declare(strict_types=1);
     if (el) el.innerText = String(count);
   }
   function searchApplicants(query) {
-    const q = (query || '').toLowerCase();
+    const q = (query || '').toLowerCase().trim();
+    const terms = q.split(/\s+/).filter(Boolean);
     const cards = document.querySelectorAll('.applicant-card');
     let count = 0;
     cards.forEach(function (card) {
-      const match = card.innerText.toLowerCase().includes(q);
+      const corpus = (card.getAttribute('data-search-corpus') || card.innerText || '').toLowerCase();
+      let match = true;
+      if (terms.length > 0) {
+        for (let i = 0; i < terms.length; i++) {
+          if (corpus.indexOf(terms[i]) === -1) {
+            match = false;
+            break;
+          }
+        }
+      }
       card.style.display = match ? 'grid' : 'none';
       if (match) count++;
     });
