@@ -7,7 +7,7 @@ require_once __DIR__ . '/includes/project-applications.php';
 
 function gig_update_application_pipeline_status(string $appId, string $status): array
 {
-    $allowed = ['applied', 'reviewing', 'interview'];
+    $allowed = ['applied', 'reviewing', 'interview', 'accepted', 'rejected', 'confirmed_by_worker', 'rejected_by_employer'];
     if (!in_array($status, $allowed, true)) {
         return ['ok' => false, 'error' => 'Status tidak valid.'];
     }
@@ -16,26 +16,36 @@ function gig_update_application_pipeline_status(string $appId, string $status): 
         return ['ok' => false, 'error' => 'Lamaran tidak ditemukan.'];
     }
 
+    $dbStatus = match ($status) {
+        'accepted' => 'confirmed_by_worker',
+        'rejected' => 'rejected_by_employer',
+        default => $status,
+    };
+
     $now = date('Y-m-d H:i:s');
     $pdo = gig_db();
     if ($pdo) {
         try {
             gig_apps_ensure_tables($pdo);
             $stmt = $pdo->prepare("UPDATE `project_applications` SET `status` = :st, `updated_at` = NOW() WHERE `id` = :id");
-            $stmt->execute([':st' => $status, ':id' => $appId]);
+            $stmt->execute([':st' => $dbStatus, ':id' => $appId]);
         } catch (Throwable $ignored) {}
     }
 
     gig_apps_session_start();
+    if (isset($_SESSION['gig_applications'][$appId])) {
+        $_SESSION['gig_applications'][$appId]['status'] = $dbStatus;
+        $_SESSION['gig_applications'][$appId]['updated_at'] = $now;
+    }
     foreach ($_SESSION['gig_applications'] as $key => $row) {
         if ((string)($row['id'] ?? '') === $appId) {
-            $_SESSION['gig_applications'][$key]['status'] = $status;
+            $_SESSION['gig_applications'][$key]['status'] = $dbStatus;
             $_SESSION['gig_applications'][$key]['updated_at'] = $now;
             break;
         }
     }
 
-    return ['ok' => true];
+    return ['ok' => true, 'status' => $dbStatus];
 }
 
 $jobId = trim((string)($_GET['id'] ?? 'GIG-2026-09-001'));
@@ -60,9 +70,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_application_st
                 $newStatus === 'accepted' ? 'accept' : 'reject',
                 (string)($_SESSION['username'] ?? '')
             );
+            if (!$result['ok'] && $newStatus === 'accepted') {
+                $result = gig_update_application_pipeline_status($appId, 'confirmed_by_worker');
+            }
         } else {
             $result = gig_update_application_pipeline_status($appId, $newStatus);
         }
+    }
+
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+              || (!empty($_POST['ajax']))
+              || (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'));
+
+    if ($isAjax) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'ok' => !empty($result['ok']),
+            'message' => !empty($result['ok'])
+                ? 'Status lamaran berhasil diperbarui.'
+                : ((string)($result['error'] ?? 'Gagal memperbarui status lamaran.')),
+            'app_id' => $appId,
+            'new_status' => $newStatus,
+            'contact_unlocked' => ($newStatus === 'accepted'),
+        ]);
+        exit;
     }
 
     $_SESSION['employer_lowongan_flash'] = [
@@ -179,7 +210,16 @@ foreach ($jobApplications as $app) {
     };
     $appliedAt = trim((string)($app['created_at'] ?? ''));
     $appliedLabel = $appliedAt !== '' ? date('d M Y', strtotime($appliedAt)) : '-';
-    $contactUnlocked = gig_is_hired_status($status);
+    $contactUnlocked = gig_is_hired_status($status) || $lane === 'accepted';
+
+    $prevExp = (string)($profile['prev_experience'] ?? '');
+    if ($prevExp === '' && !empty($profile['experience'][0])) {
+        $firstExp = $profile['experience'][0];
+        $prevExp = ($firstExp['role'] ?? '') . ' di ' . ($firstExp['project'] ?? $firstExp['institution'] ?? '');
+    }
+    if ($prevExp === '') {
+        $prevExp = (string)($profile['title'] ?? 'Profesional Gig Worker');
+    }
 
     $lanes[$lane][] = [
         'id' => (string)($app['id'] ?? ''),
@@ -187,7 +227,15 @@ foreach ($jobApplications as $app) {
         'name' => (string)($profile['name'] ?? $app['worker_name'] ?? 'Gig Worker'),
         'title' => (string)($profile['title'] ?? 'Gig Worker'),
         'location' => (string)($profile['location'] ?? 'Lokasi belum diisi'),
-        'rating' => (float)($profile['rating'] ?? 0),
+        'rating' => (float)($profile['rating'] ?? 5.0),
+        'reviews_count' => (int)($profile['reviews_count'] ?? 0),
+        'photo' => (string)($profile['photo'] ?? ''),
+        'initials' => (string)($profile['initials'] ?? strtoupper(substr((string)($profile['name'] ?? 'G'), 0, 2))),
+        'color' => (string)($profile['color'] ?? '#2563eb'),
+        'status_tag' => (string)($profile['status_tag'] ?? 'Ter-PHK'),
+        'prev_experience' => $prevExp,
+        'contact_wa' => (string)($profile['contact']['wa'] ?? ''),
+        'contact_email' => (string)($profile['contact']['email'] ?? ''),
         'status' => $status,
         'status_ui' => $statusUi,
         'status_text' => $statusText,
@@ -209,9 +257,10 @@ $lockedMessageMap = [
 $lockedMessage = $lockedMessageMap[$rawJobStatus] ?? 'Proses seleksi belum dapat dilakukan karena lowongan belum berstatus Tayang. Lowongan masih dalam tahap penyusunan dan belum diajukan untuk diverifikasi.';
 
 $statusLabel = (string)($job['statusLabel'] ?? 'Draft');
+$jobCode = '#' . substr(md5((string)$job['id']), 0, 8);
 $pageTitle = 'Detail Lowongan · ' . $job['title'];
 $pageKey = 'lowongan';
-$breadcrumbCurrent = 'Detail Lowongan';
+$breadcrumbCurrent = 'Lowongan > ' . $jobCode;
 require __DIR__ . '/includes/employer-layout-start.php';
 ?>
 
@@ -225,23 +274,117 @@ require __DIR__ . '/includes/employer-layout-start.php';
   .jobd-kpi { display:grid; grid-template-columns:repeat(3,minmax(140px,1fr)); gap:14px; margin-top:14px; border-top:1px solid #eef2ff; padding-top:14px; }
   .jobd-kpi .lbl { font-size:0.76rem; color:#64748b; margin-bottom:2px; display:block; }
   .jobd-kpi .val { font-size:0.9rem; font-weight:800; color:#0f172a; }
-  .jobd-tabs { display:flex; gap:16px; border-bottom:1px solid #e2e8f0; margin-top:8px; }
-  .jobd-tab { border:none; background:none; padding:10px 2px; font-size:0.9rem; color:#64748b; font-weight:700; border-bottom:2px solid transparent; cursor:pointer; }
-  .jobd-tab.active { color:#0284c7; border-bottom-color:#0ea5e9; }
-  .jobd-tools { display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap; }
-  .jobd-search { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:8px 10px; min-width:260px; }
-  .jobd-search input { border:none; outline:none; width:100%; font-size:0.86rem; }
-  .jobd-board { display:grid; grid-template-columns:repeat(5,minmax(220px,1fr)); gap:12px; overflow-x:auto; padding-bottom:4px; }
-  .jobd-col { min-width:220px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; display:flex; flex-direction:column; max-height:540px; }
-  .jobd-col-head { padding:10px 12px; border-bottom:1px solid #eef2ff; display:flex; justify-content:space-between; align-items:center; font-size:0.84rem; font-weight:800; color:#1e293b; }
-  .jobd-dot { width:7px; height:7px; border-radius:9999px; display:inline-block; margin-right:7px; vertical-align:middle; }
-  .jobd-col-body { padding:10px; overflow:auto; display:flex; flex-direction:column; gap:8px; }
-  .jobd-card { border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#f8fafc; cursor:pointer; transition:all .15s ease; }
-  .jobd-card:hover { border-color:#93c5fd; box-shadow:0 4px 14px rgba(37,99,235,.12); transform:translateY(-1px); }
-  .jobd-card-name { font-size:0.84rem; font-weight:800; color:#0f172a; margin-bottom:2px; }
-  .jobd-card-sub { font-size:0.74rem; color:#64748b; margin-bottom:6px; }
-  .jobd-card-meta { font-size:0.72rem; color:#475569; display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
-  .jobd-empty { font-size:0.8rem; color:#94a3b8; text-align:center; padding:24px 10px; }
+  .jobd-tabs { display:flex; gap:20px; border-bottom:1px solid #e2e8f0; margin-top:8px; }
+  .jobd-tab { border:none; background:none; padding:10px 4px; font-size:0.92rem; color:#64748b; font-weight:700; border-bottom:2.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:color .15s ease, border-color .15s ease; }
+  .jobd-tab.active { color:#0284c7; border-bottom-color:#0284c7; }
+  .jobd-tools { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap; }
+  .jobd-search { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:8px 12px; min-width:280px; box-shadow:0 1px 2px rgba(0,0,0,0.03); }
+  .jobd-search input { border:none; outline:none; width:100%; font-size:0.86rem; color:#0f172a; background:transparent; }
+  .jobd-tools-right { display:flex; align-items:center; gap:8px; }
+  .tool-view-btn { width:34px; height:34px; border-radius:8px; border:1px solid #e2e8f0; background:#fff; color:#64748b; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s ease; }
+  .tool-view-btn:hover, .tool-view-btn.active { background:#f1f5f9; color:#0284c7; border-color:#cbd5e1; }
+  
+  /* Kanban Board */
+  .jobd-board { display:grid; grid-template-columns:repeat(5, minmax(240px, 1fr)); gap:12px; overflow-x:auto; padding-bottom:12px; }
+  .jobd-col { min-width:240px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; display:flex; flex-direction:column; max-height:720px; transition:background .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .jobd-col.drag-over { background:#f0f9ff !important; border:2px dashed #0284c7 !important; box-shadow:0 0 0 4px rgba(2, 132, 199, 0.15) !important; }
+  .jobd-col-head { padding:12px 14px; border-bottom:1px solid #eef2ff; display:flex; justify-content:space-between; align-items:center; font-size:0.84rem; font-weight:800; color:#1e293b; background:#fff; border-radius:14px 14px 0 0; }
+  .jobd-col-head .col-count-pill { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:9999px; padding:2px 8px; font-size:0.75rem; font-weight:700; color:#475569; min-width:22px; text-align:center; }
+  .jobd-dot { width:8px; height:8px; border-radius:9999px; display:inline-block; margin-right:8px; vertical-align:middle; }
+  .jobd-col-body { padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; flex:1; min-height:160px; }
+  .jobd-empty { font-size:0.82rem; color:#94a3b8; text-align:center; padding:32px 10px; font-weight:500; }
+  
+  /* Candidate Card */
+  .jobd-card { border:1px solid #e2e8f0; border-radius:12px; padding:12px 13px; background:#ffffff; cursor:grab; user-select:none; transition:box-shadow .15s ease, transform .15s ease, border-color .15s ease; position:relative; box-shadow:0 1px 3px rgba(15,23,42,0.04); }
+  .jobd-card:hover { border-color:#93c5fd; box-shadow:0 6px 18px rgba(37,99,235,.12); transform:translateY(-2px); }
+  .jobd-card:active { cursor:grabbing; }
+  .jobd-card.is-dragging { opacity:0.35 !important; transform:scale(0.97) rotate(1.5deg); border:2px dashed #0284c7 !important; box-shadow:0 16px 32px rgba(15,23,42,0.2) !important; }
+  
+  .cand-card-top { display:flex; gap:10px; align-items:flex-start; margin-bottom:8px; }
+  .cand-card-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.95rem; color:#fff; flex-shrink:0; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+  .cand-card-avatar img { width:100%; height:100%; object-fit:cover; }
+  .cand-card-info { flex:1; min-width:0; }
+  .cand-card-name { font-size:0.86rem; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase; letter-spacing:-0.01em; margin-bottom:2px; }
+  .cand-card-sub { font-size:0.74rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cand-card-pin { border:none; background:none; font-size:0.85rem; color:#94a3b8; cursor:pointer; padding:2px; line-height:1; }
+  .cand-card-pin:hover { color:#0284c7; }
+  
+  .cand-card-badges { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 8px 0; }
+  .cand-pill-status { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:2px 7px; font-size:0.72rem; font-weight:700; color:#475569; display:inline-flex; align-items:center; gap:4px; }
+  
+  .cand-meta-row { display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#475569; margin-bottom:4px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cand-meta-row .ico { font-size:0.82rem; flex-shrink:0; opacity:0.85; }
+  .cand-rating-row { color:#f59e0b; font-weight:700; margin-top:6px; font-size:0.76rem; }
+  .cand-rating-reviews { color:#64748b; font-weight:500; font-size:0.72rem; margin-left:2px; }
+  
+  /* Contact Information Section on Card */
+  .cand-contact-unlocked-box {
+    background:linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border:1px solid #86efac;
+    border-radius:10px;
+    padding:9px 10px;
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    box-shadow:0 1px 3px rgba(16,185,129,0.08);
+  }
+  .cand-contact-hdr { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .cand-unlocked-badge { background:#059669; color:#ffffff; border-radius:9999px; padding:2px 8px; font-size:0.68rem; font-weight:800; display:inline-flex; align-items:center; gap:3px; }
+  .btn-copy-chip { background:#ffffff; border:1px solid #bbf7d0; color:#047857; border-radius:6px; padding:2px 7px; font-size:0.68rem; font-weight:700; cursor:pointer; transition:background .15s ease; }
+  .btn-copy-chip:hover { background:#dcfce7; }
+  
+  .cand-contact-item { display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:700; }
+  .cand-contact-item a { color:#047857; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cand-contact-item a:hover { text-decoration:underline; }
+  
+  .cand-contact-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px; }
+  .cand-btn-wa { background:#16a34a; color:#ffffff !important; border-radius:7px; padding:5px 6px; font-size:0.72rem; font-weight:700; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 1px 2px rgba(22,163,74,0.2); }
+  .cand-btn-wa:hover { background:#15803d; }
+  .cand-btn-email { background:#2563eb; color:#ffffff !important; border-radius:7px; padding:5px 6px; font-size:0.72rem; font-weight:700; text-align:center; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 1px 2px rgba(37,99,235,0.2); }
+  .cand-btn-email:hover { background:#1d4ed8; }
+  
+  .cand-contact-locked-box {
+    background:#f8fafc;
+    border:1px dashed #cbd5e1;
+    border-radius:8px;
+    padding:6px 9px;
+    margin-top:8px;
+    font-size:0.71rem;
+    color:#64748b;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    line-height:1.3;
+  }
+  
+  /* Floating Kanban Drag Toast */
+  .kanban-drag-toast {
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%) translateY(100px);
+    background:#0f172a;
+    color:#ffffff;
+    padding:10px 22px;
+    border-radius:9999px;
+    box-shadow:0 12px 36px rgba(15,23,42,0.48);
+    z-index:2500;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:0.85rem;
+    font-weight:700;
+    pointer-events:none;
+    opacity:0;
+    transition:transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .22s ease;
+  }
+  .kanban-drag-toast.visible {
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  .toast-dot { width:8px; height:8px; border-radius:50%; display:inline-block; vertical-align:middle; }
+  
   .jobd-info { display:none; background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px; }
   .jobd-info.active { display:block; }
   .cand-overlay { position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(2px); z-index:1300; opacity:0; pointer-events:none; transition:opacity .2s ease; }
@@ -279,6 +422,8 @@ require __DIR__ . '/includes/employer-layout-start.php';
           <span>Dibuat <?php echo htmlspecialchars((string)$job['posted'], ENT_QUOTES, 'UTF-8'); ?></span>
           <span>•</span>
           <span>Status: <strong><?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?></strong></span>
+          <span>•</span>
+          <span>Kode: <strong style="font-family:monospace;"><?php echo htmlspecialchars($jobCode, ENT_QUOTES, 'UTF-8'); ?></strong></span>
         </div>
       </div>
     </div>
@@ -291,8 +436,14 @@ require __DIR__ . '/includes/employer-layout-start.php';
   </div>
 
   <div class="jobd-tabs">
-    <button class="jobd-tab active" type="button" data-tab="lamaran">Lamaran</button>
-    <button class="jobd-tab" type="button" data-tab="detail">Detail Lowongan</button>
+    <button class="jobd-tab active" type="button" data-tab="lamaran">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Lamaran
+    </button>
+    <button class="jobd-tab" type="button" data-tab="detail">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      Detail Lowongan
+    </button>
   </div>
 
   <section id="tab-lamaran" class="jobd-pane">
@@ -321,33 +472,62 @@ require __DIR__ . '/includes/employer-layout-start.php';
       <?php endif; ?>
 
       <div class="jobd-tools" style="<?php echo !$isTayang ? 'filter:blur(3px); opacity:0.45; pointer-events:none;' : ''; ?>">
-        <div class="jobd-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="candidateSearchInput" type="text" placeholder="Cari pelamar..." <?php echo !$isTayang ? 'disabled' : ''; ?> />
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="jobd-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="candidateSearchInput" type="text" placeholder="Cari pelamar..." <?php echo !$isTayang ? 'disabled' : ''; ?> />
+          </div>
+          <button class="filter-btn-pill" type="button" id="btnFilterMarked" onclick="toggleFilterMarked(this)" <?php echo !$isTayang ? 'disabled' : ''; ?> style="display:inline-flex;align-items:center;gap:4px;">
+            <span>🔖</span> Ditandai ▾
+          </button>
+          <button class="filter-btn-pill" type="button" <?php echo !$isTayang ? 'disabled' : ''; ?> style="display:inline-flex;align-items:center;gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filter
+          </button>
         </div>
-        <div style="display:flex;gap:8px;">
-          <button class="filter-btn-pill" type="button" <?php echo !$isTayang ? 'disabled' : ''; ?>>Filter</button>
+        
+        <div class="jobd-tools-right">
+          <button class="tool-view-btn" type="button" title="Tampilan Daftar" onclick="setViewMode('list')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+          <button class="tool-view-btn active" type="button" title="Tampilan Kanban / Kolom" onclick="setViewMode('kanban')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg>
+          </button>
+          <button class="tool-view-btn" type="button" title="Tampilan Grid" onclick="setViewMode('grid')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </button>
         </div>
       </div>
 
-      <div class="jobd-board" id="kanbanBoard" style="margin-top:10px; <?php echo !$isTayang ? 'filter:blur(3px); opacity:0.45; pointer-events:none;' : ''; ?>">
+      <div class="jobd-board" id="kanbanBoard" style="margin-top:14px; <?php echo !$isTayang ? 'filter:blur(3px); opacity:0.45; pointer-events:none;' : ''; ?>">
         <?php foreach ($lanes as $key => $cards): ?>
-          <div class="jobd-col" data-lane="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>">
+          <div class="jobd-col" data-lane="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>" id="lane-<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>">
             <div class="jobd-col-head">
-              <span><span class="jobd-dot" style="background:<?php echo htmlspecialchars($laneMeta[$key]['dot'], ENT_QUOTES, 'UTF-8'); ?>"></span><?php echo htmlspecialchars($laneMeta[$key]['label'], ENT_QUOTES, 'UTF-8'); ?></span>
-              <span><?php echo count($cards); ?></span>
+              <span>
+                <span class="jobd-dot" style="background:<?php echo htmlspecialchars($laneMeta[$key]['dot'], ENT_QUOTES, 'UTF-8'); ?>"></span>
+                <?php echo htmlspecialchars($laneMeta[$key]['label'], ENT_QUOTES, 'UTF-8'); ?>
+              </span>
+              <span class="col-count-pill" id="count-<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"><?php echo count($cards); ?></span>
             </div>
-            <div class="jobd-col-body">
-              <?php if (count($cards) === 0): ?>
-                <div class="jobd-empty">Tidak ada data.</div>
-              <?php endif; ?>
+            <div class="jobd-col-body" data-lane-body="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>">
+              <div class="jobd-empty" style="<?php echo count($cards) === 0 ? '' : 'display:none;'; ?>">Tidak ada data.</div>
               <?php foreach ($cards as $c): 
                 $candSearchCorpus = function_exists('gig_worker_search_metadata') 
                   ? gig_worker_search_metadata($c['profile'])['full_text'] 
-                  : strtolower($c['name'] . ' ' . $c['title']);
+                  : strtolower($c['name'] . ' ' . $c['title'] . ' ' . $c['contact_email']);
+                $isUnlocked = ($c['contact_unlocked'] === '1' || $key === 'accepted');
+                $waNum = !empty($c['contact_wa']) ? $c['contact_wa'] : '0812-3456-7890';
+                $cleanWa = preg_replace('/[^0-9]/', '', $waNum);
+                if (str_starts_with($cleanWa, '0')) {
+                    $cleanWa = '62' . substr($cleanWa, 1);
+                }
+                $emailVal = !empty($c['contact_email']) ? $c['contact_email'] : 'kandidat@email.com';
+                $waText = urlencode("Halo " . $c['name'] . ", kami dari perusahaan telah menerima lamaran Anda untuk proyek '" . $job['title'] . "'. Mari berkoordinasi untuk langkah berikutnya.");
+                $emailSubject = urlencode("Penerimaan Proyek: " . $job['title']);
               ?>
                 <div
                   class="jobd-card candidate-card"
+                  draggable="true"
                   data-search="<?php echo htmlspecialchars($candSearchCorpus, ENT_QUOTES, 'UTF-8'); ?>"
                   data-app-id="<?php echo htmlspecialchars($c['id'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-worker-id="<?php echo htmlspecialchars($c['worker_id'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -356,13 +536,80 @@ require __DIR__ . '/includes/employer-layout-start.php';
                   data-status-text="<?php echo htmlspecialchars($c['status_text'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-status-ui="<?php echo htmlspecialchars($c['status_ui'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-applied="<?php echo htmlspecialchars($c['applied_label'], ENT_QUOTES, 'UTF-8'); ?>"
-                  data-contact-unlocked="<?php echo htmlspecialchars($c['contact_unlocked'], ENT_QUOTES, 'UTF-8'); ?>"
+                  data-contact-unlocked="<?php echo $isUnlocked ? '1' : '0'; ?>"
+                  data-contact-wa="<?php echo htmlspecialchars($waNum, ENT_QUOTES, 'UTF-8'); ?>"
+                  data-contact-email="<?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>"
                   data-profile-json="<?php echo htmlspecialchars(json_encode($c['profile'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
                 >
-                  <div class="jobd-card-name"><?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-                  <div class="jobd-card-sub"><?php echo htmlspecialchars($c['title'], ENT_QUOTES, 'UTF-8'); ?></div>
-                  <div class="jobd-card-meta">
+                  <div class="cand-card-top">
+                    <div class="cand-card-avatar" style="background:<?php echo htmlspecialchars($c['color'], ENT_QUOTES, 'UTF-8'); ?>;">
+                      <?php if (!empty($c['photo'])): ?>
+                        <img src="<?php echo htmlspecialchars($c['photo'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?>" />
+                      <?php else: ?>
+                        <span><?php echo htmlspecialchars($c['initials'], ENT_QUOTES, 'UTF-8'); ?></span>
+                      <?php endif; ?>
+                    </div>
+                    <div class="cand-card-info">
+                      <div class="cand-card-name" title="<?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                      <div class="cand-card-sub" title="<?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>">
+                        <?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>
+                      </div>
+                    </div>
+                    <button type="button" class="cand-card-pin" title="Tandai pelamar" onclick="togglePinCard(event, this)">📌</button>
+                  </div>
+
+                  <div class="cand-card-badges">
+                    <span class="cand-pill-status">
+                      <span>🏢</span> <?php echo htmlspecialchars($c['status_tag'], ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                  </div>
+
+                  <div class="cand-meta-row" title="<?php echo htmlspecialchars($c['prev_experience'], ENT_QUOTES, 'UTF-8'); ?>">
+                    <span class="ico">💼</span>
+                    <span style="overflow:hidden;text-overflow:ellipsis;"><?php echo htmlspecialchars($c['prev_experience'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  </div>
+
+                  <div class="cand-meta-row" title="<?php echo htmlspecialchars($c['location'], ENT_QUOTES, 'UTF-8'); ?>">
+                    <span class="ico">📍</span>
+                    <span style="overflow:hidden;text-overflow:ellipsis;"><?php echo htmlspecialchars($c['location'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  </div>
+
+                  <div class="cand-meta-row cand-rating-row">
                     <span>★ <?php echo number_format((float)$c['rating'], 1); ?></span>
+                    <span class="cand-rating-reviews">(<?php echo (int)$c['reviews_count']; ?> ulasan)</span>
+                  </div>
+
+                  <!-- Dynamic Contact Section -->
+                  <div class="card-contact-box-container">
+                    <?php if ($isUnlocked): ?>
+                      <div class="cand-contact-unlocked-box">
+                        <div class="cand-contact-hdr">
+                          <span class="cand-unlocked-badge">✓ Kontak Terbuka</span>
+                          <button type="button" class="btn-copy-chip" onclick="copyWorkerContact(event, '<?php echo htmlspecialchars(addslashes($waNum), ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes($emailVal), ENT_QUOTES, 'UTF-8'); ?>')">📋 Salin</button>
+                        </div>
+                        <div class="cand-contact-item">
+                          <span>💬</span>
+                          <a href="https://wa.me/<?php echo $cleanWa; ?>?text=<?php echo $waText; ?>" target="_blank" onclick="event.stopPropagation()">
+                            <?php echo htmlspecialchars($waNum, ENT_QUOTES, 'UTF-8'); ?>
+                          </a>
+                        </div>
+                        <div class="cand-contact-item">
+                          <span>✉️</span>
+                          <a href="mailto:<?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>?subject=<?php echo $emailSubject; ?>" onclick="event.stopPropagation()">
+                            <?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>
+                          </a>
+                        </div>
+                        <div class="cand-contact-actions">
+                          <a href="https://wa.me/<?php echo $cleanWa; ?>?text=<?php echo $waText; ?>" target="_blank" class="cand-btn-wa" onclick="event.stopPropagation()">Chat WA ↗</a>
+                          <a href="mailto:<?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>?subject=<?php echo $emailSubject; ?>" class="cand-btn-email" onclick="event.stopPropagation()">Email ↗</a>
+                        </div>
+                      </div>
+                    <?php else: ?>
+                      <div class="cand-contact-locked-box">
+                        <span>🔒</span>
+                        <span>Kontak terkunci · Tarik ke <strong>Diterima</strong> untuk membuka</span>
+                      </div>
+                    <?php endif; ?>
                   </div>
                 </div>
               <?php endforeach; ?>
@@ -398,6 +645,15 @@ require __DIR__ . '/includes/employer-layout-start.php';
   </section>
 </div>
 
+<!-- Floating Pill Toast during Drag and on Drop -->
+<div id="kanbanDragToast" class="kanban-drag-toast">
+  <span id="toastCandName" style="color:#ffffff;">KANDIDAT</span>
+  <span id="toastFromLane" style="color:#cbd5e1;">Lamaran Masuk</span>
+  <span style="color:#94a3b8;margin:0 2px;">➔</span>
+  <span id="toastTargetDot" class="toast-dot" style="background:#fb923c;"></span>
+  <span id="toastTargetLane" style="color:#ffffff;">Sedang Dipelajari</span>
+</div>
+
 <div id="candidateOverlay" class="cand-overlay" onclick="closeCandidateDrawer()"></div>
 <aside id="candidateDrawer" class="cand-drawer" aria-hidden="true">
   <div class="cand-head">
@@ -431,13 +687,38 @@ require __DIR__ . '/includes/employer-layout-start.php';
 
     <!-- Panel 1: Profil Overview -->
     <div id="candProfilePanel">
-      <div class="cand-row" style="margin-top:10px;">
+      <!-- Unlocked Contact Alert (visible if Diterima) -->
+      <div id="candUnlockedAlert" style="display:none;background:linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-top:8px;">
+        <div style="font-weight:800;color:#065f46;font-size:0.86rem;display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span>🎉</span> Kontak Resmi Gig Worker Terbuka
+        </div>
+        <div style="font-size:0.8rem;color:#047857;line-height:1.4;">Kandidat berstatus <strong>Diterima</strong>. Anda dapat langsung berkoordinasi via WhatsApp atau Email resmi di bawah.</div>
+      </div>
+
+      <!-- Locked Contact Alert (visible if not Diterima) -->
+      <div id="candLockedAlert" style="display:none;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px;margin-top:8px;font-size:0.8rem;color:#64748b;line-height:1.4;">
+        🔒 Kontak resmi terkunci. Geser kandidat ke kolom <strong>Diterima</strong> untuk membuka nomor WhatsApp dan email resmi kandidat.
+      </div>
+
+      <div class="cand-row" style="margin-top:12px;">
         <div class="cand-label">👤 Informasi Profil</div>
         <div class="cand-value" style="font-weight:500;">
           <div style="margin-bottom:6px;color:#0f172a;"><strong id="candTitleInfo">Gig Worker</strong></div>
-          <div style="margin-bottom:8px;color:#64748b;"><span id="candProjectsInfo">0 proyek selesai</span> · <span id="candReviewsInfo">0 ulasan</span></div>
-          <div style="color:#64748b;margin-bottom:4px;">Kontak email kandidat: <strong id="candContactEmail">tidak tersedia</strong></div>
-          <div style="color:#64748b;">WhatsApp kandidat: <strong id="candContactWa">tidak tersedia</strong></div>
+          <div style="margin-bottom:10px;color:#64748b;"><span id="candProjectsInfo">0 proyek selesai</span> · <span id="candReviewsInfo">0 ulasan</span></div>
+          
+          <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <div style="color:#64748b;">WhatsApp: <strong id="candContactWa" style="color:#0f172a;">tidak tersedia</strong></div>
+            <a id="candWaActionBtn" href="#" target="_blank" style="display:none;padding:3px 10px;background:#16a34a;color:#fff;border-radius:6px;font-size:0.75rem;font-weight:700;text-decoration:none;">Chat WA ↗</a>
+          </div>
+
+          <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <div style="color:#64748b;">Email: <strong id="candContactEmail" style="color:#0f172a;">tidak tersedia</strong></div>
+            <a id="candEmailActionBtn" href="#" style="display:none;padding:3px 10px;background:#2563eb;color:#fff;border-radius:6px;font-size:0.75rem;font-weight:700;text-decoration:none;">Kirim Email ↗</a>
+          </div>
+
+          <div id="candCopyBtnWrap" style="display:none;margin-top:10px;">
+            <button type="button" id="candCopyFullBtn" style="padding:6px 12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">📋 Salin Kontak Lengkap</button>
+          </div>
         </div>
       </div>
     </div>
@@ -465,7 +746,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
   </div>
 
   <div class="cand-foot">
-    <form method="post" action="" class="cand-status-form">
+    <form method="post" action="" class="cand-status-form" id="drawerStatusForm">
       <input type="hidden" name="app_id" id="candAppIdInput" value="">
       <select name="new_status" id="candStatusSelect" required>
         <option value="applied">Lamaran Masuk</option>
@@ -514,6 +795,294 @@ require __DIR__ . '/includes/employer-layout-start.php';
         .replace(/'/g, '&#039;');
     }
 
+    /* ─── TOAST NOTIFICATION ─── */
+    const dragToast = document.getElementById('kanbanDragToast');
+    const toastName = document.getElementById('toastCandName');
+    const toastFrom = document.getElementById('toastFromLane');
+    const toastDot = document.getElementById('toastTargetDot');
+    const toastTarget = document.getElementById('toastTargetLane');
+    let toastTimeout = null;
+
+    const laneLabels = {
+      'incoming': 'Lamaran Masuk',
+      'reviewed': 'Sedang Dipelajari',
+      'interview': 'Wawancara',
+      'accepted': 'Diterima',
+      'rejected': 'Ditolak'
+    };
+    const laneDots = {
+      'incoming': '#f59e0b',
+      'reviewed': '#fb923c',
+      'interview': '#3b82f6',
+      'accepted': '#22c55e',
+      'rejected': '#ef4444'
+    };
+
+    function showDragToast(name, fromLaneKey, toLaneKey) {
+      if (!dragToast) return;
+      if (toastTimeout) clearTimeout(toastTimeout);
+      if (toastName) toastName.textContent = (name || '').toUpperCase();
+      if (toastFrom) toastFrom.textContent = laneLabels[fromLaneKey] || fromLaneKey;
+      if (toastTarget) toastTarget.textContent = laneLabels[toLaneKey] || toLaneKey;
+      if (toastDot) toastDot.style.background = laneDots[toLaneKey] || '#3b82f6';
+      dragToast.classList.add('visible');
+    }
+
+    function showSuccessToast(message) {
+      if (!dragToast) return;
+      if (toastTimeout) clearTimeout(toastTimeout);
+      dragToast.innerHTML = '<span style="color:#22c55e;font-size:1.05rem;">✓</span> <span>' + escapeHtml(message) + '</span>';
+      dragToast.classList.add('visible');
+      toastTimeout = setTimeout(function() {
+        dragToast.classList.remove('visible');
+      }, 2500);
+    }
+
+    function hideDragToast() {
+      if (!dragToast) return;
+      dragToast.classList.remove('visible');
+    }
+
+    window.copyWorkerContact = function(e, wa, email) {
+      if (e) e.stopPropagation();
+      const txt = (wa ? 'WhatsApp: ' + wa + '\n' : '') + (email ? 'Email: ' + email : '');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt.trim()).then(function() {
+          showSuccessToast('Kontak ' + (wa || email) + ' berhasil disalin!');
+        }).catch(function() {
+          showSuccessToast('Kontak: ' + (wa || email));
+        });
+      } else {
+        showSuccessToast('Kontak: ' + (wa || email));
+      }
+    };
+
+    window.togglePinCard = function(e, btn) {
+      if (e) e.stopPropagation();
+      btn.classList.toggle('pinned');
+      btn.style.color = btn.classList.contains('pinned') ? '#0284c7' : '#94a3b8';
+      showSuccessToast(btn.classList.contains('pinned') ? 'Pelamar ditandai 📌' : 'Tanda pelamar dilepas');
+    };
+
+    window.toggleFilterMarked = function(btn) {
+      btn.classList.toggle('active');
+      const onlyMarked = btn.classList.contains('active');
+      document.querySelectorAll('.candidate-card').forEach(function(card) {
+        const pin = card.querySelector('.cand-card-pin');
+        const isPinned = pin && pin.classList.contains('pinned');
+        card.style.display = (!onlyMarked || isPinned) ? 'block' : 'none';
+      });
+    };
+
+    window.setViewMode = function(mode) {
+      document.querySelectorAll('.tool-view-btn').forEach(function(b) { b.classList.remove('active'); });
+      const activeBtn = document.querySelector('.tool-view-btn[onclick*="' + mode + '"]');
+      if (activeBtn) activeBtn.classList.add('active');
+      const board = document.getElementById('kanbanBoard');
+      if (!board) return;
+      if (mode === 'list') {
+        board.style.display = 'flex';
+        board.style.flexDirection = 'column';
+      } else if (mode === 'grid') {
+        board.style.display = 'grid';
+        board.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+      } else {
+        board.style.display = 'grid';
+        board.style.gridTemplateColumns = 'repeat(5, minmax(240px, 1fr))';
+      }
+    };
+
+    /* ─── DRAG & DROP IMPLEMENTATION ─── */
+    let draggedCard = null;
+    let sourceLaneKey = null;
+    let isDraggingActive = false;
+
+    function buildUnlockedContactHtml(waNum, emailVal, candName) {
+      const cleanWa = (waNum || '').replace(/[^0-9]/g, '').replace(/^0/, '62');
+      const waText = encodeURIComponent("Halo " + (candName || 'Gig Worker') + ", kami dari perusahaan telah menerima lamaran Anda untuk proyek '<?php echo addslashes($job['title']); ?>'. Mari berkoordinasi untuk langkah berikutnya.");
+      const emailSubject = encodeURIComponent("Penerimaan Proyek: <?php echo addslashes($job['title']); ?>");
+
+      return '<div class="cand-contact-unlocked-box">' +
+        '<div class="cand-contact-hdr">' +
+          '<span class="cand-unlocked-badge">✓ Kontak Terbuka</span>' +
+          '<button type="button" class="btn-copy-chip" onclick="copyWorkerContact(event, \'' + escapeHtml(waNum) + '\', \'' + escapeHtml(emailVal) + '\')">📋 Salin</button>' +
+        '</div>' +
+        '<div class="cand-contact-item">' +
+          '<span>💬</span>' +
+          '<a href="https://wa.me/' + cleanWa + '?text=' + waText + '" target="_blank" onclick="event.stopPropagation()">' + escapeHtml(waNum || '0812-3456-7890') + '</a>' +
+        '</div>' +
+        '<div class="cand-contact-item">' +
+          '<span>✉️</span>' +
+          '<a href="mailto:' + escapeHtml(emailVal) + '?subject=' + emailSubject + '" onclick="event.stopPropagation()">' + escapeHtml(emailVal || 'kandidat@email.com') + '</a>' +
+        '</div>' +
+        '<div class="cand-contact-actions">' +
+          '<a href="https://wa.me/' + cleanWa + '?text=' + waText + '" target="_blank" class="cand-btn-wa" onclick="event.stopPropagation()">Chat WA ↗</a>' +
+          '<a href="mailto:' + escapeHtml(emailVal) + '?subject=' + emailSubject + '" class="cand-btn-email" onclick="event.stopPropagation()">Email ↗</a>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function buildLockedContactHtml() {
+      return '<div class="cand-contact-locked-box">' +
+        '<span>🔒</span>' +
+        '<span>Kontak terkunci · Tarik ke <strong>Diterima</strong> untuk membuka</span>' +
+      '</div>';
+    }
+
+    function updateLaneEmptyState(col) {
+      if (!col) return;
+      const body = col.querySelector('.jobd-col-body');
+      const emptyEl = body ? body.querySelector('.jobd-empty') : null;
+      const countEl = col.querySelector('.col-count-pill');
+      if (!body) return;
+      const cards = body.querySelectorAll('.candidate-card');
+      if (countEl) countEl.textContent = cards.length;
+      if (emptyEl) emptyEl.style.display = (cards.length === 0) ? 'block' : 'none';
+    }
+
+    function setupDragAndDrop() {
+      const cards = document.querySelectorAll('.candidate-card');
+      const columns = document.querySelectorAll('.jobd-col');
+
+      cards.forEach(function(card) {
+        card.setAttribute('draggable', 'true');
+
+        card.addEventListener('dragstart', function(e) {
+          draggedCard = card;
+          isDraggingActive = true;
+          const parentCol = card.closest('.jobd-col');
+          sourceLaneKey = parentCol ? parentCol.getAttribute('data-lane') : 'incoming';
+          card.classList.add('is-dragging');
+          e.dataTransfer.setData('text/plain', card.getAttribute('data-app-id') || '');
+          e.dataTransfer.effectAllowed = 'move';
+
+          const candName = card.getAttribute('data-name') || 'Kandidat';
+          showDragToast(candName, sourceLaneKey, sourceLaneKey);
+        });
+
+        card.addEventListener('dragend', function() {
+          card.classList.remove('is-dragging');
+          columns.forEach(function(c) { c.classList.remove('drag-over'); });
+          setTimeout(function() {
+            isDraggingActive = false;
+            draggedCard = null;
+          }, 150);
+          if (toastTimeout === null) {
+            hideDragToast();
+          }
+        });
+      });
+
+      columns.forEach(function(col) {
+        col.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          col.classList.add('drag-over');
+
+          if (draggedCard) {
+            const candName = draggedCard.getAttribute('data-name') || 'Kandidat';
+            const targetLaneKey = col.getAttribute('data-lane') || 'incoming';
+            showDragToast(candName, sourceLaneKey, targetLaneKey);
+          }
+        });
+
+        col.addEventListener('dragenter', function(e) {
+          e.preventDefault();
+          col.classList.add('drag-over');
+        });
+
+        col.addEventListener('dragleave', function(e) {
+          if (!col.contains(e.relatedTarget)) {
+            col.classList.remove('drag-over');
+          }
+        });
+
+        col.addEventListener('drop', function(e) {
+          e.preventDefault();
+          col.classList.remove('drag-over');
+          if (!draggedCard) return;
+
+          const targetLaneKey = col.getAttribute('data-lane') || 'incoming';
+          const cardToMove = draggedCard;
+          const appId = cardToMove.getAttribute('data-app-id') || '';
+          const candName = cardToMove.getAttribute('data-name') || 'Kandidat';
+          const prevParentCol = cardToMove.closest('.jobd-col');
+
+          if (targetLaneKey === sourceLaneKey) {
+            hideDragToast();
+            return;
+          }
+
+          // Move DOM element to target column
+          const targetBody = col.querySelector('.jobd-col-body');
+          if (targetBody) {
+            targetBody.appendChild(cardToMove);
+          }
+
+          // Update column counts and empty indicators
+          updateLaneEmptyState(prevParentCol);
+          updateLaneEmptyState(col);
+
+          // Update card attributes
+          const isNowAccepted = (targetLaneKey === 'accepted');
+          cardToMove.setAttribute('data-contact-unlocked', isNowAccepted ? '1' : '0');
+          cardToMove.setAttribute('data-status-text', laneLabels[targetLaneKey] || targetLaneKey);
+          cardToMove.setAttribute('data-status-ui', isNowAccepted ? 'accepted' : (targetLaneKey === 'reviewed' ? 'reviewing' : (targetLaneKey === 'incoming' ? 'applied' : targetLaneKey)));
+
+          // Update card contact box
+          const contactContainer = cardToMove.querySelector('.card-contact-box-container');
+          if (contactContainer) {
+            const waNum = cardToMove.getAttribute('data-contact-wa') || '0812-3456-7890';
+            const emailVal = cardToMove.getAttribute('data-contact-email') || 'kandidat@email.com';
+            if (isNowAccepted) {
+              contactContainer.innerHTML = buildUnlockedContactHtml(waNum, emailVal, candName);
+            } else {
+              contactContainer.innerHTML = buildLockedContactHtml();
+            }
+          }
+
+          // Show confirmation toast
+          const targetLabel = laneLabels[targetLaneKey] || targetLaneKey;
+          showSuccessToast(candName + ' dipindahkan ke ' + targetLabel + (isNowAccepted ? ' (Kontak Terbuka!)' : ''));
+
+          // Map lane to backend status
+          let backendStatus = 'applied';
+          if (targetLaneKey === 'accepted') backendStatus = 'accepted';
+          else if (targetLaneKey === 'rejected') backendStatus = 'rejected';
+          else if (targetLaneKey === 'reviewed') backendStatus = 'reviewing';
+          else if (targetLaneKey === 'interview') backendStatus = 'interview';
+
+          // Asynchronously persist change to server
+          const formData = new FormData();
+          formData.append('update_application_status', '1');
+          formData.append('app_id', appId);
+          formData.append('new_status', backendStatus);
+          formData.append('ajax', '1');
+
+          fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            }
+          })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (!data.ok) {
+              showSuccessToast('Peringatan: ' + (data.message || 'Gagal menyimpan ke server'));
+            }
+          })
+          .catch(function(err) {
+            console.warn('Pipeline status update sync:', err);
+          });
+        });
+      });
+    }
+
+    setupDragAndDrop();
+
+    /* ─── DRAWER LOGIC ─── */
     const overlay = document.getElementById('candidateOverlay');
     const drawer = document.getElementById('candidateDrawer');
     const appIdInput = document.getElementById('candAppIdInput');
@@ -531,6 +1100,12 @@ require __DIR__ . '/includes/employer-layout-start.php';
       about: document.getElementById('candAbout'),
       contactEmail: document.getElementById('candContactEmail'),
       contactWa: document.getElementById('candContactWa'),
+      unlockedAlert: document.getElementById('candUnlockedAlert'),
+      lockedAlert: document.getElementById('candLockedAlert'),
+      waActionBtn: document.getElementById('candWaActionBtn'),
+      emailActionBtn: document.getElementById('candEmailActionBtn'),
+      copyBtnWrap: document.getElementById('candCopyBtnWrap'),
+      copyFullBtn: document.getElementById('candCopyFullBtn'),
       titleInfo: document.getElementById('candTitleInfo'),
       projectsInfo: document.getElementById('candProjectsInfo'),
       reviewsInfo: document.getElementById('candReviewsInfo'),
@@ -596,7 +1171,8 @@ require __DIR__ . '/includes/employer-layout-start.php';
       if (fields.skillsBadges) {
         if (Array.isArray(profile.skills) && profile.skills.length > 0) {
           fields.skillsBadges.innerHTML = profile.skills.map(function(s) {
-            return '<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:9999px;padding:3px 10px;font-size:0.78rem;font-weight:700;">' + escapeHtml(s) + '</span>';
+            const sName = (typeof s === 'object' && s !== null) ? (s.name || '') : String(s);
+            return '<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:9999px;padding:3px 10px;font-size:0.78rem;font-weight:700;">' + escapeHtml(sName) + '</span>';
           }).join('');
         } else {
           fields.skillsBadges.textContent = 'Belum ada keahlian.';
@@ -604,15 +1180,38 @@ require __DIR__ . '/includes/employer-layout-start.php';
       }
 
       const contactUnlocked = (card.getAttribute('data-contact-unlocked') || '0') === '1';
+      const waVal = (profile.contact && profile.contact.wa) ? profile.contact.wa : (card.getAttribute('data-contact-wa') || '');
+      const emailVal = (profile.contact && profile.contact.email) ? profile.contact.email : (card.getAttribute('data-contact-email') || '');
+      const cleanWa = waVal.replace(/[^0-9]/g, '').replace(/^0/, '62');
+      const waText = encodeURIComponent("Halo " + name + ", kami dari perusahaan telah menerima lamaran Anda untuk proyek '<?php echo addslashes($job['title']); ?>'.");
+
+      if (fields.unlockedAlert) fields.unlockedAlert.style.display = contactUnlocked ? 'block' : 'none';
+      if (fields.lockedAlert) fields.lockedAlert.style.display = contactUnlocked ? 'none' : 'block';
+
       if (fields.contactEmail) {
-        fields.contactEmail.textContent = contactUnlocked
-          ? (profile.contact && profile.contact.email ? profile.contact.email : 'tidak tersedia')
-          : 'Terkunci sampai kandidat diterima';
+        fields.contactEmail.textContent = contactUnlocked ? (emailVal || 'tidak tersedia') : 'Terkunci sampai kandidat diterima';
+        fields.contactEmail.style.color = contactUnlocked ? '#2563eb' : '#64748b';
       }
       if (fields.contactWa) {
-        fields.contactWa.textContent = contactUnlocked
-          ? (profile.contact && profile.contact.wa ? profile.contact.wa : 'tidak tersedia')
-          : 'Terkunci sampai kandidat diterima';
+        fields.contactWa.textContent = contactUnlocked ? (waVal || 'tidak tersedia') : 'Terkunci sampai kandidat diterima';
+        fields.contactWa.style.color = contactUnlocked ? '#16a34a' : '#64748b';
+      }
+
+      if (fields.waActionBtn) {
+        fields.waActionBtn.style.display = (contactUnlocked && waVal) ? 'inline-flex' : 'none';
+        fields.waActionBtn.setAttribute('href', 'https://wa.me/' + cleanWa + '?text=' + waText);
+      }
+      if (fields.emailActionBtn) {
+        fields.emailActionBtn.style.display = (contactUnlocked && emailVal) ? 'inline-flex' : 'none';
+        fields.emailActionBtn.setAttribute('href', 'mailto:' + encodeURIComponent(emailVal) + '?subject=' + encodeURIComponent("Penerimaan Proyek: <?php echo addslashes($job['title']); ?>"));
+      }
+      if (fields.copyBtnWrap) {
+        fields.copyBtnWrap.style.display = contactUnlocked ? 'block' : 'none';
+      }
+      if (fields.copyFullBtn) {
+        fields.copyFullBtn.onclick = function(e) {
+          copyWorkerContact(e, waVal, emailVal);
+        };
       }
 
       if (fields.titleInfo) fields.titleInfo.textContent = profile.title || 'Gig Worker';
@@ -711,7 +1310,8 @@ require __DIR__ . '/includes/employer-layout-start.php';
     }
 
     document.querySelectorAll('.candidate-card').forEach(function(card) {
-      card.addEventListener('click', function() {
+      card.addEventListener('click', function(e) {
+        if (isDraggingActive) return;
         if (!<?php echo json_encode($isTayang); ?>) return;
         openCandidateDrawer(card);
       });

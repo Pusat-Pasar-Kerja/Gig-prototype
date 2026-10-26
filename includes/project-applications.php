@@ -183,6 +183,54 @@ function gig_seed_all_demo_data_to_db(): void
             'created_at'        => '2026-09-21 08:30:00',
             'updated_at'        => '2026-09-21 08:30:00',
         ],
+        [
+            'id'                => 'APP-2026-101',
+            'vacancy_id'        => 'GIG-2026-09-001',
+            'worker_id'         => 'christian',
+            'worker_name'       => 'Christian D. Lawangga',
+            'employer_username' => 'PT Talenta Digital Indonesia',
+            'bid_amount'        => 'Rp 7.800.000',
+            'status'            => 'applied',
+            'note'              => 'perna bekerja di PT. GNI devisi creu, siap kendali operasional dan QA prototype.',
+            'created_at'        => '2026-09-19 14:10:00',
+            'updated_at'        => '2026-09-19 14:10:00',
+        ],
+        [
+            'id'                => 'APP-2026-102',
+            'vacancy_id'        => 'GIG-2026-09-001',
+            'worker_id'         => 'apria',
+            'worker_name'       => 'Apria Widya',
+            'employer_username' => 'PT Talenta Digital Indonesia',
+            'bid_amount'        => 'Rp 8.000.000',
+            'status'            => 'applied',
+            'note'              => 'Project Management Officer, siap memantau milestone dan koordinasi sprint.',
+            'created_at'        => '2026-09-19 15:30:00',
+            'updated_at'        => '2026-09-19 15:30:00',
+        ],
+        [
+            'id'                => 'APP-2026-103',
+            'vacancy_id'        => 'GIG-2026-09-001',
+            'worker_id'         => 'sriyola',
+            'worker_name'       => 'Sri Yola Tiska',
+            'employer_username' => 'PT Talenta Digital Indonesia',
+            'bid_amount'        => 'Rp 7.200.000',
+            'status'            => 'applied',
+            'note'              => 'RECRUITMENT DAN ASSESSMENT SPECIALIST, siap evaluasi dan dokumentasi pengujian pengguna.',
+            'created_at'        => '2026-09-20 08:45:00',
+            'updated_at'        => '2026-09-20 08:45:00',
+        ],
+        [
+            'id'                => 'APP-2026-104',
+            'vacancy_id'        => 'GIG-2026-09-001',
+            'worker_id'         => 'budi',
+            'worker_name'       => 'Budi Wicaksono',
+            'employer_username' => 'PT Talenta Digital Indonesia',
+            'bid_amount'        => 'Rp 7.500.000',
+            'status'            => 'applied',
+            'note'              => 'UI Designer, siap deliver cepat dalam 10 hari lengkap dengan usability testing.',
+            'created_at'        => '2026-09-20 10:15:00',
+            'updated_at'        => '2026-09-20 10:15:00',
+        ],
     ];
 
     foreach ($demoApps as $app) {
@@ -385,10 +433,60 @@ function gig_seed_demo_applications_if_needed(): void
             'created_at'         => '2026-09-21 08:30:00',
             'updated_at'         => '2026-09-21 08:30:00',
         ],
+        [
+            'id'                 => 'APP-2026-101',
+            'vacancy_id'         => 'GIG-2026-09-001',
+            'worker_id'          => 'christian',
+            'worker_name'        => 'Christian D. Lawangga',
+            'employer_username'  => 'PT Talenta Digital Indonesia',
+            'bid_amount'         => 'Rp 7.800.000',
+            'status'             => 'applied',
+            'note'               => 'perna bekerja di PT. GNI devisi creu, siap kendali operasional dan QA prototype.',
+            'created_at'         => '2026-09-19 14:10:00',
+            'updated_at'         => '2026-09-19 14:10:00',
+        ],
+        [
+            'id'                 => 'APP-2026-102',
+            'vacancy_id'         => 'GIG-2026-09-001',
+            'worker_id'          => 'apria',
+            'worker_name'        => 'Apria Widya',
+            'employer_username'  => 'PT Talenta Digital Indonesia',
+            'bid_amount'         => 'Rp 8.000.000',
+            'status'             => 'applied',
+            'note'               => 'Project Management Officer, siap memantau milestone dan koordinasi sprint.',
+            'created_at'         => '2026-09-19 15:30:00',
+            'updated_at'         => '2026-09-19 15:30:00',
+        ],
+        [
+            'id'                 => 'APP-2026-103',
+            'vacancy_id'         => 'GIG-2026-09-001',
+            'worker_id'          => 'sriyola',
+            'worker_name'        => 'Sri Yola Tiska',
+            'employer_username'  => 'PT Talenta Digital Indonesia',
+            'bid_amount'         => 'Rp 7.200.000',
+            'status'             => 'applied',
+            'note'               => 'RECRUITMENT DAN ASSESSMENT SPECIALIST, siap evaluasi dan dokumentasi pengujian pengguna.',
+            'created_at'         => '2026-09-20 08:45:00',
+            'updated_at'         => '2026-09-20 08:45:00',
+        ],
+        [
+            'id'                 => 'APP-2026-104',
+            'vacancy_id'         => 'GIG-2026-09-001',
+            'worker_id'          => 'budi',
+            'worker_name'        => 'Budi Wicaksono',
+            'employer_username'  => 'PT Talenta Digital Indonesia',
+            'bid_amount'         => 'Rp 7.500.000',
+            'status'             => 'applied',
+            'note'               => 'UI Designer, siap deliver cepat dalam 10 hari lengkap dengan usability testing.',
+            'created_at'         => '2026-09-20 10:15:00',
+            'updated_at'         => '2026-09-20 10:15:00',
+        ],
     ];
 
     foreach ($defaultApps as $app) {
-        $_SESSION['gig_applications'][$app['id']] = $app;
+        if (!isset($_SESSION['gig_applications'][$app['id']])) {
+            $_SESSION['gig_applications'][$app['id']] = $app;
+        }
     }
 
     // Default seed notifications for employer
@@ -657,11 +755,17 @@ function gig_employer_respond_application(string $appId, string $decision, strin
     $vacancy = gig_find_vacancy($app['vacancy_id']);
     $projectTitle = $vacancy['title'] ?? 'Proyek';
 
-    if ($decision === 'accept' && $vacancy && gig_vacancy_hired_application((string)$vacancy['id'], $appId) !== null) {
-        return ['ok' => false, 'error' => 'Lowongan ini sudah memiliki Gig Worker terpilih.'];
-    }
-    if ($decision === 'accept' && !gig_worker_has_active_project_capacity((string)$app['worker_id'])) {
-        return ['ok' => false, 'error' => 'Gig Worker sudah memiliki 2 proyek aktif. Selesaikan salah satu proyek aktif terlebih dahulu.'];
+    if ($decision === 'accept' && $vacancy) {
+        $maxQuota = max(5, (int)($vacancy['quota'] ?? 1));
+        $currentHiredCount = 0;
+        foreach (gig_get_all_applications() as $otherApp) {
+            if ($otherApp['id'] !== $appId && strcasecmp((string)($otherApp['vacancy_id'] ?? ''), (string)$vacancy['id']) === 0 && gig_is_hired_status((string)($otherApp['status'] ?? ''))) {
+                $currentHiredCount++;
+            }
+        }
+        if ($currentHiredCount >= $maxQuota) {
+            return ['ok' => false, 'error' => 'Kuota pelamar diterima untuk lowongan ini sudah penuh (' . $maxQuota . ' kandidat).'];
+        }
     }
 
     $newStatus = ($decision === 'accept') ? 'confirmed_by_worker' : 'rejected_by_employer';
