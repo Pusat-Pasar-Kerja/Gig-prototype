@@ -24,7 +24,7 @@ foreach ($workers as $row) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $worker !== null) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $worker !== null) {
     $action = (string)($_POST['action'] ?? '');
     $note = trim((string)($_POST['admin_note'] ?? ''));
     if (!empty($_POST['compliance_reasons']) && is_array($_POST['compliance_reasons'])) {
@@ -52,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $worker !== null) {
             if ($note === '') {
                 $note = 'Harap perbaiki data/berkas profil Gig Worker sesuai catatan.';
             }
-            $ok = gig_admin_set_worker_status((string)$worker['username'], 'pending', $note);
-            $flash = $ok ? 'Catatan revisi dikirim. Status kembali ke menunggu verifikasi.' : 'Gagal mengirim catatan revisi.';
+            $ok = gig_admin_set_worker_status((string)$worker['username'], 'revision', $note);
+            $flash = $ok ? 'Permintaan revisi dikirim ke Gig Worker.' : 'Gagal mengirim catatan revisi.';
             $flashType = $ok ? 'success' : 'error';
         } else {
             $ok = false;
@@ -225,7 +225,11 @@ if ($status === 'pending' && trim((string)($worker['reviewed_at'] ?? '')) !== ''
     $statusColor = '#92400e';
     $statusBg = '#fef3c7';
 }
-if ($status === 'approved') {
+if ($status === 'revision') {
+    $statusLabel = 'Perlu Revisi';
+    $statusColor = '#9a3412';
+    $statusBg = '#ffedd5';
+} elseif ($status === 'approved') {
     $statusLabel = 'Terverifikasi';
     $statusColor = '#065f46';
     $statusBg = '#d1fae5';

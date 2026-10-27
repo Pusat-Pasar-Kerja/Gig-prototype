@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/includes/admin-auth.php';
 require_once __DIR__ . '/includes/admin-store.php';
+require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/project-vacancies.php';
 require_once __DIR__ . '/includes/vacancy-store.php';
 
@@ -16,7 +17,7 @@ if (!in_array($tab, $allowedTabs, true)) {
     $tab = 'verification';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = (string)($_POST['action'] ?? '');
     $note = trim((string)($_POST['admin_note'] ?? ''));
     if (!empty($_POST['compliance_reasons']) && is_array($_POST['compliance_reasons'])) {
@@ -54,8 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $flash = $ok ? 'Pendaftaran Gig Worker ditolak.' : 'Gagal menolak pendaftaran worker.';
         } else {
             if ($note === '') { $note = 'Harap perbaiki data/berkas pendaftaran worker.'; }
-            $ok = gig_admin_set_worker_status($username, 'pending', $note);
-            $flash = $ok ? 'Permintaan revisi dikirim. Status dikembalikan ke antrean.' : 'Gagal mengirim catatan revisi.';
+            $ok = gig_admin_set_worker_status($username, 'revision', $note);
+            $flash = $ok ? 'Permintaan revisi dikirim. Status diubah menjadi Perlu Revisi.' : 'Gagal mengirim catatan revisi.';
         }
         $flashType = $ok ? 'success' : 'error';
         $redirectTab = 'workers';
@@ -193,72 +194,88 @@ if ($nextPendingTab === 'verification' && (int)$metrics['worker_profile_edits_pe
     $nextPendingTab = 'workers';
 }
 
-function admin_status_badge(string $status): string
-{
-    $map = [
-        'pending' => ['Menunggu Verifikasi', '#dbeafe', '#1e40af'],
-        'approved' => ['Disetujui', '#d1fae5', '#065f46'],
-        'active' => ['Tayang', '#d1fae5', '#065f46'],
-        'rejected' => ['Ditolak', '#fee2e2', '#991b1b'],
-        'revision' => ['Revisi', '#ffedd5', '#9a3412'],
-        'review' => ['Verifikasi', '#dbeafe', '#1e40af'],
-    ];
-    $item = $map[$status] ?? [$status, '#f1f5f9', '#334155'];
-    return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:' . $item[1] . ';color:' . $item[2] . ';">' . htmlspecialchars($item[0], ENT_QUOTES, 'UTF-8') . '</span>';
+if (!function_exists('admin_status_badge')) {
+    function admin_status_badge(string $status): string
+    {
+        $map = [
+            'pending' => ['Menunggu Verifikasi', '#dbeafe', '#1e40af'],
+            'approved' => ['Disetujui', '#d1fae5', '#065f46'],
+            'active' => ['Tayang', '#d1fae5', '#065f46'],
+            'rejected' => ['Ditolak', '#fee2e2', '#991b1b'],
+            'revision' => ['Revisi', '#ffedd5', '#9a3412'],
+            'review' => ['Verifikasi', '#dbeafe', '#1e40af'],
+        ];
+        $item = $map[$status] ?? [$status, '#f1f5f9', '#334155'];
+        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:' . $item[1] . ';color:' . $item[2] . ';">' . htmlspecialchars($item[0], ENT_QUOTES, 'UTF-8') . '</span>';
+    }
 }
 
-function admin_worker_status_badge(array $row): string
-{
-    $status = (string)($row['status'] ?? 'pending');
-    if ($status !== 'pending') {
-        return admin_status_badge($status);
-    }
+if (!function_exists('admin_worker_status_badge')) {
+    function admin_worker_status_badge(array $row): string
+    {
+        $status = (string)($row['status'] ?? 'pending');
+        if ($status === 'approved') {
+            return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#d1fae5;color:#065f46;">Terverifikasi</span>';
+        }
+        if ($status === 'revision') {
+            return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#ffedd5;color:#9a3412;">Perlu Revisi</span>';
+        }
+        if ($status === 'rejected') {
+            return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#fee2e2;color:#991b1b;">Ditolak</span>';
+        }
 
-    $isRevisionRequested = trim((string)($row['reviewed_at'] ?? '')) !== '';
-    if ($isRevisionRequested) {
-        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#fef3c7;color:#92400e;">Menunggu Verifikasi</span>';
-    }
+        $isRevisionRequested = trim((string)($row['reviewed_at'] ?? '')) !== '';
+        if ($isRevisionRequested) {
+            return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#fef3c7;color:#92400e;">Menunggu Verifikasi</span>';
+        }
 
-    return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#e2e8f0;color:#334155;">Belum Terverifikasi</span>';
+        return '<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:0.72rem;font-weight:700;white-space:nowrap;background:#e2e8f0;color:#334155;">Belum Terverifikasi</span>';
+    }
 }
 
-function admin_bar_height(int $value, int $max, int $cap = 130): int
-{
-    if ($value <= 0) {
-        return 8;
+if (!function_exists('admin_bar_height')) {
+    function admin_bar_height(int $value, int $max, int $cap = 130): int
+    {
+        if ($value <= 0) {
+            return 8;
+        }
+        $max = max($max, 1);
+        return max(10, (int)round($value / $max * $cap));
     }
-    $max = max($max, 1);
-    return max(10, (int)round($value / $max * $cap));
 }
 
-function admin_render_chart(string $title, array $segments): void
-{
-    $max = max(1, ...array_map(static fn($s) => (int)$s['value'], $segments));
-    echo '<article class="admin-chart-card"><h3>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h3><div class="admin-bars">';
-    foreach ($segments as $seg) {
-        $val = (int)$seg['value'];
-        $h = admin_bar_height($val, $max);
-        $color = htmlspecialchars((string)$seg['color'], ENT_QUOTES, 'UTF-8');
-        $label = htmlspecialchars((string)$seg['label'], ENT_QUOTES, 'UTF-8');
-        echo '<div class="admin-bar-col">';
-        echo '<div class="admin-bar-val">' . $val . '</div>';
-        echo '<div class="admin-bar" style="height:' . $h . 'px;background:' . $color . ';"></div>';
-        echo '<div class="admin-bar-label">' . $label . '</div>';
-        echo '</div>';
+if (!function_exists('admin_render_chart')) {
+    function admin_render_chart(string $title, array $segments): void
+    {
+        $max = max(1, ...array_map(static fn($s) => (int)$s['value'], $segments));
+        echo '<article class="admin-chart-card"><h3>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h3><div class="admin-bars">';
+        foreach ($segments as $seg) {
+            $val = (int)$seg['value'];
+            $h = admin_bar_height($val, $max);
+            $color = htmlspecialchars((string)$seg['color'], ENT_QUOTES, 'UTF-8');
+            $label = htmlspecialchars((string)$seg['label'], ENT_QUOTES, 'UTF-8');
+            echo '<div class="admin-bar-col">';
+            echo '<div class="admin-bar-val">' . $val . '</div>';
+            echo '<div class="admin-bar" style="height:' . $h . 'px;background:' . $color . ';"></div>';
+            echo '<div class="admin-bar-label">' . $label . '</div>';
+            echo '</div>';
+        }
+        echo '</div></article>';
     }
-    echo '</div></article>';
 }
 
-function admin_state_tab_url(string $tab, string $state, string $q, string $entity = 'all'): string
-{
-    $params = ['tab' => $tab, 'state' => $state];
-    if ($entity !== 'all') {
-        $params['entity'] = $entity;
+if (!function_exists('admin_state_tab_url')) {
+    function admin_state_tab_url(string $tab, string $state, string $q, string $entity = 'all'): string
+    {
+        $params = ['tab' => $tab, 'state' => $state];
+        if ($entity !== 'all') {
+            $params['entity'] = $entity;
+        }
+        if ($q !== '') {
+            $params['q'] = $q;
+        }
+        return 'dashboard-admin.php?' . http_build_query($params);
     }
-    if ($q !== '') {
-        $params['q'] = $q;
-    }
-    return 'dashboard-admin.php?' . http_build_query($params);
 }
 
 $adminTab = $tab;
@@ -404,14 +421,15 @@ require __DIR__ . '/includes/admin-layout-start.php';
 
     <?php if ($tab === 'workers'): ?>
       <?php
+        $workerRevisionRegistrations = array_values(array_filter($workers, static fn($r) => ($r['status'] ?? '') === 'revision'));
         $workerStateCounts = [
             'all' => count($workers),
             'pending' => count(array_filter($workers, static fn($r) => ($r['status'] ?? 'pending') === 'pending')),
-            'revision' => count($pendingProfileEdits),
+            'revision' => count($pendingProfileEdits) + count($workerRevisionRegistrations),
             'approved' => count(array_filter($workers, static fn($r) => ($r['status'] ?? '') === 'approved')),
             'rejected' => count(array_filter($workers, static fn($r) => ($r['status'] ?? '') === 'rejected')),
         ];
-        $workerRows = $state === 'revision' ? [] : $filterByState($workers, $state);
+        $workerRows = $filterByState($workers, $state);
       ?>
       <section class="verify-board">
         <div class="verify-board-head">
@@ -426,39 +444,94 @@ require __DIR__ . '/includes/admin-layout-start.php';
         </div>
 
         <div class="verify-table-wrap">
-          <table class="verify-table is-scrollable">
-            <?php if ($state === 'revision'): ?>
-              <thead>
-                <tr>
-                  <th>Gig Worker</th>
-                  <th>Bidang Diubah</th>
-                  <th>Alasan</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php if ($pendingProfileEdits === []): ?>
-                  <tr><td colspan="5"><div class="empty-state">Tidak ada pengajuan revisi profil worker.</div></td></tr>
-                <?php endif; ?>
-                <?php foreach ($pendingProfileEdits as $edit): ?>
-                  <?php $payload = is_array($edit['proposed_payload'] ?? null) ? $edit['proposed_payload'] : []; ?>
+          <?php if ($state === 'revision'): ?>
+            <?php if ($workerRevisionRegistrations !== []): ?>
+              <div style="padding:10px 14px;background:#fff7ed;border-left:4px solid #f97316;margin-bottom:12px;border-radius:6px;font-size:0.85rem;color:#9a3412;">
+                <strong>Pendaftaran Worker Perlu Revisi</strong> &mdash; Berkas atau data pendaftaran awal yang dikembalikan ke worker untuk perbaikan.
+              </div>
+              <table class="verify-table is-scrollable" style="margin-bottom:24px;">
+                <thead>
                   <tr>
-                    <td>
-                      <div class="verify-main-text"><?php echo htmlspecialchars((string)$edit['worker_username'], ENT_QUOTES, 'UTF-8'); ?></div>
-                      <div class="verify-sub-text"><?php echo htmlspecialchars((string)$edit['worker_email'], ENT_QUOTES, 'UTF-8'); ?></div>
-                    </td>
-                    <td><?php echo htmlspecialchars((string)$edit['edited_field'], ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td><?php echo htmlspecialchars((string)$edit['reason_code'], ENT_QUOTES, 'UTF-8'); ?></td>
-                    <td><?php echo admin_status_badge((string)($edit['status'] ?? 'pending')); ?></td>
-                    <td>
-                      <a class="verify-open-link" href="admin-worker-detail.php?u=<?php echo urlencode((string)$edit['worker_username']); ?>&email=<?php echo urlencode((string)$edit['worker_email']); ?>">Lihat Detail</a>
-                      <button type="button" class="verify-open-link" style="margin-left:4px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;" onclick="openAdminDecisionModal({entityType:'worker', entityName:'edit profil <?php echo htmlspecialchars((string)$edit['worker_username'], ENT_QUOTES, 'UTF-8'); ?>', editId:<?php echo (int)$edit['id']; ?>, action:'worker_edit_decision', tab:'workers'})">Ambil Keputusan</button>
-                    </td>
+                    <th class="verify-col-name">Gig Worker</th>
+                    <th class="verify-col-email">Email</th>
+                    <th class="verify-col-phone">No. Telepon</th>
+                    <th class="verify-col-field">Bidang Keahlian</th>
+                    <th class="verify-col-status">Status</th>
+                    <th class="verify-col-date">Catatan Revisi</th>
+                    <th class="verify-col-action verify-sticky-action">Aksi</th>
                   </tr>
-                <?php endforeach; ?>
-              </tbody>
-            <?php else: ?>
+                </thead>
+                <tbody>
+                  <?php foreach ($workerRevisionRegistrations as $row): ?>
+                    <?php
+                      $rowKey = gig_worker_profile_edit_key((string)($row['username'] ?? ''));
+                      $rowPendingEdits = $pendingEditsByWorkerKey[$rowKey] ?? [];
+                      $firstPendingEdit = $rowPendingEdits[0] ?? null;
+                      $adminNote = trim((string)($row['admin_note'] ?? ''));
+                    ?>
+                    <tr>
+                      <td class="verify-col-name">
+                        <a class="verify-main-text" href="admin-worker-detail.php?u=<?php echo urlencode((string)$row['username']); ?>&email=<?php echo urlencode((string)$row['contact_email']); ?><?php echo $firstPendingEdit ? '&edit_id=' . (int)$firstPendingEdit['id'] : ''; ?>" style="text-decoration:none;color:inherit;">
+                          <?php echo htmlspecialchars((string)$row['username'], ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                      </td>
+                      <td class="verify-col-email"><span class="verify-cell-ellipsis" title="<?php echo htmlspecialchars((string)$row['contact_email'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$row['contact_email'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                      <td class="verify-col-phone"><?php echo htmlspecialchars((string)$row['contact_wa'], ENT_QUOTES, 'UTF-8'); ?></td>
+                      <td class="verify-col-field"><span class="verify-cell-ellipsis" title="<?php echo htmlspecialchars((string)$row['bidang_keahlian'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string)$row['bidang_keahlian'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                      <td class="verify-col-status"><?php echo admin_worker_status_badge($row); ?></td>
+                      <td class="verify-col-date"><span class="verify-cell-ellipsis" style="max-width:220px;font-size:0.78rem;color:#b45309;" title="<?php echo htmlspecialchars($adminNote, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($adminNote !== '' ? $adminNote : 'Perlu perbaikan data/berkas.', ENT_QUOTES, 'UTF-8'); ?></span></td>
+                      <td class="verify-col-action verify-sticky-action">
+                        <a class="verify-open-link" href="admin-worker-detail.php?u=<?php echo urlencode((string)$row['username']); ?>&email=<?php echo urlencode((string)$row['contact_email']); ?><?php echo $firstPendingEdit ? '&edit_id=' . (int)$firstPendingEdit['id'] : ''; ?>">Lihat Detail</a>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            <?php endif; ?>
+
+            <?php if ($pendingProfileEdits !== []): ?>
+              <div style="padding:10px 14px;background:#eff6ff;border-left:4px solid #3b82f6;margin-bottom:12px;border-radius:6px;font-size:0.85rem;color:#1e40af;">
+                <strong>Pengajuan Perubahan Profil Worker</strong> &mdash; Permintaan pembaruan data dari worker yang sudah terdaftar.
+              </div>
+              <table class="verify-table is-scrollable">
+                <thead>
+                  <tr>
+                    <th>Gig Worker</th>
+                    <th>Bidang Diubah</th>
+                    <th>Alasan</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($pendingProfileEdits as $edit): ?>
+                    <tr>
+                      <td>
+                        <div class="verify-main-text"><?php echo htmlspecialchars((string)$edit['worker_username'], ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="verify-sub-text"><?php echo htmlspecialchars((string)$edit['worker_email'], ENT_QUOTES, 'UTF-8'); ?></div>
+                      </td>
+                      <td><?php echo htmlspecialchars((string)$edit['edited_field'], ENT_QUOTES, 'UTF-8'); ?></td>
+                      <td><?php echo htmlspecialchars((string)$edit['reason_code'], ENT_QUOTES, 'UTF-8'); ?></td>
+                      <td><?php echo admin_status_badge((string)($edit['status'] ?? 'pending')); ?></td>
+                      <td>
+                        <a class="verify-open-link" href="admin-worker-detail.php?u=<?php echo urlencode((string)$edit['worker_username']); ?>&email=<?php echo urlencode((string)$edit['worker_email']); ?>&edit_id=<?php echo (int)$edit['id']; ?>">Lihat Detail</a>
+                        <button type="button" class="verify-open-link" style="margin-left:4px;background:#0ea5e9;color:#fff;border:none;cursor:pointer;" onclick="openAdminDecisionModal({entityType:'worker', entityName:'edit profil <?php echo htmlspecialchars((string)$edit['worker_username'], ENT_QUOTES, 'UTF-8'); ?>', editId:<?php echo (int)$edit['id']; ?>, action:'worker_edit_decision', tab:'workers'})">Ambil Keputusan</button>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            <?php endif; ?>
+
+            <?php if ($workerRevisionRegistrations === [] && $pendingProfileEdits === []): ?>
+              <table class="verify-table">
+                <tbody>
+                  <tr><td colspan="5"><div class="empty-state">Tidak ada pengajuan revisi worker.</div></td></tr>
+                </tbody>
+              </table>
+            <?php endif; ?>
+          <?php else: ?>
+            <table class="verify-table is-scrollable">
               <thead>
                 <tr>
                   <th class="verify-col-name">Gig Worker</th>
@@ -504,9 +577,10 @@ require __DIR__ . '/includes/admin-layout-start.php';
                   </tr>
                 <?php endforeach; ?>
               </tbody>
-            <?php endif; ?>
-          </table>
+            </table>
+          <?php endif; ?>
         </div>
+      </section>
     <?php endif; ?>
 
     <?php if ($tab === 'projects'): ?>

@@ -135,17 +135,9 @@ try { $pdo->exec("ALTER TABLE `gig_worker_registrations` ADD COLUMN `status` VAR
 try { $pdo->exec("ALTER TABLE `gig_worker_registrations` ADD COLUMN `admin_note` TEXT NOT NULL AFTER `status`"); } catch(Throwable $ignored) {}
 try { $pdo->exec("ALTER TABLE `gig_worker_registrations` ADD COLUMN `reviewed_at` DATETIME NULL AFTER `admin_note`"); } catch(Throwable $ignored) {}
 
-ins($pdo, 'gig_worker_registrations',
-"INSERT IGNORE INTO `gig_worker_registrations`
-  (`username`,`bidang_keahlian`,`skills`,`contact_choice`,`contact_email`,`contact_wa`,`previous_projects`,`portfolio`,`video_url`,`status`,`admin_note`)
-VALUES
-  (:un, :bk, :sk, :cc, :ce, :cw, :pp, :pf, :vu, :st, :an)",
-[
-  [':un'=>'Theressa Zaratrusha',':bk'=>'Lead UI/UX Designer',':sk'=>'UI/UX Design, Figma, Design System, Prototyping',':cc'=>'siapkerja',':ce'=>'theressaz@pasker.id',':cw'=>'08117671208',':pp'=>'[]',':pf'=>'[]',':vu'=>'',':st'=>'approved',':an'=>'Seeded worker account'],
-  [':un'=>'theressaz@pasker.id',':bk'=>'Lead UI/UX Designer',':sk'=>'UI/UX Design, Figma, Design System, Prototyping',':cc'=>'siapkerja',':ce'=>'theressaz@pasker.id',':cw'=>'08117671208',':pp'=>'[]',':pf'=>'[]',':vu'=>'',':st'=>'approved',':an'=>'Seeded worker account'],
-  [':un'=>'tessa',':bk'=>'Lead UI/UX Designer',':sk'=>'UI/UX Design, Figma, Design System, Prototyping',':cc'=>'siapkerja',':ce'=>'theressaz@pasker.id',':cw'=>'08117671208',':pp'=>'[]',':pf'=>'[]',':vu'=>'',':st'=>'approved',':an'=>'Seeded worker account']
-]
-);
+require_once __DIR__ . '/includes/admin-store.php';
+gig_admin_ensure_schema($pdo);
+gig_admin_seed_workers($pdo);
 
 /* ══════════════════════════════════════════════════════════════════════════════
    2. project_history
@@ -344,7 +336,8 @@ foreach (['project_history','project_reviews','project_completions','project_off
    10. Final row counts
    ══════════════════════════════════════════════════════════════════════════════ */
 $tables = ['project_history','project_reviews','project_completions',
-           'project_applications','project_offers','employer_notifications','worker_notifications'];
+           'project_applications','project_offers','employer_notifications','worker_notifications',
+           'gig_worker_registrations','worker_profile_edit_requests'];
 $counts = [];
 foreach ($tables as $t) {
     try { $counts[$t] = $pdo->query("SELECT COUNT(*) FROM `$t`")->fetchColumn(); }

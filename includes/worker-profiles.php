@@ -1042,6 +1042,117 @@ function gig_worker_profiles(): array
                 ],
             ],
         ],
+        'farhan' => [
+            'id' => 'farhan',
+            'name' => 'Farhan Ramadhan',
+            'initials' => 'FR',
+            'color' => '#dc2626',
+            'photo' => 'https://api.dicebear.com/9.x/notionists/svg?seed=Farhan&backgroundColor=fee2e2',
+            'title' => 'Junior Web Scraper & Data Assistant',
+            'location' => 'Surakarta, Jawa Tengah',
+            'rating' => 3.5,
+            'reviews_count' => 1,
+            'completed_projects' => 1,
+            'total_projects' => 1,
+            'verified' => false,
+            'agreed' => false,
+            'category' => 'general',
+            'applied_project' => 'Ekstraksi Data Produk Marketplace',
+            'bid' => 'Rp 2.500.000',
+            'eta' => '7 Hari Kerja',
+            'proposal' => 'Membantu proses scraping data web dan entri ke format CSV/Excel secara terstruktur.',
+            'skills' => [
+                ['name' => 'Web Scraping', 'level' => 'Pemula'],
+                ['name' => 'Data Entry', 'level' => 'Pemula'],
+                ['name' => 'Microsoft Excel', 'level' => 'Menengah'],
+                ['name' => 'Python Scripting', 'level' => 'Pemula'],
+            ],
+            'contact' => [
+                'wa' => '0852-9911-3322',
+                'email' => 'farhan.ramadhan@pasker.id',
+            ],
+            'experience' => [
+                [
+                    'role' => 'Data Scraping Assistant',
+                    'project' => 'Pengumpulan Data Produk UMKM',
+                    'period' => '2026',
+                    'summary' => 'Mengekstrak data harga dan nama produk dari marketplace lokal.',
+                    'output_title' => 'Data Sheet CSV 10K Rows',
+                    'files' => [
+                        ['name' => 'Sample_Dataset_UMKM.csv', 'url' => '#', 'type' => 'Dataset CSV'],
+                    ],
+                ],
+            ],
+            'portfolio' => [
+                [
+                    'id' => 'farhan-port-1',
+                    'title' => 'Otomasi Scraping Produk',
+                    'type' => 'Python Script',
+                    'client' => 'UMKM Solo',
+                    'year' => '2026',
+                    'deliverable' => 'Script python dan file excel hasil ekspor.',
+                    'files' => [
+                        ['name' => 'Scraper_Script.py', 'url' => '#', 'type' => 'Source Code'],
+                    ],
+                ],
+            ],
+            'reviews' => [],
+        ],
+        'aldo' => [
+            'id' => 'aldo',
+            'name' => 'Aldo Pratama',
+            'initials' => 'AP',
+            'color' => '#b91c1c',
+            'photo' => 'https://api.dicebear.com/9.x/notionists/svg?seed=Aldo&backgroundColor=fee2e2',
+            'title' => 'IT Support & Hardware Technician',
+            'location' => 'Medan, Sumatera Utara',
+            'rating' => 3.8,
+            'reviews_count' => 1,
+            'completed_projects' => 1,
+            'total_projects' => 1,
+            'verified' => false,
+            'agreed' => false,
+            'category' => 'general',
+            'applied_project' => 'Instalasi Jaringan & Perawatan Komputer',
+            'bid' => 'Rp 3.000.000',
+            'eta' => '5 Hari Kerja',
+            'proposal' => 'Pengalaman teknisi perakitan dan pemeliharaan hardware komputer kantor.',
+            'skills' => [
+                ['name' => 'Hardware Maintenance', 'level' => 'Mahir'],
+                ['name' => 'Networking LAN', 'level' => 'Menengah'],
+                ['name' => 'Windows Server', 'level' => 'Pemula'],
+            ],
+            'contact' => [
+                'wa' => '0818-5544-3322',
+                'email' => 'aldo.pratama@email.com',
+            ],
+            'experience' => [
+                [
+                    'role' => 'Teknisi Lab Komputer',
+                    'project' => 'Peremajaan Jaringan Lab Sekolah',
+                    'period' => '2025',
+                    'summary' => 'Pemasangan kabel UTP CAT6 dan instalasi 30 PC lab.',
+                    'output_title' => 'Dokumentasi Instalasi Lab',
+                    'files' => [
+                        ['name' => 'Laporan_Maintenance_Lab.pdf', 'url' => '#', 'type' => 'Dokumen PDF'],
+                    ],
+                ],
+            ],
+            'portfolio' => [
+                [
+                    'id' => 'aldo-port-1',
+                    'title' => 'Maintenance Jaringan Lab',
+                    'type' => 'Dokumentasi Teknis',
+                    'client' => 'SMK TI Medan',
+                    'year' => '2025',
+                    'deliverable' => 'Topologi jaringan dan SOP pemeliharaan PC.',
+                    'files' => [
+                        ['name' => 'Topologi_Jaringan_Lab.pdf', 'url' => '#', 'type' => 'Dokumen PDF'],
+                    ],
+                ],
+            ],
+            'reviews' => [],
+        ],
     ];
 
     // ── Merge reviews from DB (primary source) ───────────────────────────────
@@ -1174,6 +1285,15 @@ function gig_find_worker(string $id): ?array
 
     if ($cleanId === 'theressaz@pasker.id' || $cleanId === 'theressaz' || str_contains($cleanId, 'theressa') || $cleanId === 'tessa') {
         $cleanId = 'tessa';
+    }
+
+    if (!isset($profiles[$cleanId])) {
+        foreach ($profiles as $k => $p) {
+            if (strcasecmp((string)($p['name'] ?? ''), $id) === 0 || strcasecmp((string)($p['contact']['email'] ?? ''), $id) === 0) {
+                $cleanId = $k;
+                break;
+            }
+        }
     }
 
     if (isset($profiles[$cleanId])) {
