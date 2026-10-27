@@ -752,6 +752,11 @@ function gig_employer_respond_application(string $appId, string $decision, strin
         return ['ok' => false, 'error' => 'Lamaran tidak ditemukan.'];
     }
 
+    $currentStatus = (string)($app['status'] ?? 'applied');
+    if (gig_is_hired_status($currentStatus) || in_array($currentStatus, ['rejected_by_employer', 'declined_by_worker'], true)) {
+        return ['ok' => false, 'error' => 'Keputusan pelamar sudah final dan tidak dapat diubah lagi.'];
+    }
+
     $vacancy = gig_find_vacancy($app['vacancy_id']);
     $projectTitle = $vacancy['title'] ?? 'Proyek';
 

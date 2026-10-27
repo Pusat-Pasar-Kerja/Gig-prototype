@@ -5,6 +5,18 @@ require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/project-vacancies.php';
 require_once __DIR__ . '/includes/project-applications.php';
 
+function gig_get_stage_rank(string $status): int
+{
+    return match ($status) {
+        'applied' => 1,
+        'reviewing' => 2,
+        'interview' => 3,
+        'accepted', 'confirmed_by_worker', 'accepted_by_employer' => 4,
+        'rejected', 'rejected_by_employer', 'declined_by_worker' => 4,
+        default => 1,
+    };
+}
+
 function gig_update_application_pipeline_status(string $appId, string $status): array
 {
     $allowed = ['applied', 'reviewing', 'interview', 'accepted', 'rejected', 'confirmed_by_worker', 'rejected_by_employer'];
@@ -14,6 +26,18 @@ function gig_update_application_pipeline_status(string $appId, string $status): 
     $app = gig_get_application_by_id($appId);
     if (!$app) {
         return ['ok' => false, 'error' => 'Lamaran tidak ditemukan.'];
+    }
+
+    $currentStatus = (string)($app['status'] ?? 'applied');
+    $currentRank = gig_get_stage_rank($currentStatus);
+    $targetRank = gig_get_stage_rank($status);
+
+    if ($currentRank >= 4) {
+        return ['ok' => false, 'error' => 'Keputusan pelamar sudah final dan tidak dapat diubah lagi.'];
+    }
+
+    if ($targetRank <= $currentRank) {
+        return ['ok' => false, 'error' => 'Lamaran yang sudah diproses tidak dapat dikembalikan ke tahapan sebelumnya karena keputusan bersifat final.'];
     }
 
     $dbStatus = match ($status) {
@@ -63,18 +87,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_application_st
     $newStatus = trim((string)$_POST['new_status']);
     $result = ['ok' => false, 'error' => 'Data tidak lengkap.'];
 
-    if ($appId !== '' && in_array($newStatus, ['applied', 'reviewing', 'interview', 'accepted', 'rejected'], true)) {
-        if ($newStatus === 'accepted' || $newStatus === 'rejected') {
-            $result = gig_employer_respond_application(
-                $appId,
-                $newStatus === 'accepted' ? 'accept' : 'reject',
-                (string)($_SESSION['username'] ?? '')
-            );
-            if (!$result['ok'] && $newStatus === 'accepted') {
-                $result = gig_update_application_pipeline_status($appId, 'confirmed_by_worker');
+    $app = gig_get_application_by_id($appId);
+    if (!$app) {
+        $result = ['ok' => false, 'error' => 'Lamaran tidak ditemukan.'];
+    } else {
+        $currentStatus = (string)($app['status'] ?? 'applied');
+        $currentRank = gig_get_stage_rank($currentStatus);
+        $targetRank = gig_get_stage_rank($newStatus);
+
+        if ($currentRank >= 4) {
+            $result = ['ok' => false, 'error' => 'Keputusan pelamar sudah final dan tidak dapat diubah lagi.'];
+        } elseif ($targetRank <= $currentRank) {
+            $result = ['ok' => false, 'error' => 'Lamaran yang sudah diproses tidak dapat dikembalikan ke tahapan sebelumnya karena keputusan bersifat final.'];
+        } elseif ($appId !== '' && in_array($newStatus, ['applied', 'reviewing', 'interview', 'accepted', 'rejected'], true)) {
+            if ($newStatus === 'accepted' || $newStatus === 'rejected') {
+                $result = gig_employer_respond_application(
+                    $appId,
+                    $newStatus === 'accepted' ? 'accept' : 'reject',
+                    (string)($_SESSION['username'] ?? '')
+                );
+                if (!$result['ok'] && $newStatus === 'accepted') {
+                    $result = gig_update_application_pipeline_status($appId, 'confirmed_by_worker');
+                }
+            } else {
+                $result = gig_update_application_pipeline_status($appId, $newStatus);
             }
-        } else {
-            $result = gig_update_application_pipeline_status($appId, $newStatus);
         }
     }
 
@@ -241,6 +278,8 @@ foreach ($jobApplications as $app) {
         'status_text' => $statusText,
         'applied_label' => $appliedLabel,
         'contact_unlocked' => $contactUnlocked ? '1' : '0',
+        'lane_rank' => gig_get_stage_rank($status),
+        'is_final' => (gig_get_stage_rank($status) >= 4) ? '1' : '0',
         'profile' => $profile,
     ];
 }
@@ -404,6 +443,149 @@ require __DIR__ . '/includes/employer-layout-start.php';
   .cand-status-form { display:flex; align-items:center; gap:8px; }
   .cand-status-form select { flex:1; padding:8px 10px; border:1px solid #dbe3f0; border-radius:10px; font-size:.84rem; }
   .cand-status-form button { padding:8px 12px; border:none; border-radius:10px; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; font-size:.82rem; }
+
+  /* Final Decision State for Cards */
+  .candidate-card.cand-card-final {
+    cursor: pointer !important;
+  }
+  .cand-pill-final {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  .cand-pill-final-accepted {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  .cand-pill-final-rejected {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+
+  /* Blocked drag drop zone (cannot move backward) */
+  .jobd-col.drag-blocked {
+    background: #fef2f2 !important;
+    border: 2px dashed #f87171 !important;
+    cursor: not-allowed !important;
+  }
+
+  /* Confirmation Modal (KarirHub / Kemnaker visual replica) */
+  .pipeline-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .pipeline-confirm-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .pipeline-confirm-modal {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 470px;
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.25), 0 0 1px rgba(0,0,0,0.15);
+    padding: 24px 26px 22px 26px;
+    transform: scale(0.94);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pipeline-confirm-overlay.open .pipeline-confirm-modal {
+    transform: scale(1);
+  }
+  .pipeline-confirm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .pipeline-confirm-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .pipeline-confirm-close {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 1.15rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+  }
+  .pipeline-confirm-close:hover {
+    color: #0f172a;
+    background: #f1f5f9;
+  }
+  .pipeline-confirm-body {
+    margin-bottom: 24px;
+  }
+  .pipeline-confirm-desc {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #334155;
+    margin: 0;
+    font-weight: 500;
+  }
+  .pipeline-confirm-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  .pipeline-btn-cancel {
+    background: #ffffff;
+    border: 1.5px solid #0f172a;
+    color: #0f172a;
+    padding: 7px 22px;
+    border-radius: 9999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .pipeline-btn-cancel:hover {
+    background: #f8fafc;
+    border-color: #000000;
+  }
+  .pipeline-btn-proceed {
+    background: #00a2e8; /* Kemnaker Cyan */
+    border: none;
+    color: #ffffff;
+    padding: 8.5px 26px;
+    border-radius: 9999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 162, 232, 0.35);
+    transition: all 0.15s ease;
+  }
+  .pipeline-btn-proceed:hover {
+    background: #0284c7;
+    box-shadow: 0 4px 18px rgba(0, 162, 232, 0.45);
+  }
 </style>
 
 <div class="jobd-shell">
@@ -525,14 +707,20 @@ require __DIR__ . '/includes/employer-layout-start.php';
                 $waText = urlencode("Halo " . $c['name'] . ", kami dari perusahaan telah menerima lamaran Anda untuk proyek '" . $job['title'] . "'. Mari berkoordinasi untuk langkah berikutnya.");
                 $emailSubject = urlencode("Penerimaan Proyek: " . $job['title']);
               ?>
+              <?php 
+                $isFinal = ($c['is_final'] === '1');
+              ?>
                 <div
-                  class="jobd-card candidate-card"
-                  draggable="true"
+                  class="jobd-card candidate-card <?php echo $isFinal ? 'cand-card-final' : ''; ?>"
+                  draggable="<?php echo $isFinal ? 'false' : 'true'; ?>"
                   data-search="<?php echo htmlspecialchars($candSearchCorpus, ENT_QUOTES, 'UTF-8'); ?>"
                   data-app-id="<?php echo htmlspecialchars($c['id'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-worker-id="<?php echo htmlspecialchars($c['worker_id'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-name="<?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-title="<?php echo htmlspecialchars($c['title'], ENT_QUOTES, 'UTF-8'); ?>"
+                  data-lane="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
+                  data-lane-rank="<?php echo (int)$c['lane_rank']; ?>"
+                  data-is-final="<?php echo $isFinal ? '1' : '0'; ?>"
                   data-status-text="<?php echo htmlspecialchars($c['status_text'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-status-ui="<?php echo htmlspecialchars($c['status_ui'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-applied="<?php echo htmlspecialchars($c['applied_label'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -562,6 +750,11 @@ require __DIR__ . '/includes/employer-layout-start.php';
                     <span class="cand-pill-status">
                       <span>🏢</span> <?php echo htmlspecialchars($c['status_tag'], ENT_QUOTES, 'UTF-8'); ?>
                     </span>
+                    <?php if ($key === 'accepted'): ?>
+                      <span class="cand-pill-final cand-pill-final-accepted">✓ Final: Diterima</span>
+                    <?php elseif ($key === 'rejected'): ?>
+                      <span class="cand-pill-final cand-pill-final-rejected">✕ Final: Ditolak</span>
+                    <?php endif; ?>
                   </div>
 
                   <div class="cand-meta-row" title="<?php echo htmlspecialchars($c['prev_experience'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -652,6 +845,25 @@ require __DIR__ . '/includes/employer-layout-start.php';
   <span style="color:#94a3b8;margin:0 2px;">➔</span>
   <span id="toastTargetDot" class="toast-dot" style="background:#fb923c;"></span>
   <span id="toastTargetLane" style="color:#ffffff;">Sedang Dipelajari</span>
+</div>
+
+<!-- Confirmation Modal (KarirHub / Kemnaker visual replica) -->
+<div id="pipelineConfirmOverlay" class="pipeline-confirm-overlay" aria-hidden="true">
+  <div class="pipeline-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="pipeline-confirm-header">
+      <h3 id="confirmModalTitle" class="pipeline-confirm-title">Konfirmasi</h3>
+      <button type="button" class="pipeline-confirm-close" id="btnConfirmClose" aria-label="Tutup modal">✕</button>
+    </div>
+    <div class="pipeline-confirm-body">
+      <p id="confirmModalText" class="pipeline-confirm-desc">
+        Anda akan menandai 1 lamaran sebagai sedang dipelajari. Lamaran yang sudah dipelajari tidak dapat dikembalikan ke lamaran masuk lagi. Untuk meneruskan aksi silahkan klik tombol konfirmasi dibawah ini.
+      </p>
+    </div>
+    <div class="pipeline-confirm-footer">
+      <button type="button" class="pipeline-btn-cancel" id="btnConfirmCancel">Batalkan</button>
+      <button type="button" class="pipeline-btn-proceed" id="btnConfirmProceed">Lanjutkan</button>
+    </div>
+  </div>
 </div>
 
 <div id="candidateOverlay" class="cand-overlay" onclick="closeCandidateDrawer()"></div>
@@ -835,13 +1047,102 @@ require __DIR__ . '/includes/employer-layout-start.php';
       dragToast.classList.add('visible');
       toastTimeout = setTimeout(function() {
         dragToast.classList.remove('visible');
-      }, 2500);
+      }, 2800);
+    }
+
+    function showWarningToast(message) {
+      if (!dragToast) return;
+      if (toastTimeout) clearTimeout(toastTimeout);
+      dragToast.innerHTML = '<span style="color:#f59e0b;font-size:1.05rem;">⚠️</span> <span style="color:#ffffff;">' + escapeHtml(message) + '</span>';
+      dragToast.classList.add('visible');
+      toastTimeout = setTimeout(function() {
+        dragToast.classList.remove('visible');
+      }, 3500);
     }
 
     function hideDragToast() {
       if (!dragToast) return;
       dragToast.classList.remove('visible');
     }
+
+    /* ─── CONFIRMATION MODAL CONTROLLER ─── */
+    const confirmOverlay = document.getElementById('pipelineConfirmOverlay');
+    const confirmTitle = document.getElementById('confirmModalTitle');
+    const confirmText = document.getElementById('confirmModalText');
+    const btnConfirmClose = document.getElementById('btnConfirmClose');
+    const btnConfirmCancel = document.getElementById('btnConfirmCancel');
+    const btnConfirmProceed = document.getElementById('btnConfirmProceed');
+
+    let currentConfirmCallback = null;
+    let currentCancelCallback = null;
+
+    const confirmMessages = {
+      'reviewed': 'Anda akan menandai 1 lamaran sebagai sedang dipelajari. Lamaran yang sudah dipelajari tidak dapat dikembalikan ke lamaran masuk lagi. Untuk meneruskan aksi silahkan klik tombol konfirmasi dibawah ini.',
+      'interview': 'Anda akan memindahkan 1 lamaran ke tahap wawancara. Lamaran yang sudah dipindahkan ke tahap wawancara tidak dapat dikembalikan ke tahapan sebelumnya. Untuk meneruskan aksi silahkan klik tombol konfirmasi dibawah ini.',
+      'accepted': 'Anda akan menandai 1 lamaran sebagai diterima untuk proyek ini. Kontak resmi Gig Worker akan terbuka. Keputusan ini bersifat final dan tidak dapat dikembalikan ke tahapan sebelumnya. Untuk meneruskan aksi silahkan klik tombol konfirmasi dibawah ini.',
+      'rejected': 'Anda akan menandai 1 lamaran sebagai ditolak. Keputusan penolakan bersifat final dan tidak dapat dikembalikan ke tahapan sebelumnya. Untuk meneruskan aksi silahkan klik tombol konfirmasi dibawah ini.'
+    };
+
+    function openConfirmModal(targetLaneKey, onConfirm, onCancel) {
+      if (!confirmOverlay || !confirmText) {
+        if (typeof onConfirm === 'function') onConfirm();
+        return;
+      }
+      const msg = confirmMessages[targetLaneKey] || 'Lamaran yang sudah dipindahkan tidak dapat dikembalikan ke tahapan sebelumnya. Untuk meneruskan aksi silahkan klik tombol konfirmasi dibawah ini.';
+      confirmText.textContent = msg;
+      currentConfirmCallback = onConfirm;
+      currentCancelCallback = onCancel;
+      confirmOverlay.classList.add('open');
+      confirmOverlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeConfirmModal() {
+      if (!confirmOverlay) return;
+      confirmOverlay.classList.remove('open');
+      confirmOverlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      currentConfirmCallback = null;
+      currentCancelCallback = null;
+    }
+
+    if (btnConfirmCancel) {
+      btnConfirmCancel.addEventListener('click', function() {
+        const cb = currentCancelCallback;
+        closeConfirmModal();
+        if (typeof cb === 'function') cb();
+      });
+    }
+    if (btnConfirmClose) {
+      btnConfirmClose.addEventListener('click', function() {
+        const cb = currentCancelCallback;
+        closeConfirmModal();
+        if (typeof cb === 'function') cb();
+      });
+    }
+    if (confirmOverlay) {
+      confirmOverlay.addEventListener('click', function(e) {
+        if (e.target === confirmOverlay) {
+          const cb = currentCancelCallback;
+          closeConfirmModal();
+          if (typeof cb === 'function') cb();
+        }
+      });
+    }
+    if (btnConfirmProceed) {
+      btnConfirmProceed.addEventListener('click', function() {
+        const cb = currentConfirmCallback;
+        closeConfirmModal();
+        if (typeof cb === 'function') cb();
+      });
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && confirmOverlay && confirmOverlay.classList.contains('open')) {
+        const cb = currentCancelCallback;
+        closeConfirmModal();
+        if (typeof cb === 'function') cb();
+      }
+    });
 
     window.copyWorkerContact = function(e, wa, email) {
       if (e) e.stopPropagation();
@@ -892,7 +1193,15 @@ require __DIR__ . '/includes/employer-layout-start.php';
       }
     };
 
-    /* ─── DRAG & DROP IMPLEMENTATION ─── */
+    /* ─── DRAG & DROP IMPLEMENTATION (IRREVERSIBLE PIPELINE) ─── */
+    const laneRanks = {
+      'incoming': 1,
+      'reviewed': 2,
+      'interview': 3,
+      'accepted': 4,
+      'rejected': 4
+    };
+
     let draggedCard = null;
     let sourceLaneKey = null;
     let isDraggingActive = false;
@@ -945,13 +1254,21 @@ require __DIR__ . '/includes/employer-layout-start.php';
       const columns = document.querySelectorAll('.jobd-col');
 
       cards.forEach(function(card) {
-        card.setAttribute('draggable', 'true');
+        const isFinal = card.getAttribute('data-is-final') === '1' || parseInt(card.getAttribute('data-lane-rank') || '1', 10) >= 4;
+        card.setAttribute('draggable', isFinal ? 'false' : 'true');
 
         card.addEventListener('dragstart', function(e) {
+          const isCardFinal = card.getAttribute('data-is-final') === '1' || parseInt(card.getAttribute('data-lane-rank') || '1', 10) >= 4;
+          if (isCardFinal) {
+            e.preventDefault();
+            showWarningToast('Keputusan pelamar sudah final dan tidak dapat diubah lagi.');
+            return false;
+          }
+
           draggedCard = card;
           isDraggingActive = true;
           const parentCol = card.closest('.jobd-col');
-          sourceLaneKey = parentCol ? parentCol.getAttribute('data-lane') : 'incoming';
+          sourceLaneKey = parentCol ? parentCol.getAttribute('data-lane') : (card.getAttribute('data-lane') || 'incoming');
           card.classList.add('is-dragging');
           e.dataTransfer.setData('text/plain', card.getAttribute('data-app-id') || '');
           e.dataTransfer.effectAllowed = 'move';
@@ -962,7 +1279,10 @@ require __DIR__ . '/includes/employer-layout-start.php';
 
         card.addEventListener('dragend', function() {
           card.classList.remove('is-dragging');
-          columns.forEach(function(c) { c.classList.remove('drag-over'); });
+          columns.forEach(function(c) {
+            c.classList.remove('drag-over');
+            c.classList.remove('drag-blocked');
+          });
           setTimeout(function() {
             isDraggingActive = false;
             draggedCard = null;
@@ -976,106 +1296,165 @@ require __DIR__ . '/includes/employer-layout-start.php';
       columns.forEach(function(col) {
         col.addEventListener('dragover', function(e) {
           e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          col.classList.add('drag-over');
+          if (!draggedCard) return;
 
-          if (draggedCard) {
+          const targetLaneKey = col.getAttribute('data-lane') || 'incoming';
+          const sRank = laneRanks[sourceLaneKey] || 1;
+          const tRank = laneRanks[targetLaneKey] || 1;
+
+          if (tRank <= sRank) {
+            // Irreversible pipeline: cannot move backward or stay in same lane
+            e.dataTransfer.dropEffect = 'none';
+            col.classList.remove('drag-over');
+            if (targetLaneKey !== sourceLaneKey) {
+              col.classList.add('drag-blocked');
+            }
+          } else {
+            // Valid forward move
+            e.dataTransfer.dropEffect = 'move';
+            col.classList.remove('drag-blocked');
+            col.classList.add('drag-over');
             const candName = draggedCard.getAttribute('data-name') || 'Kandidat';
-            const targetLaneKey = col.getAttribute('data-lane') || 'incoming';
             showDragToast(candName, sourceLaneKey, targetLaneKey);
           }
         });
 
         col.addEventListener('dragenter', function(e) {
           e.preventDefault();
-          col.classList.add('drag-over');
+          if (!draggedCard) return;
+          const targetLaneKey = col.getAttribute('data-lane') || 'incoming';
+          const sRank = laneRanks[sourceLaneKey] || 1;
+          const tRank = laneRanks[targetLaneKey] || 1;
+
+          if (tRank > sRank) {
+            col.classList.add('drag-over');
+          } else if (targetLaneKey !== sourceLaneKey) {
+            col.classList.add('drag-blocked');
+          }
         });
 
         col.addEventListener('dragleave', function(e) {
           if (!col.contains(e.relatedTarget)) {
             col.classList.remove('drag-over');
+            col.classList.remove('drag-blocked');
           }
         });
 
         col.addEventListener('drop', function(e) {
           e.preventDefault();
           col.classList.remove('drag-over');
+          col.classList.remove('drag-blocked');
           if (!draggedCard) return;
 
           const targetLaneKey = col.getAttribute('data-lane') || 'incoming';
           const cardToMove = draggedCard;
+          const sRank = laneRanks[sourceLaneKey] || 1;
+          const tRank = laneRanks[targetLaneKey] || 1;
           const appId = cardToMove.getAttribute('data-app-id') || '';
           const candName = cardToMove.getAttribute('data-name') || 'Kandidat';
           const prevParentCol = cardToMove.closest('.jobd-col');
 
+          hideDragToast();
+
           if (targetLaneKey === sourceLaneKey) {
-            hideDragToast();
             return;
           }
 
-          // Move DOM element to target column
-          const targetBody = col.querySelector('.jobd-col-body');
-          if (targetBody) {
-            targetBody.appendChild(cardToMove);
+          // Strict block on moving backwards
+          if (tRank <= sRank) {
+            showWarningToast('Lamaran yang sudah diproses tidak dapat dikembalikan ke tahapan sebelumnya. Keputusan bersifat final.');
+            return;
           }
 
-          // Update column counts and empty indicators
-          updateLaneEmptyState(prevParentCol);
-          updateLaneEmptyState(col);
+          // Valid forward move: Prompt Confirmation Modal
+          openConfirmModal(
+            targetLaneKey,
+            function onConfirm() {
+              // Move DOM element to target column
+              const targetBody = col.querySelector('.jobd-col-body');
+              if (targetBody) {
+                targetBody.appendChild(cardToMove);
+              }
 
-          // Update card attributes
-          const isNowAccepted = (targetLaneKey === 'accepted');
-          cardToMove.setAttribute('data-contact-unlocked', isNowAccepted ? '1' : '0');
-          cardToMove.setAttribute('data-status-text', laneLabels[targetLaneKey] || targetLaneKey);
-          cardToMove.setAttribute('data-status-ui', isNowAccepted ? 'accepted' : (targetLaneKey === 'reviewed' ? 'reviewing' : (targetLaneKey === 'incoming' ? 'applied' : targetLaneKey)));
+              // Update column counts and empty indicators
+              updateLaneEmptyState(prevParentCol);
+              updateLaneEmptyState(col);
 
-          // Update card contact box
-          const contactContainer = cardToMove.querySelector('.card-contact-box-container');
-          if (contactContainer) {
-            const waNum = cardToMove.getAttribute('data-contact-wa') || '0812-3456-7890';
-            const emailVal = cardToMove.getAttribute('data-contact-email') || 'kandidat@email.com';
-            if (isNowAccepted) {
-              contactContainer.innerHTML = buildUnlockedContactHtml(waNum, emailVal, candName);
-            } else {
-              contactContainer.innerHTML = buildLockedContactHtml();
+              // Update card attributes
+              const isNowAccepted = (targetLaneKey === 'accepted');
+              const isNowFinal = (tRank >= 4);
+
+              cardToMove.setAttribute('data-lane', targetLaneKey);
+              cardToMove.setAttribute('data-lane-rank', String(tRank));
+              cardToMove.setAttribute('data-is-final', isNowFinal ? '1' : '0');
+              cardToMove.setAttribute('draggable', isNowFinal ? 'false' : 'true');
+              if (isNowFinal) {
+                cardToMove.classList.add('cand-card-final');
+                const badgesWrap = cardToMove.querySelector('.cand-card-badges');
+                if (badgesWrap && !badgesWrap.querySelector('.cand-pill-final')) {
+                  const finalBadge = document.createElement('span');
+                  finalBadge.className = 'cand-pill-final ' + (isNowAccepted ? 'cand-pill-final-accepted' : 'cand-pill-final-rejected');
+                  finalBadge.textContent = isNowAccepted ? '✓ Final: Diterima' : '✕ Final: Ditolak';
+                  badgesWrap.appendChild(finalBadge);
+                }
+              }
+
+              cardToMove.setAttribute('data-contact-unlocked', isNowAccepted ? '1' : '0');
+              cardToMove.setAttribute('data-status-text', laneLabels[targetLaneKey] || targetLaneKey);
+              cardToMove.setAttribute('data-status-ui', isNowAccepted ? 'accepted' : (targetLaneKey === 'reviewed' ? 'reviewing' : (targetLaneKey === 'incoming' ? 'applied' : targetLaneKey)));
+
+              // Update card contact box
+              const contactContainer = cardToMove.querySelector('.card-contact-box-container');
+              if (contactContainer) {
+                const waNum = cardToMove.getAttribute('data-contact-wa') || '0812-3456-7890';
+                const emailVal = cardToMove.getAttribute('data-contact-email') || 'kandidat@email.com';
+                if (isNowAccepted) {
+                  contactContainer.innerHTML = buildUnlockedContactHtml(waNum, emailVal, candName);
+                } else {
+                  contactContainer.innerHTML = buildLockedContactHtml();
+                }
+              }
+
+              // Show confirmation toast
+              const targetLabel = laneLabels[targetLaneKey] || targetLaneKey;
+              showSuccessToast(candName + ' berhasil dipindahkan ke ' + targetLabel + (isNowAccepted ? ' (Kontak Terbuka!)' : ''));
+
+              // Map lane to backend status
+              let backendStatus = 'applied';
+              if (targetLaneKey === 'accepted') backendStatus = 'accepted';
+              else if (targetLaneKey === 'rejected') backendStatus = 'rejected';
+              else if (targetLaneKey === 'reviewed') backendStatus = 'reviewing';
+              else if (targetLaneKey === 'interview') backendStatus = 'interview';
+
+              // Asynchronously persist change to server
+              const formData = new FormData();
+              formData.append('update_application_status', '1');
+              formData.append('app_id', appId);
+              formData.append('new_status', backendStatus);
+              formData.append('ajax', '1');
+
+              fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest',
+                  'Accept': 'application/json'
+                }
+              })
+              .then(function(res) { return res.json(); })
+              .then(function(data) {
+                if (!data.ok) {
+                  showWarningToast('Peringatan: ' + (data.message || 'Gagal menyimpan ke server'));
+                }
+              })
+              .catch(function(err) {
+                console.warn('Pipeline status update sync:', err);
+              });
+            },
+            function onCancel() {
+              showWarningToast('Pemindahan ' + candName + ' dibatalkan.');
             }
-          }
-
-          // Show confirmation toast
-          const targetLabel = laneLabels[targetLaneKey] || targetLaneKey;
-          showSuccessToast(candName + ' dipindahkan ke ' + targetLabel + (isNowAccepted ? ' (Kontak Terbuka!)' : ''));
-
-          // Map lane to backend status
-          let backendStatus = 'applied';
-          if (targetLaneKey === 'accepted') backendStatus = 'accepted';
-          else if (targetLaneKey === 'rejected') backendStatus = 'rejected';
-          else if (targetLaneKey === 'reviewed') backendStatus = 'reviewing';
-          else if (targetLaneKey === 'interview') backendStatus = 'interview';
-
-          // Asynchronously persist change to server
-          const formData = new FormData();
-          formData.append('update_application_status', '1');
-          formData.append('app_id', appId);
-          formData.append('new_status', backendStatus);
-          formData.append('ajax', '1');
-
-          fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest',
-              'Accept': 'application/json'
-            }
-          })
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            if (!data.ok) {
-              showSuccessToast('Peringatan: ' + (data.message || 'Gagal menyimpan ke server'));
-            }
-          })
-          .catch(function(err) {
-            console.warn('Pipeline status update sync:', err);
-          });
+          );
         });
       });
     }
@@ -1300,13 +1679,72 @@ require __DIR__ . '/includes/employer-layout-start.php';
       }
 
       if (appIdInput) appIdInput.value = card.getAttribute('data-app-id') || '';
-      if (statusSelect) statusSelect.value = card.getAttribute('data-status-ui') || 'applied';
+      
+      const candRank = parseInt(card.getAttribute('data-lane-rank') || '1', 10);
+      const candIsFinal = card.getAttribute('data-is-final') === '1' || candRank >= 4;
+      const drawerForm = document.getElementById('drawerStatusForm');
+      const saveBtn = drawerForm ? drawerForm.querySelector('button[type="submit"]') : null;
+
+      if (statusSelect) {
+        statusSelect.value = card.getAttribute('data-status-ui') || 'applied';
+
+        const statusOptions = statusSelect.querySelectorAll('option');
+        statusOptions.forEach(function(opt) {
+          const val = opt.value;
+          const optRank = (val === 'applied' ? 1 : (val === 'reviewing' ? 2 : (val === 'interview' ? 3 : 4)));
+          if (optRank <= candRank) {
+            opt.disabled = true;
+          } else {
+            opt.disabled = false;
+          }
+        });
+
+        if (candIsFinal) {
+          statusSelect.disabled = true;
+          if (saveBtn) saveBtn.style.display = 'none';
+          let finalNotice = drawerForm.querySelector('.drawer-final-notice');
+          if (!finalNotice) {
+            finalNotice = document.createElement('div');
+            finalNotice.className = 'drawer-final-notice';
+            finalNotice.style.cssText = 'padding:6px 12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;font-size:0.8rem;color:#475569;font-weight:700;display:flex;align-items:center;gap:6px;';
+            finalNotice.innerHTML = '🔒 Keputusan sudah final (' + escapeHtml(card.getAttribute('data-status-text') || '') + ')';
+            drawerForm.appendChild(finalNotice);
+          } else {
+            finalNotice.innerHTML = '🔒 Keputusan sudah final (' + escapeHtml(card.getAttribute('data-status-text') || '') + ')';
+            finalNotice.style.display = 'flex';
+          }
+        } else {
+          statusSelect.disabled = false;
+          if (saveBtn) saveBtn.style.display = 'inline-block';
+          const finalNotice = drawerForm ? drawerForm.querySelector('.drawer-final-notice') : null;
+          if (finalNotice) finalNotice.style.display = 'none';
+        }
+      }
 
       setDrawerTab('profile');
       overlay.classList.add('open');
       drawer.classList.add('open');
       drawer.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
+    }
+
+    const drawerForm = document.getElementById('drawerStatusForm');
+    if (drawerForm) {
+      drawerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newStatus = statusSelect ? statusSelect.value : '';
+        const targetLaneKey = (newStatus === 'reviewing' ? 'reviewed' : (newStatus === 'accepted' ? 'accepted' : (newStatus === 'rejected' ? 'rejected' : (newStatus === 'interview' ? 'interview' : 'incoming'))));
+
+        openConfirmModal(
+          targetLaneKey,
+          function onConfirm() {
+            drawerForm.submit();
+          },
+          function onCancel() {
+            showWarningToast('Pembaruan status dibatalkan.');
+          }
+        );
+      });
     }
 
     document.querySelectorAll('.candidate-card').forEach(function(card) {
