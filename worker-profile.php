@@ -107,7 +107,7 @@ if ($role === 'worker') {
             </button>
           <?php endif; ?>
         </div>
-        <div class="profile-title"><?php echo htmlspecialchars($worker['title'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($worker['location'], ENT_QUOTES, 'UTF-8'); ?></div>
+        <div class="profile-title"><?php echo htmlspecialchars($worker['location'] ?? '', ENT_QUOTES, 'UTF-8'); ?></div>
         <div class="profile-meta">
           <span class="stars"><?php echo gig_stars($worker['rating']); ?></span>
           <strong><?php echo number_format((float)$worker['rating'], 1); ?></strong>
@@ -127,7 +127,7 @@ if ($role === 'worker') {
       } elseif (!empty($worker['social_media']) && is_array($worker['social_media'])) {
           $socialMediaList = $worker['social_media'];
       }
-      $bidangValue = trim((string)($regData['bidang_keahlian'] ?? ($worker['title'] ?? '')));
+      $bidangValue = trim((string)($regData['bidang_keahlian'] ?? ''));
       $skillsList = gig_normalize_skills(!empty($regData['skills']) ? $regData['skills'] : ($worker['skills'] ?? []));
     ?>
 

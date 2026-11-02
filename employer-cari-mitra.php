@@ -603,7 +603,9 @@ require __DIR__ . '/includes/employer-layout-start.php';
           <div class="mitra-name-row">
             <div class="mitra-name"><?php echo htmlspecialchars($w['name'], ENT_QUOTES, 'UTF-8'); ?></div>
           </div>
+          <?php if (!empty($w['title'])): ?>
           <div class="mitra-role"><?php echo htmlspecialchars($w['title'], ENT_QUOTES, 'UTF-8'); ?></div>
+          <?php endif; ?>
           
           <!-- Dynamic Match Badge Snippet (shows where keyword matched) -->
           <div class="mitra-match-pill" style="display:none;"></div>

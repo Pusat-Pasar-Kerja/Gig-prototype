@@ -127,7 +127,6 @@ function gig_db(): ?PDO
                 `initials`           VARCHAR(10)  NOT NULL DEFAULT '',
                 `color`              VARCHAR(30)  NOT NULL DEFAULT '#2563eb',
                 `photo`              VARCHAR(500) NOT NULL DEFAULT '',
-                `title`              VARCHAR(150) NOT NULL DEFAULT '',
                 `location`           VARCHAR(100) NOT NULL DEFAULT '',
                 `rating`             DECIMAL(3,1) NOT NULL DEFAULT 5.0,
                 `reviews_count`      INT UNSIGNED NOT NULL DEFAULT 0,
