@@ -69,6 +69,15 @@ $relatedServices = array_values(array_filter($allServices, function ($s) use ($s
 }));
 $relatedServices = array_slice($relatedServices, 0, 4);
 
+// Related Experience from service catalogue or worker profile
+$relatedExp = $service['related_experience'] ?? [];
+if (empty($relatedExp) && !empty($workerId)) {
+    $wObj = gig_find_worker($workerId);
+    if ($wObj && !empty($wObj['experience'])) {
+        $relatedExp = $wObj['experience'];
+    }
+}
+
 $gallery = $service['gallery'] ?? [];
 if (empty($gallery)) {
     $gallery = [$service['thumbnail'] ?: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80'];
@@ -285,6 +294,91 @@ if ($isEmployer) {
     font-size: 0.86rem;
     color: var(--text-main);
     line-height: 1.45;
+  }
+
+  /* Related Experience Segment */
+  .related-exp-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    padding-left: 20px;
+    border-left: 2px solid #e2e8f0;
+    margin-left: 10px;
+    margin-top: 14px;
+  }
+  .related-exp-item {
+    position: relative;
+  }
+  .exp-dot {
+    position: absolute;
+    left: -27px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-blue);
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 0 0 2.5px #bfdbfe;
+  }
+  .exp-card-box {
+    background: #f8fafc;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: all 0.2s ease;
+  }
+  .exp-card-box:hover {
+    border-color: #93c5fd;
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+  }
+  .exp-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .exp-role {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-main);
+  }
+  .exp-separator {
+    margin: 0 6px;
+    color: #cbd5e1;
+  }
+  .exp-project {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+  }
+  .exp-period-badge {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #475569;
+    background: #e2e8f0;
+    padding: 3px 9px;
+    border-radius: 6px;
+  }
+  .exp-summary {
+    font-size: 0.86rem;
+    color: #475569;
+    line-height: 1.55;
+    margin: 0 0 10px 0;
+  }
+  .exp-output-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0369a1;
+    background: #e0f2fe;
+    padding: 4px 10px;
+    border-radius: 6px;
   }
 
   /* Seller Profile Box */
@@ -525,6 +619,9 @@ if ($isEmployer) {
     <nav class="content-nav-tabs">
       <a href="#deskripsi" class="content-tab-btn active">Deskripsi Layanan</a>
       <a href="#lingkup" class="content-tab-btn">Cakupan Deliverables</a>
+      <?php if (!empty($relatedExp)): ?>
+        <a href="#pengalaman" class="content-tab-btn">Pengalaman Terkait (<?php echo count($relatedExp); ?>)</a>
+      <?php endif; ?>
       <a href="#profil" class="content-tab-btn">Tentang Gig Worker</a>
       <a href="#ulasan" class="content-tab-btn">Penilaian Perusahaan (<?php echo (int)($service['reviews_count'] ?? 148); ?>)</a>
     </nav>
@@ -565,7 +662,50 @@ if ($isEmployer) {
       </div>
     </section>
 
-    <!-- SECTION 3: Profil Gig Worker -->
+    <!-- SECTION 3: Pengalaman Proyek Terkait -->
+    <?php if (!empty($relatedExp)): ?>
+      <section class="detail-card" id="pengalaman">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+          <h2 class="card-heading" style="margin-bottom:0;">Pengalaman Proyek Terkait</h2>
+          <span style="font-size:0.76rem;font-weight:700;color:var(--primary-blue);background:#eff6ff;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Portofolio Rekam Jejak
+          </span>
+        </div>
+        <p style="font-size:0.86rem;color:var(--text-muted);margin-bottom:16px;">Pengalaman dan proyek sejenis yang pernah diselesaikan oleh Gig Worker ini:</p>
+
+        <div class="related-exp-timeline">
+          <?php foreach ($relatedExp as $exp): ?>
+            <div class="related-exp-item">
+              <div class="exp-dot"></div>
+              <div class="exp-card-box">
+                <div class="exp-header-row">
+                  <div>
+                    <span class="exp-role"><?php echo htmlspecialchars($exp['role'] ?? 'Tenaga Ahli', ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="exp-separator">•</span>
+                    <span class="exp-project"><?php echo htmlspecialchars($exp['project'] ?? 'Proyek Klien', ENT_QUOTES, 'UTF-8'); ?></span>
+                  </div>
+                  <?php if (!empty($exp['period'])): ?>
+                    <span class="exp-period-badge"><?php echo htmlspecialchars($exp['period'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <?php endif; ?>
+                </div>
+                <?php if (!empty($exp['summary'])): ?>
+                  <p class="exp-summary"><?php echo htmlspecialchars($exp['summary'], ENT_QUOTES, 'UTF-8'); ?></p>
+                <?php endif; ?>
+                <?php if (!empty($exp['output_title']) || !empty($exp['deliverable'])): ?>
+                  <div class="exp-output-tag">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Output Hasil Kerja: <strong><?php echo htmlspecialchars($exp['output_title'] ?? $exp['deliverable'], ENT_QUOTES, 'UTF-8'); ?></strong></span>
+                  </div>
+                <?php endif; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </section>
+    <?php endif; ?>
+
+    <!-- SECTION 4: Profil Gig Worker -->
     <section class="detail-card" id="profil">
       <h2 class="card-heading">Tentang Gig Worker</h2>
       <div class="seller-profile-card">

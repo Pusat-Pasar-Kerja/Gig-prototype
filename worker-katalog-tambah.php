@@ -80,6 +80,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ];
     }
 
+    // Related Experience
+    $relatedExperience = [];
+    if (!empty($_POST['exp_role']) && is_array($_POST['exp_role'])) {
+        foreach ($_POST['exp_role'] as $idx => $roleName) {
+            $roleName = trim((string)$roleName);
+            $projName = trim((string)($_POST['exp_project'][$idx] ?? ''));
+            $period = trim((string)($_POST['exp_period'][$idx] ?? ''));
+            $summary = trim((string)($_POST['exp_summary'][$idx] ?? ''));
+            $output = trim((string)($_POST['exp_output'][$idx] ?? ''));
+            if (!empty($roleName) || !empty($projName)) {
+                $relatedExperience[] = [
+                    'role' => $roleName,
+                    'project' => $projName,
+                    'period' => $period,
+                    'summary' => $summary,
+                    'output_title' => $output,
+                ];
+            }
+        }
+    }
+    if (empty($relatedExperience) && !empty($workerObj['experience'])) {
+        $relatedExperience = $workerObj['experience'];
+    }
+
     if (empty($title)) {
         $errorMsg = 'Judul katalog jasa wajib diisi.';
     } else {
@@ -104,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'revisions' => $revisions,
             'scope_summary' => $scopeSummary,
             'deliverables' => $deliverablesList,
+            'related_experience' => $relatedExperience,
             'description' => $description,
             'packages' => [],
             'client_requirements' => $clientRequirements,
@@ -451,10 +476,75 @@ Dukungan asistensi teknis pengerjaan deliverables</textarea>
         </div>
       </div>
 
-      <!-- STEP 4: Description & Requirements -->
+      <!-- STEP 4: Related Experience -->
       <div class="form-section-card">
         <div class="section-header">
           <div class="section-step-num">4</div>
+          <div style="flex:1;">
+            <h2 class="section-title">Pengalaman Proyek Terkait</h2>
+            <p class="section-subtitle">Cantumkan rekam jejak atau proyek sejenis yang pernah Anda selesaikan untuk meyakinkan perusahaan pemberi kerja.</p>
+          </div>
+        </div>
+
+        <div id="experienceList" style="display:flex;flex-direction:column;gap:14px;">
+          <?php
+          $workerExps = $workerObj['experience'] ?? [];
+          if (empty($workerExps)) {
+              $workerExps = [
+                  [
+                      'role' => 'Lead UI/UX Designer',
+                      'project' => 'Redesign Dashboard KarirHub',
+                      'period' => '2025 — 2026',
+                      'summary' => 'Merancang arsitektur informasi, wireframe, dan prototype interaktif.',
+                      'output_title' => 'Figma Interactive Prototype'
+                  ]
+              ];
+          }
+          foreach ($workerExps as $idx => $we):
+          ?>
+            <div class="exp-input-card" style="background:#f8fafc;border:1px solid var(--border-subtle);border-radius:12px;padding:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span style="font-size:0.85rem;font-weight:800;color:var(--text-main);">Pengalaman #<span class="exp-num"><?php echo $idx + 1; ?></span></span>
+                <button type="button" onclick="this.closest('.exp-input-card').remove(); renumberExps();" style="background:transparent;border:none;color:#ef4444;font-size:0.8rem;font-weight:700;cursor:pointer;">&times; Hapus</button>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Peran / Posisi Anda</label>
+                  <input type="text" name="exp_role[]" class="form-control" value="<?php echo htmlspecialchars($we['role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Lead Designer" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Nama Proyek / Klien</label>
+                  <input type="text" name="exp_project[]" class="form-control" value="<?php echo htmlspecialchars($we['project'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Redesign Aplikasi PT ABC" />
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Periode Pengerjaan</label>
+                  <input type="text" name="exp_period[]" class="form-control" value="<?php echo htmlspecialchars($we['period'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Jan 2025 — Jun 2026" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Output / Deliverables Utama</label>
+                  <input type="text" name="exp_output[]" class="form-control" value="<?php echo htmlspecialchars($we['output_title'] ?? ($we['deliverable'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Figma Prototype & UI Kit" />
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Ringkasan Lingkup Kerja</label>
+                <textarea name="exp_summary[]" class="form-control" rows="2" placeholder="Ringkasan singkat kontribusi dan tanggung jawab Anda..."><?php echo htmlspecialchars($we['summary'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+
+        <button type="button" class="btn-secondary" onclick="addExperienceCard()" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:0.84rem;font-weight:700;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          + Tambah Pengalaman Proyek Lainnya
+        </button>
+      </div>
+
+      <!-- STEP 5: Description & Requirements -->
+      <div class="form-section-card">
+        <div class="section-header">
+          <div class="section-step-num">5</div>
           <div>
             <h2 class="section-title">Deskripsi Lengkap & Kebutuhan Brief Proyek</h2>
             <p class="section-subtitle">Jelaskan keahlian Anda, alur pengerjaan deliverables, dan apa yang harus disiapkan perusahaan pemberi kerja.</p>
@@ -550,6 +640,52 @@ Mengapa Memilih Kami?
   document.getElementById('inputTitle').addEventListener('input', updateLivePreview);
   document.getElementById('inputDeliveryDays').addEventListener('input', updateLivePreview);
   document.getElementById('inputThumbnail').addEventListener('input', updateLivePreview);
+
+  function renumberExps() {
+    document.querySelectorAll('#experienceList .exp-num').forEach((el, idx) => {
+      el.innerText = idx + 1;
+    });
+  }
+
+  function addExperienceCard() {
+    const list = document.getElementById('experienceList');
+    const newIdx = list.querySelectorAll('.exp-input-card').length + 1;
+    const card = document.createElement('div');
+    card.className = 'exp-input-card';
+    card.style = 'background:#f8fafc;border:1px solid var(--border-subtle);border-radius:12px;padding:16px;';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:0.85rem;font-weight:800;color:var(--text-main);">Pengalaman #<span class="exp-num">${newIdx}</span></span>
+        <button type="button" onclick="this.closest('.exp-input-card').remove(); renumberExps();" style="background:transparent;border:none;color:#ef4444;font-size:0.8rem;font-weight:700;cursor:pointer;">&times; Hapus</button>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Peran / Posisi Anda</label>
+          <input type="text" name="exp_role[]" class="form-control" placeholder="Contoh: UI/UX Designer" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nama Proyek / Klien</label>
+          <input type="text" name="exp_project[]" class="form-control" placeholder="Contoh: Aplikasi Digital Payment" />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Periode Pengerjaan</label>
+          <input type="text" name="exp_period[]" class="form-control" placeholder="Contoh: Mar 2025 — Agu 2025" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Output / Deliverables Utama</label>
+          <input type="text" name="exp_output[]" class="form-control" placeholder="Contoh: Wireframe & User Journey Map" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Ringkasan Lingkup Kerja</label>
+        <textarea name="exp_summary[]" class="form-control" rows="2" placeholder="Ringkasan singkat kontribusi dan tanggung jawab Anda..."></textarea>
+      </div>
+    `;
+    list.appendChild(card);
+    renumberExps();
+  }
 </script>
 
 <?php require __DIR__ . '/includes/worker-layout-end.php'; ?>
