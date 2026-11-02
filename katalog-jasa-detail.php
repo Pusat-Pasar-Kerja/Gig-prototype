@@ -35,31 +35,6 @@ $relatedServices = array_values(array_filter($allServices, function ($s) use ($s
 }));
 $relatedServices = array_slice($relatedServices, 0, 4);
 
-$packages = $service['packages'] ?? [];
-$basicPkg = $packages['basic'] ?? [
-    'name' => 'Paket Basic',
-    'price' => $service['price_starting'] ?? 150000,
-    'delivery_days' => $service['delivery_days'] ?? 2,
-    'revisions' => $service['revisions'] ?? '2x Revisi',
-    'desc' => 'Paket hemat esensial',
-    'features' => ['Konsep Desain Awal', 'File HD JPG & PNG Transparan', 'Hak Cipta Penggunaan Komersial']
-];
-$standardPkg = $packages['standard'] ?? [
-    'name' => 'Paket Standar',
-    'price' => ($service['price_starting'] ?? 150000) * 2,
-    'delivery_days' => ($service['delivery_days'] ?? 2) + 1,
-    'revisions' => '5x Revisi',
-    'desc' => 'Paket terpopuler untuk bisnis & UMKM',
-    'features' => ['3 Konsep Desain Awal', 'File Master Vektor AI/EPS/PDF', 'Mockup 3D', 'Revisi 5x', 'Hak Cipta Komersial']
-];
-$premiumPkg = $packages['premium'] ?? [
-    'name' => 'Paket Premium',
-    'price' => ($service['price_starting'] ?? 150000) * 4,
-    'delivery_days' => ($service['delivery_days'] ?? 2) + 3,
-    'revisions' => 'Bebas Revisi',
-    'desc' => 'Solusi lengkap korporat all-in-one',
-    'features' => ['5 Konsep Desain Eksklusif', 'Bebas Revisi Sepuasnya', 'Buku Brand Guidelines PDF', 'Stationery Kit', 'Prioritas Antrian']
-];
 
 $gallery = $service['gallery'] ?? [];
 if (empty($gallery)) {
@@ -73,7 +48,6 @@ $sampleReviews = [
         'avatar' => 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
         'rating' => 5,
         'date' => '3 hari yang lalu',
-        'package' => 'Paket Standar (Bisnis UMKM)',
         'comment' => 'Luar biasa cepat dan hasilnya sangat elegan! Konsep pertama yang dikirim sudah langsung cocok dengan filosofi kedai kopi kami. Revisi minor warna dilayani dengan sangat ramah dan profesional. Sangat recommended!'
     ],
     [
@@ -81,7 +55,6 @@ $sampleReviews = [
         'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
         'rating' => 5,
         'date' => '1 minggu yang lalu',
-        'package' => 'Paket Premium (Korporat Suite)',
         'comment' => 'Puas sekali dengan Brand Guidelines Book yang diberikan. Sangat detail dan rapi, dari palet warna hingga aturan peletakan logo di berbagai media promosi. Kerja cepat dan komunikatif.'
     ],
     [
@@ -89,8 +62,7 @@ $sampleReviews = [
         'avatar' => 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
         'rating' => 5,
         'date' => '2 minggu yang lalu',
-        'package' => 'Paket Basic (Startup)',
-        'comment' => 'Harga sangat bersahabat untuk kualitas bintang lima. Dalam 24 jam sudah menerima file resolusi tinggi yang siap dipasang di kemasan produk kami. Terima kasih banyak!'
+        'comment' => 'Layanan sangat profesional dengan hasil kualitas bintang lima. Dalam 24 jam sudah menerima file resolusi tinggi yang siap dipasang di kemasan produk kami. Terima kasih banyak!'
     ]
 ];
 ?>
@@ -401,12 +373,6 @@ $sampleReviews = [
       color: #0f172a;
       margin-bottom: 6px;
     }
-    .pkg-col-price {
-      font-size: 1.35rem;
-      font-weight: 800;
-      color: #0284c7;
-      margin-bottom: 12px;
-    }
     .pkg-col-desc {
       font-size: 0.8rem;
       color: #64748b;
@@ -563,36 +529,6 @@ $sampleReviews = [
     }
     .purchase-box-body {
       padding: 24px;
-    }
-    .p-price-display {
-      font-size: 2rem;
-      font-weight: 800;
-      color: #0284c7;
-      margin-bottom: 8px;
-      letter-spacing: -0.5px;
-    }
-    .p-pkg-title {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: #0f172a;
-      margin-bottom: 6px;
-    }
-    .p-pkg-desc {
-      font-size: 0.84rem;
-      color: #64748b;
-      margin-bottom: 16px;
-      line-height: 1.45;
-    }
-    .p-meta-pills {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #334155;
-      margin-bottom: 18px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid #f1f5f9;
     }
     .btn-order-primary {
       background: #0284c7;
@@ -759,7 +695,7 @@ $sampleReviews = [
         <!-- Section Navigation Anchor Tabs -->
         <nav class="content-nav-tabs">
           <a href="#deskripsi" class="content-tab-btn active">Deskripsi Jasa</a>
-          <a href="#paket" class="content-tab-btn">Pilihan Paket</a>
+          <a href="#lingkup" class="content-tab-btn">Cakupan Layanan</a>
           <a href="#profil" class="content-tab-btn">Tentang Freelancer</a>
           <a href="#ulasan" class="content-tab-btn">Ulasan Pembeli (<?php echo (int)($service['reviews_count'] ?? 148); ?>)</a>
           <a href="#faq" class="content-tab-btn">Syarat & FAQ</a>
@@ -773,65 +709,31 @@ $sampleReviews = [
           </div>
         </section>
 
-        <!-- SECTION 2: Komparasi 3 Paket (as in Image 2) -->
-        <section class="detail-card" id="paket">
-          <h2 class="card-heading">Perbandingan Pilihan Paket</h2>
-          <p style="font-size:0.86rem;color:#64748b;margin-bottom:16px;">Pilih tingkatan paket yang paling sesuai dengan target proyek dan skala anggaran Anda:</p>
+        <!-- SECTION 2: Cakupan & Output Layanan -->
+        <section class="detail-card" id="lingkup">
+          <h2 class="card-heading">Cakupan & Output Layanan</h2>
+          <p style="font-size:0.86rem;color:#64748b;margin-bottom:16px;">Berikut rincian hasil kerja dan format berkas yang akan diserahkan kepada klien:</p>
 
-          <div class="pkg-compare-grid">
-            
-            <!-- Basic Column -->
-            <div class="pkg-compare-col" id="cardPkgBasic">
-              <div class="pkg-col-name"><?php echo htmlspecialchars($basicPkg['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="pkg-col-price"><?php echo gig_format_rupiah((int)$basicPkg['price']); ?></div>
-              <div class="pkg-col-desc"><?php echo htmlspecialchars($basicPkg['desc'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div style="font-size:0.78rem;font-weight:700;color:#0f172a;margin-bottom:10px;">⚡ <?php echo (int)$basicPkg['delivery_days']; ?> Hari • 🔄 <?php echo htmlspecialchars((string)$basicPkg['revisions'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <ul class="pkg-features-list">
-                <?php foreach (($basicPkg['features'] ?? []) as $feat): ?>
-                  <li>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span><?php echo htmlspecialchars($feat, ENT_QUOTES, 'UTF-8'); ?></span>
-                  </li>
-                <?php endforeach; ?>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:18px;background:#f8fafc;">
+              <div style="font-size:0.95rem;font-weight:800;color:#0f172a;margin-bottom:10px;">📦 Berkas & Hasil Akhir (Deliverables)</div>
+              <ul class="pkg-features-list" style="margin:0;">
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsep desain original sesuai identitas merek</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>File master vektor skala penuh (AI, EPS, SVG, PDF)</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Gambar resolusi tinggi siap cetak (300 DPI) & PNG transparan</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Mockup visual realistis untuk presentasi</span></li>
               </ul>
-              <button type="button" class="btn-select-pkg" onclick="selectPackageFromCompare('basic')">Pilih Paket Basic</button>
             </div>
 
-            <!-- Standard Column (Popular) -->
-            <div class="pkg-compare-col popular selected" id="cardPkgStandard">
-              <div class="popular-tag">PALING POPULER</div>
-              <div class="pkg-col-name"><?php echo htmlspecialchars($standardPkg['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="pkg-col-price"><?php echo gig_format_rupiah((int)$standardPkg['price']); ?></div>
-              <div class="pkg-col-desc"><?php echo htmlspecialchars($standardPkg['desc'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div style="font-size:0.78rem;font-weight:700;color:#0f172a;margin-bottom:10px;">⚡ <?php echo (int)$standardPkg['delivery_days']; ?> Hari • 🔄 <?php echo htmlspecialchars((string)$standardPkg['revisions'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <ul class="pkg-features-list">
-                <?php foreach (($standardPkg['features'] ?? []) as $feat): ?>
-                  <li>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span><?php echo htmlspecialchars($feat, ENT_QUOTES, 'UTF-8'); ?></span>
-                  </li>
-                <?php endforeach; ?>
+            <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:18px;background:#f8fafc;">
+              <div style="font-size:0.95rem;font-weight:800;color:#0f172a;margin-bottom:10px;">🤝 Jaminan & Kerjasama Profesional</div>
+              <ul class="pkg-features-list" style="margin:0;">
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsultasi pra-proyek gratis melalui chat KarirHub</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh langsung menjadi milik klien</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Revisi terakomodasi sesuai kesepakatan brief kerja</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Dukungan komunikasi responsif selama pengerjaan</span></li>
               </ul>
-              <button type="button" class="btn-select-pkg" onclick="selectPackageFromCompare('standard')">Pilih Paket Standar</button>
             </div>
-
-            <!-- Premium Column -->
-            <div class="pkg-compare-col" id="cardPkgPremium">
-              <div class="pkg-col-name"><?php echo htmlspecialchars($premiumPkg['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="pkg-col-price"><?php echo gig_format_rupiah((int)$premiumPkg['price']); ?></div>
-              <div class="pkg-col-desc"><?php echo htmlspecialchars($premiumPkg['desc'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div style="font-size:0.78rem;font-weight:700;color:#0f172a;margin-bottom:10px;">⚡ <?php echo (int)$premiumPkg['delivery_days']; ?> Hari • 🔄 <?php echo htmlspecialchars((string)$premiumPkg['revisions'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <ul class="pkg-features-list">
-                <?php foreach (($premiumPkg['features'] ?? []) as $feat): ?>
-                  <li>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    <span><?php echo htmlspecialchars($feat, ENT_QUOTES, 'UTF-8'); ?></span>
-                  </li>
-                <?php endforeach; ?>
-              </ul>
-              <button type="button" class="btn-select-pkg" onclick="selectPackageFromCompare('premium')">Pilih Paket Premium</button>
-            </div>
-
           </div>
         </section>
 
@@ -839,7 +741,7 @@ $sampleReviews = [
         <section class="detail-card" id="profil">
           <h2 class="card-heading">Tentang Freelancer</h2>
           <div class="seller-profile-card">
-            <img src="<?php echo htmlspecialchars($service['worker_avatar'] ?: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" class="seller-avatar-large" alt="Avatar Freelancer" />
+            <?php echo gig_katalog_render_avatar($service['worker_name'] ?? 'Worker', 72, '1.5rem', 'border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);'); ?>
             <div class="seller-info-details">
               <div class="seller-name-row">
                 <span class="seller-full-name"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -851,7 +753,7 @@ $sampleReviews = [
                 <span>•</span>
                 <span>⭐ Rating 4.95 / 5.0</span>
                 <span>•</span>
-                <span>⚡ Kecepatan Respon: <?php echo htmlspecialchars($service['worker_response_time'] ?? '< 15 Menit', ENT_QUOTES, 'UTF-8'); ?></span>
+                <span>Waktu Respon: <?php echo htmlspecialchars($service['worker_response_time'] ?? '< 15 Menit', ENT_QUOTES, 'UTF-8'); ?></span>
               </div>
               <p style="font-size:0.86rem;color:#475569;margin-bottom:14px;line-height:1.5;">Desainer grafis & creative brand specialist berdedikasi dengan fokus pada hasil estetis, fungsional, dan orisinal. Berkomitmen memberikan kepuasan maksimal bagi setiap klien.</p>
               <div style="display:flex;gap:12px;">
@@ -902,10 +804,10 @@ $sampleReviews = [
               <div class="review-item-card">
                 <div class="reviewer-header">
                   <div style="display:flex;align-items:center;gap:10px;">
-                    <img src="<?php echo htmlspecialchars($rev['avatar'], ENT_QUOTES, 'UTF-8'); ?>" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" alt="Avatar Pembeli" />
+                    <?php echo gig_katalog_render_avatar($rev['name'], 36, '0.85rem'); ?>
                     <div>
                       <div style="font-size:0.88rem;font-weight:700;color:#0f172a;"><?php echo htmlspecialchars($rev['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-                      <div style="font-size:0.75rem;color:#94a3b8;"><?php echo htmlspecialchars($rev['date'], ENT_QUOTES, 'UTF-8'); ?> • <span style="color:#2563eb;font-weight:600;"><?php echo htmlspecialchars($rev['package'], ENT_QUOTES, 'UTF-8'); ?></span></div>
+                      <div style="font-size:0.75rem;color:#94a3b8;"><?php echo htmlspecialchars($rev['date'], ENT_QUOTES, 'UTF-8'); ?> • <span style="color:#10b981;font-weight:600;">Proyek Selesai</span></div>
                     </div>
                   </div>
                   <div style="color:#f59e0b;font-size:0.9rem;font-weight:800;">★★★★★</div>
@@ -947,7 +849,7 @@ $sampleReviews = [
                   <img src="<?php echo htmlspecialchars($rel['thumbnail'] ?: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" style="width:110px;height:100px;object-fit:cover;" alt="Thumb" />
                   <div style="padding:10px 14px;flex:1;display:flex;flex-direction:column;justify-content:center;">
                     <div style="font-size:0.84rem;font-weight:700;color:#0f172a;line-height:1.3;margin-bottom:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;"><?php echo htmlspecialchars($rel['title'], ENT_QUOTES, 'UTF-8'); ?></div>
-                    <div style="font-size:0.9rem;font-weight:800;color:#0284c7;"><?php echo gig_format_rupiah((int)($rel['price_starting'] ?? 150000)); ?></div>
+                    <div style="font-size:0.8rem;font-weight:700;color:#0284c7;">Lihat Detail Jasa &rarr;</div>
                   </div>
                 </a>
               <?php endforeach; ?>
@@ -957,92 +859,55 @@ $sampleReviews = [
 
       </div>
 
-      <!-- RIGHT STICKY SIDEBAR (Purchase Card as in Image 2) -->
+      <!-- RIGHT STICKY SIDEBAR -->
       <aside class="right-sticky-wrap">
         <div class="purchase-box-card">
-          <!-- Package Tabs Header -->
-          <div class="purchase-box-tabs">
-            <button type="button" class="p-tab-btn" id="tabBtnBasic" onclick="switchSidebarPkg('basic')">Basic</button>
-            <button type="button" class="p-tab-btn active" id="tabBtnStandard" onclick="switchSidebarPkg('standard')">Standar</button>
-            <button type="button" class="p-tab-btn" id="tabBtnPremium" onclick="switchSidebarPkg('premium')">Premium</button>
+          <div style="background:#f8fafc;padding:16px 20px;border-bottom:1px solid var(--border-color);">
+            <div style="font-size:1.05rem;font-weight:800;color:#0f172a;">Tertarik dengan Jasa Ini?</div>
+            <div style="font-size:0.82rem;color:#64748b;margin-top:2px;">Diskusikan kebutuhan proyek Anda langsung dengan freelancer.</div>
           </div>
 
           <div class="purchase-box-body">
-            <div class="p-price-display" id="sidePrice"><?php echo gig_format_rupiah((int)$standardPkg['price']); ?></div>
-            <div class="p-pkg-title" id="sideTitle"><?php echo htmlspecialchars($standardPkg['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-            <div class="p-pkg-desc" id="sideDesc"><?php echo htmlspecialchars($standardPkg['desc'], ENT_QUOTES, 'UTF-8'); ?></div>
-
-            <div class="p-meta-pills">
-              <span style="display:flex;align-items:center;gap:4px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
-                <span id="sideDays">⚡ <?php echo (int)$standardPkg['delivery_days']; ?> Hari Pengerjaan</span>
-              </span>
-              <span style="display:flex;align-items:center;gap:4px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                <span id="sideRevisions">🔄 <?php echo htmlspecialchars((string)$standardPkg['revisions'], ENT_QUOTES, 'UTF-8'); ?></span>
-              </span>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;">
+              <?php echo gig_katalog_render_avatar($service['worker_name'] ?? 'Worker', 40, '0.95rem'); ?>
+              <div>
+                <div style="font-size:0.9rem;font-weight:800;color:#0f172a;"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div style="font-size:0.75rem;color:#0369a1;font-weight:600;">Tersedia untuk proyek baru</div>
+              </div>
             </div>
 
-            <!-- Features Checklist -->
-            <ul class="pkg-features-list" id="sideFeatures" style="margin-bottom:20px;">
-              <?php foreach (($standardPkg['features'] ?? []) as $feat): ?>
-                <li>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  <span><?php echo htmlspecialchars($feat, ENT_QUOTES, 'UTF-8'); ?></span>
-                </li>
-              <?php endforeach; ?>
+            <!-- Deliverables summary -->
+            <ul class="pkg-features-list" style="margin-bottom:20px;">
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsep desain original & eksklusif</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>File master vektor & resolusi tinggi</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Diskusi langsung sebelum pengerjaan</span></li>
             </ul>
 
-            <!-- Order Button -->
-            <button type="button" class="btn-order-primary" onclick="openOrderModal()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-              Pesan Jasa Ini Sekarang
+            <!-- Primary Contact Button -->
+            <button type="button" class="btn-order-primary" onclick="openChatModal()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Hubungi & Diskusi Jasa Ini
             </button>
 
-            <!-- Chat Button -->
-            <button type="button" class="btn-chat-seller" onclick="openChatModal()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Chat & Diskusi dengan Freelancer
-            </button>
+            <a href="worker-profile.php?id=tessa" target="_blank" class="btn-chat-seller" style="text-decoration:none;margin-top:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Lihat Profil Freelancer
+            </a>
 
             <!-- Escrow Trust Box -->
-            <div class="escrow-trust-box">
+            <div class="escrow-trust-box" style="margin-top:16px;">
               <div style="font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Garansi Pembayaran KarirHub Escrow
+                Kerjasama Aman KarirHub
               </div>
-              <p style="margin:0;">Dana Anda ditampung secara aman. Pembayaran baru diteruskan kepada freelancer setelah hasil akhir diserahkan dan disetujui oleh Anda.</p>
+              <p style="margin:0;">Diskusikan brief dan ketentuan pengerjaan secara transparan dengan freelancer melalui platform resmi KarirHub.</p>
             </div>
 
           </div>
         </div>
       </aside>
 
-    </div>
-  </div>
-
-  <!-- ORDER MODAL (Checkout Simulation) -->
-  <div class="modal-backdrop" id="orderModal">
-    <div class="modal-content-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:1.2rem;font-weight:800;color:#0f172a;">Konfirmasi Pemesanan Jasa</h3>
-        <button type="button" onclick="closeOrderModal()" style="background:none;border:none;font-size:1.5rem;color:#94a3b8;cursor:pointer;">&times;</button>
-      </div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:0.82rem;color:#64748b;">Paket Dipilih:</div>
-        <div style="font-size:1rem;font-weight:800;color:#0f172a;" id="modalPkgName">Paket Standar (Bisnis UMKM)</div>
-        <div style="font-size:1.25rem;font-weight:800;color:#0284c7;margin-top:4px;" id="modalPkgPrice">Rp 350.000</div>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:0.84rem;font-weight:700;color:#1e293b;margin-bottom:6px;">Catatan Singkat / Brief untuk Freelancer:</label>
-        <textarea id="orderBrief" style="width:100%;height:80px;padding:10px;border:1.5px solid #cbd5e1;border-radius:10px;font-family:inherit;font-size:0.86rem;outline:none;" placeholder="Tuliskan nama brand, ide, atau instruksi awal..."></textarea>
-      </div>
-      <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:10px 14px;font-size:0.78rem;color:#065f46;margin-bottom:18px;">
-        🛡️ Pembayaran menggunakan sistem Rekening Bersama KarirHub. Aman & Bergaransi.
-      </div>
-      <button type="button" class="btn-order-primary" onclick="submitSimulatedOrder()">
-        Lanjutkan Pembayaran Escrow
-      </button>
     </div>
   </div>
 
@@ -1054,7 +919,7 @@ $sampleReviews = [
         <button type="button" onclick="closeChatModal()" style="background:none;border:none;font-size:1.5rem;color:#94a3b8;cursor:pointer;">&times;</button>
       </div>
       <div style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:16px;">
-        <img src="<?php echo htmlspecialchars($service['worker_avatar'] ?: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" alt="Avatar" />
+        <?php echo gig_katalog_render_avatar($service['worker_name'] ?? 'Worker', 36, '0.85rem'); ?>
         <div>
           <div style="font-size:0.88rem;font-weight:700;color:#0f172a;"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></div>
           <div style="font-size:0.74rem;color:#10b981;font-weight:700;">● Online (Respon &lt; 15 menit)</div>
@@ -1071,89 +936,10 @@ $sampleReviews = [
   </div>
 
   <script>
-    const packageData = {
-      basic: {
-        name: <?php echo json_encode($basicPkg['name']); ?>,
-        price: <?php echo json_encode(gig_format_rupiah((int)$basicPkg['price'])); ?>,
-        desc: <?php echo json_encode($basicPkg['desc']); ?>,
-        days: <?php echo (int)$basicPkg['delivery_days']; ?>,
-        revisions: <?php echo json_encode($basicPkg['revisions']); ?>,
-        features: <?php echo json_encode($basicPkg['features'] ?? []); ?>
-      },
-      standard: {
-        name: <?php echo json_encode($standardPkg['name']); ?>,
-        price: <?php echo json_encode(gig_format_rupiah((int)$standardPkg['price'])); ?>,
-        desc: <?php echo json_encode($standardPkg['desc']); ?>,
-        days: <?php echo (int)$standardPkg['delivery_days']; ?>,
-        revisions: <?php echo json_encode($standardPkg['revisions']); ?>,
-        features: <?php echo json_encode($standardPkg['features'] ?? []); ?>
-      },
-      premium: {
-        name: <?php echo json_encode($premiumPkg['name']); ?>,
-        price: <?php echo json_encode(gig_format_rupiah((int)$premiumPkg['price'])); ?>,
-        desc: <?php echo json_encode($premiumPkg['desc']); ?>,
-        days: <?php echo (int)$premiumPkg['delivery_days']; ?>,
-        revisions: <?php echo json_encode($premiumPkg['revisions']); ?>,
-        features: <?php echo json_encode($premiumPkg['features'] ?? []); ?>
-      }
-    };
-
-    let activePkgKey = 'standard';
-
     function switchGalleryImg(url, el) {
       document.getElementById('mainGalleryImg').src = url;
       document.querySelectorAll('.thumb-item').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
-    }
-
-    function switchSidebarPkg(key) {
-      activePkgKey = key;
-      const pkg = packageData[key];
-      if (!pkg) return;
-
-      document.querySelectorAll('.p-tab-btn').forEach(btn => btn.classList.remove('active'));
-      const activeBtn = document.getElementById('tabBtn' + key.charAt(0).toUpperCase() + key.slice(1));
-      if (activeBtn) activeBtn.classList.add('active');
-
-      document.getElementById('sidePrice').innerText = pkg.price;
-      document.getElementById('sideTitle').innerText = pkg.name;
-      document.getElementById('sideDesc').innerText = pkg.desc;
-      document.getElementById('sideDays').innerText = '⚡ ' + pkg.days + ' Hari Pengerjaan';
-      document.getElementById('sideRevisions').innerText = '🔄 ' + pkg.revisions;
-
-      const featList = document.getElementById('sideFeatures');
-      featList.innerHTML = '';
-      pkg.features.forEach(f => {
-        const li = document.createElement('li');
-        li.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>' + f + '</span>';
-        featList.appendChild(li);
-      });
-
-      // Sync Compare Columns
-      document.querySelectorAll('.pkg-compare-col').forEach(c => c.classList.remove('selected'));
-      const compareCol = document.getElementById('cardPkg' + key.charAt(0).toUpperCase() + key.slice(1));
-      if (compareCol) compareCol.classList.add('selected');
-    }
-
-    function selectPackageFromCompare(key) {
-      switchSidebarPkg(key);
-      document.querySelector('.right-sticky-wrap').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function openOrderModal() {
-      const pkg = packageData[activePkgKey];
-      document.getElementById('modalPkgName').innerText = pkg.name;
-      document.getElementById('modalPkgPrice').innerText = pkg.price;
-      document.getElementById('orderModal').classList.add('open');
-    }
-
-    function closeOrderModal() {
-      document.getElementById('orderModal').classList.remove('open');
-    }
-
-    function submitSimulatedOrder() {
-      alert('Pemesanan berhasil diproses! Dana telah diamankan di Escrow KarirHub dan notifikasi telah dikirimkan ke freelancer.');
-      closeOrderModal();
     }
 
     function openChatModal() {

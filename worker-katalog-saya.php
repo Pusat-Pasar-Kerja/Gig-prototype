@@ -280,19 +280,6 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
       color: #64748b;
       margin-bottom: 14px;
     }
-    .card-price-row {
-      margin-top: auto;
-      padding-top: 14px;
-      border-top: 1px solid #f1f5f9;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .price-amount {
-      font-size: 1.25rem;
-      font-weight: 800;
-      color: #1e3a8a;
-    }
     .card-actions-row {
       background: #f8fafc;
       border-top: 1px solid #e2e8f0;
@@ -374,7 +361,7 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
       <a href="katalog-jasa.php" style="font-size:0.86rem;color:#0284c7;text-decoration:none;font-weight:700;padding:6px 12px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">Bursa Jasa</a>
       <a href="worker-katalog-tambah.php" style="font-size:0.86rem;color:#ffffff;text-decoration:none;font-weight:800;padding:6px 14px;background:#0284c7;border-radius:8px;box-shadow:0 2px 6px rgba(2,132,199,0.25);">+ Upload Jasa</a>
       <a href="worker-profile.php?id=tessa" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#0f172a;font-weight:700;font-size:0.86rem;padding:4px 10px;background:#f1f5f9;border-radius:20px;">
-        <img src="<?php echo htmlspecialchars($workerAvatarUrl ?: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" alt="Avatar" />
+        <?php echo gig_katalog_render_avatar($displayName, 24, '0.68rem'); ?>
         <span><?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?></span>
       </a>
     </div>
@@ -393,7 +380,7 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
     <div class="dashboard-banner">
       <div>
         <h1 style="margin:0 0 8px 0;font-size:1.6rem;font-weight:800;letter-spacing:-0.3px;">Kelola Katalog Jasa Saya</h1>
-        <p style="margin:0;font-size:0.92rem;color:#cbd5e1;max-width:650px;">Pasang penawaran jasa Anda secara mandiri agar klien dapat langsung melihat contoh karya, memilih paket harga, dan memesan jasa Anda secara instan.</p>
+        <p style="margin:0;font-size:0.92rem;color:#cbd5e1;max-width:650px;">Tampilkan keahlian dan portofolio jasa Anda secara mandiri agar klien dapat langsung meninjau cakupan layanan dan berdiskusi secara langsung.</p>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <a href="katalog-jasa.php" class="btn-bursa-view">
@@ -469,11 +456,11 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
                 <span>•</span>
                 <span><?php echo (int)($item['orders_count'] ?? 0); ?> pesanan</span>
                 <span>•</span>
-                <span style="color:#10b981;font-weight:700;">⚡ <?php echo (int)($item['delivery_days'] ?? 2); ?> Hari</span>
+                <span style="color:#64748b;font-weight:600;"><?php echo (int)($item['delivery_days'] ?? 2); ?> Hari</span>
               </div>
-              <div class="card-price-row">
-                <span style="font-size:0.8rem;color:#64748b;font-weight:600;">Mulai dari:</span>
-                <span class="price-amount"><?php echo gig_format_rupiah((int)($item['price_starting'] ?? 150000)); ?></span>
+              <div class="card-status-info-row" style="margin-top:auto;padding-top:14px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:0.8rem;color:#64748b;font-weight:600;">Status Katalog:</span>
+                <span style="font-size:0.82rem;font-weight:700;color:#0369a1;background:#e0f2fe;padding:3px 10px;border-radius:6px;">Aktif & Siap Menerima Order</span>
               </div>
             </div>
             <div class="card-actions-row">

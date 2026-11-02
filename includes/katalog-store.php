@@ -436,7 +436,7 @@ function gig_katalog_default_seeds(): array
             'worker_id' => 'bayu.samudra@pasker.id',
             'worker_name' => 'Bayu Samudra',
             'worker_avatar' => 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-            'worker_badge' => 'Verified Pro',
+            'worker_badge' => 'Terverifikasi',
             'worker_response_time' => '1 Jam',
             'category' => 'Desain Grafis',
             'subcategory' => 'Desain Logo',
@@ -785,5 +785,37 @@ function gig_katalog_delete(string $id): bool
 function gig_format_rupiah(int|float $amount): string
 {
     return 'Rp ' . number_format((float)$amount, 0, ',', '.');
+}
+
+/**
+ * Extract 1-2 letter initials from a person or brand name
+ */
+function gig_katalog_initials(string $name): string
+{
+    $name = trim($name);
+    if ($name === '') {
+        return 'W';
+    }
+    $parts = preg_split('/\s+/', $name);
+    if (count($parts) >= 2) {
+        return strtoupper(substr($parts[0], 0, 1) . substr($parts[1], 0, 1));
+    }
+    return strtoupper(substr($parts[0], 0, min(2, strlen($parts[0]))));
+}
+
+/**
+ * Render a circular letter avatar matching other pages in KarirHub prototype
+ */
+function gig_katalog_render_avatar(string $name, int $size = 28, string $fontSize = '0.74rem', string $extraStyles = ''): string
+{
+    $initials = gig_katalog_initials($name);
+    return sprintf(
+        '<div style="width:%dpx;height:%dpx;border-radius:50%%;background:#2563eb;color:#ffffff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:%s;flex-shrink:0;letter-spacing:-0.2px;line-height:1;user-select:none;%s">%s</div>',
+        $size,
+        $size,
+        $fontSize,
+        $extraStyles,
+        htmlspecialchars($initials, ENT_QUOTES, 'UTF-8')
+    );
 }
 

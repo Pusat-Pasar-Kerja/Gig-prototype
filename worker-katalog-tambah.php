@@ -29,8 +29,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $thumbnail = trim((string)($_POST['thumbnail'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
     $clientRequirements = trim((string)($_POST['client_requirements'] ?? ''));
-    $deliveryDays = max(1, (int)($_POST['delivery_days_basic'] ?? 2));
-    $priceStarting = max(10000, (int)preg_replace('/[^\d]/', '', (string)($_POST['price_basic'] ?? '150000')));
+    $deliveryDays = max(1, (int)($_POST['delivery_days'] ?? 2));
+    $revisions = trim((string)($_POST['revisions'] ?? 'Revisi fleksibel'));
+    $scopeSummary = trim((string)($_POST['scope_summary'] ?? 'Layanan komprehensif dari konsep hingga file final'));
+    $deliverablesRaw = trim((string)($_POST['deliverables'] ?? ''));
+    $deliverablesList = array_values(array_filter(array_map('trim', explode("\n", $deliverablesRaw))));
+    if (empty($deliverablesList)) {
+        $deliverablesList = [
+            'Konsep desain orisinal sesuai brief',
+            'File resolusi tinggi (JPG & PNG HD 300 DPI)',
+            'File master vektor (AI, EPS, SVG, PDF) siap cetak',
+            'Mockup visual representatif',
+            'Lisensi hak cipta komersial penuh'
+        ];
+    }
 
     // Gallery images
     $gallery = [];
@@ -50,34 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $thumbnail = $gallery[0];
     }
 
-    // Packages construct
-    $packages = [
-        'basic' => [
-            'name' => trim((string)($_POST['pkg_name_basic'] ?? 'Paket Basic')),
-            'price' => max(10000, (int)preg_replace('/[^\d]/', '', (string)($_POST['price_basic'] ?? '150000'))),
-            'delivery_days' => max(1, (int)($_POST['delivery_days_basic'] ?? 2)),
-            'revisions' => trim((string)($_POST['revisions_basic'] ?? '2x Revisi')),
-            'desc' => trim((string)($_POST['pkg_desc_basic'] ?? 'Pilihan hemat untuk kebutuhan mendasar')),
-            'features' => array_values(array_filter(array_map('trim', explode("\n", (string)($_POST['features_basic'] ?? '2 Konsep Desain Awal\nFile JPG & PNG HD\nLisensi Komersial')))))
-        ],
-        'standard' => [
-            'name' => trim((string)($_POST['pkg_name_standard'] ?? 'Paket Standar (Rekomendasi)')),
-            'price' => max(20000, (int)preg_replace('/[^\d]/', '', (string)($_POST['price_standard'] ?? '350000'))),
-            'delivery_days' => max(1, (int)($_POST['delivery_days_standard'] ?? 3)),
-            'revisions' => trim((string)($_POST['revisions_standard'] ?? '5x Revisi')),
-            'desc' => trim((string)($_POST['pkg_desc_standard'] ?? 'Paling populer! Lengkap dengan file master')),
-            'features' => array_values(array_filter(array_map('trim', explode("\n", (string)($_POST['features_standard'] ?? '3 Konsep Desain Matang\nMaster File AI/EPS/SVG\nMockup 3D Realistis\nRevisi 5x\nHak Cipta Penuh')))))
-        ],
-        'premium' => [
-            'name' => trim((string)($_POST['pkg_name_premium'] ?? 'Paket Premium / Korporat')),
-            'price' => max(50000, (int)preg_replace('/[^\d]/', '', (string)($_POST['price_premium'] ?? '750000'))),
-            'delivery_days' => max(1, (int)($_POST['delivery_days_premium'] ?? 5)),
-            'revisions' => trim((string)($_POST['revisions_premium'] ?? 'Bebas Revisi')),
-            'desc' => trim((string)($_POST['pkg_desc_premium'] ?? 'Solusi all-in-one terlengkap tanpa kompromi')),
-            'features' => array_values(array_filter(array_map('trim', explode("\n", (string)($_POST['features_premium'] ?? '5 Konsep Desain Eksklusif\nBebas Revisi Sepuasnya\nBrand Guidelines PDF\nStationery Kit Lengkap\nSemua Master File Vector\nPrioritas Support')))))
-        ]
-    ];
-
     // FAQs construct
     $faqs = [];
     if (!empty($_POST['faq_q']) && is_array($_POST['faq_q'])) {
@@ -92,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (empty($faqs)) {
         $faqs = [
             ['q' => 'Apakah hasil karya dijamin original?', 'a' => 'Ya, kami menjamin 100% orisinalitas tanpa menggunakan template curian atau clipart gratisan.'],
-            ['q' => 'Bagaimana jika saya memerlukan revisi?', 'a' => 'Cukup berikan catatan feedback melalui fitur chat atau revisi di dashboard, kami akan memperbaikinya sesuai batas paket Anda.']
+            ['q' => 'Bagaimana jika saya memerlukan revisi?', 'a' => 'Cukup berikan catatan feedback melalui fitur chat atau revisi di dashboard, kami akan memperbaikinya sesuai kesepakatan.']
         ];
     }
 
@@ -115,11 +99,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'rating' => 5.0,
             'reviews_count' => 0,
             'orders_count' => 0,
-            'price_starting' => $priceStarting,
+            'price_starting' => 0,
             'delivery_days' => $deliveryDays,
-            'revisions' => $packages['basic']['revisions'] ?? '3x Revisi',
+            'revisions' => $revisions,
+            'scope_summary' => $scopeSummary,
+            'deliverables' => $deliverablesList,
             'description' => $description,
-            'packages' => $packages,
+            'packages' => [],
             'client_requirements' => $clientRequirements,
             'faqs' => $faqs,
             'status' => 'active',
@@ -506,11 +492,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
       padding-top: 8px;
       border-top: 1px solid #f1f5f9;
     }
-    .preview-price {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: #1e3a8a;
-    }
     .btn-submit-main {
       background: #2563eb;
       color: #ffffff;
@@ -574,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <div class="page-intro-card">
       <div>
         <h1 class="page-intro-title">Upload & Pasang Katalog Jasa Baru</h1>
-        <p class="page-intro-desc">Tampilkan penawaran jasa terbaik Anda secara profesional (seperti Fastwork/Fiverr). Tentukan paket harga, portofolio karya, dan waktu pengerjaan untuk langsung menerima order dari pemberi kerja.</p>
+        <p class="page-intro-desc">Tampilkan penawaran keahlian dan jasa terbaik Anda secara profesional (seperti Fastwork/Fiverr). Pajang portofolio karya, tentukan cakupan layanan, dan waktu pengerjaan untuk langsung menerima order dari pemberi kerja.</p>
       </div>
       <div style="text-align:right;">
         <span style="background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;display:inline-block;">Status: Profil Worker Terverifikasi ✔</span>
@@ -692,129 +673,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
       </div>
 
-      <!-- STEP 3: Pricing Packages -->
+      <!-- STEP 3: Cakupan & Output Layanan -->
       <div class="form-section-card">
         <div class="section-header">
           <div class="section-step-num">3</div>
           <div>
-            <h2 class="section-title">Paket Harga & Fitur Layanan (3 Tingkat)</h2>
-            <p class="section-subtitle">Sediakan variasi paket agar pembeli dapat memilih sesuai anggaran mereka.</p>
+            <h2 class="section-title">Cakupan Layanan & Output Hasil Kerja</h2>
+            <p class="section-subtitle">Tentukan waktu pengerjaan, ketentuan revisi, dan output berkas yang didapatkan klien.</p>
           </div>
         </div>
 
-        <div class="pkg-tabs">
-          <button type="button" class="pkg-tab-btn active" onclick="switchPkgTab('basic', this)">🟢 Paket Basic (Dasar)</button>
-          <button type="button" class="pkg-tab-btn" onclick="switchPkgTab('standard', this)">⭐ Paket Standar (Populer)</button>
-          <button type="button" class="pkg-tab-btn" onclick="switchPkgTab('premium', this)">👑 Paket Premium (Lengkap)</button>
-        </div>
-
-        <!-- Basic Panel -->
-        <div class="pkg-panel active" id="pkg-basic">
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Nama Paket Basic</label>
-              <input type="text" name="pkg_name_basic" class="form-control" value="Paket Basic (Startup)" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Harga Paket Basic (Rp) <span style="color:#ef4444;">*</span></label>
-              <input type="text" name="price_basic" id="inputPriceBasic" class="form-control" value="150.000" onkeyup="updateLivePreview()" />
-            </div>
-          </div>
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Waktu Pengerjaan (Hari)</label>
-              <input type="number" name="delivery_days_basic" class="form-control" value="2" min="1" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Jumlah Revisi</label>
-              <input type="text" name="revisions_basic" class="form-control" value="2x Revisi" />
-            </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Estimasi Waktu Pengerjaan (Hari) <span style="color:#ef4444;">*</span></label>
+            <input type="number" name="delivery_days" id="inputDeliveryDays" class="form-control" value="2" min="1" required />
+            <div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Rata-rata waktu penyelesaian draft atau hasil pertama.</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Ringkasan Paket</label>
-            <input type="text" name="pkg_desc_basic" class="form-control" value="Cocok untuk pemula yang butuh logo cepat dan rapi." />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Daftar Fitur yang Didapat (Satu per baris)</label>
-            <textarea name="features_basic" class="form-control" rows="3">2 Konsep Desain Awal
-File Resolusi Tinggi JPG & PNG Transparan
-Desain 300 DPI Siap Cetak
-Hak Cipta Penggunaan Komersial</textarea>
+            <label class="form-label">Ketentuan Revisi</label>
+            <input type="text" name="revisions" class="form-control" value="Revisi fleksibel hingga hasil sesuai brief" />
+            <div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Contoh: 3x Revisi, atau Bebas Revisi sesuai kesepakatan.</div>
           </div>
         </div>
 
-        <!-- Standard Panel -->
-        <div class="pkg-panel" id="pkg-standard">
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Nama Paket Standar</label>
-              <input type="text" name="pkg_name_standard" class="form-control" value="Paket Standar (Bisnis UMKM)" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Harga Paket Standar (Rp)</label>
-              <input type="text" name="price_standard" class="form-control" value="350.000" />
-            </div>
-          </div>
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Waktu Pengerjaan (Hari)</label>
-              <input type="number" name="delivery_days_standard" class="form-control" value="3" min="1" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Jumlah Revisi</label>
-              <input type="text" name="revisions_standard" class="form-control" value="5x Revisi" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Ringkasan Paket</label>
-            <input type="text" name="pkg_desc_standard" class="form-control" value="Pilihan favorit! Termasuk master file vektor untuk cetak skala besar." />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Daftar Fitur yang Didapat (Satu per baris)</label>
-            <textarea name="features_standard" class="form-control" rows="4">3 Konsep Desain Awal Eksklusif
-File Master AI, EPS, SVG, PDF, PNG & JPG
-Revisi Desain hingga 5 kali
-Palet Warna Resmi & Panduan Font
-Mockup Stationery (Kartu Nama & Kop Surat)
-Hak Cipta Komersial Penuh</textarea>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Ringkasan Singkat Cakupan Layanan</label>
+          <input type="text" name="scope_summary" class="form-control" value="Layanan terpadu mulai dari eksplorasi konsep hingga penyerahan file master final." />
         </div>
 
-        <!-- Premium Panel -->
-        <div class="pkg-panel" id="pkg-premium">
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Nama Paket Premium</label>
-              <input type="text" name="pkg_name_premium" class="form-control" value="Paket Premium (Korporat Suite)" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Harga Paket Premium (Rp)</label>
-              <input type="text" name="price_premium" class="form-control" value="750.000" />
-            </div>
-          </div>
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Waktu Pengerjaan (Hari)</label>
-              <input type="number" name="delivery_days_premium" class="form-control" value="5" min="1" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Jumlah Revisi</label>
-              <input type="text" name="revisions_premium" class="form-control" value="Bebas Revisi (Unlimited)" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Ringkasan Paket</label>
-            <input type="text" name="pkg_desc_premium" class="form-control" value="Solusi lengkap dengan buku panduan grafis (Brand Guidelines Book)." />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Daftar Fitur yang Didapat (Satu per baris)</label>
-            <textarea name="features_premium" class="form-control" rows="5">5 Konsep Desain Awal Berbeda Karakter
-Revisi Tanpa Batas sampai Puas
-Buku Brand Guidelines PDF Lengkap
-Social Media Kit (Profile + Banner)
-Stationery Kit Lengkap (Kartu Nama, Map, Stempel)
-Semua File Master Vektor AI/EPS/SVG</textarea>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Daftar Output / Fasilitas yang Didapat Klien (Satu per baris) <span style="color:#ef4444;">*</span></label>
+          <textarea name="deliverables" class="form-control" rows="5" placeholder="Contoh:&#10;Konsep desain orisinal sesuai brief&#10;File resolusi tinggi JPG & PNG HD&#10;File master vektor AI/EPS/SVG&#10;Lisensi hak cipta komersial penuh">Konsep desain orisinal sesuai brief
+File resolusi tinggi (JPG & PNG HD 300 DPI)
+File master vektor (AI, EPS, SVG, PDF) siap cetak
+Mockup visual representatif
+Lisensi hak cipta komersial penuh
+Konsultasi dan asistensi pengerjaan</textarea>
+          <div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Tuliskan setiap deliverable atau berkas output pada baris baru.</div>
         </div>
       </div>
 
@@ -868,27 +763,26 @@ Mengapa Memilih Kami?
         <img src="https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80" id="previewImg" class="preview-card-img" alt="Pratinjau Jasa" />
         <div class="preview-card-body">
           <div class="preview-seller-info">
-            <img src="<?php echo htmlspecialchars($workerAvatarUrl ?: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" class="preview-seller-avatar" alt="Avatar" />
+            <?php echo gig_katalog_render_avatar($displayName, 26, '0.72rem'); ?>
             <span class="preview-seller-name"><?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?></span>
-            <span style="background:#e0f2fe;color:#0284c7;font-size:0.68rem;font-weight:800;padding:2px 6px;border-radius:4px;">Pro</span>
           </div>
           <div class="preview-card-title" id="previewTitle">Jasa Desain Logo Minimalis & Modern untuk Bisnis UMKM</div>
           <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;font-size:0.78rem;">
             <span style="color:#f59e0b;font-weight:800;">★ 5.0</span>
             <span style="color:#94a3b8;">(Baru)</span>
             <span style="color:#cbd5e1;">•</span>
-            <span style="color:#10b981;font-weight:700;" id="previewDays">⚡ 2 Hari</span>
+            <span style="color:#64748b;font-weight:600;" id="previewDays">2 Hari Pengerjaan</span>
           </div>
           <div class="preview-card-meta">
-            <span>Mulai dari</span>
-            <span class="preview-price" id="previewPriceDisplay">Rp 150.000</span>
+            <span style="font-size:0.75rem;color:#0369a1;font-weight:700;background:#e0f2fe;padding:3px 8px;border-radius:6px;">Tersedia untuk Dipesan</span>
+            <span style="font-size:0.82rem;font-weight:800;color:#0284c7;">Lihat Jasa &rarr;</span>
           </div>
         </div>
       </div>
 
       <div style="margin-top:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;font-size:0.78rem;color:#166534;line-height:1.4;">
-        <strong>🛡️ Perlindungan Pembayaran Escrow</strong>
-        <p style="margin:4px 0 0 0;">Pembeli membayar ke rekening penampung KarirHub. Anda dijamin dibayar segera setelah pesanan diserahkan dan disetujui klien.</p>
+        <strong>🛡️ Perlindungan Komunikasi & Escrow KarirHub</strong>
+        <p style="margin:4px 0 0 0;">Klien menghubungi Anda langsung melalui chat terintegrasi KarirHub. Seluruh kesepakatan dan serah-terima dilindungi secara aman.</p>
       </div>
     </aside>
 
@@ -902,28 +796,13 @@ Mengapa Memilih Kami?
       element.classList.add('selected');
     }
 
-    function switchPkgTab(tabKey, btn) {
-      document.querySelectorAll('.pkg-tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.pkg-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const panel = document.getElementById('pkg-' + tabKey);
-      if (panel) panel.classList.add('active');
-    }
-
     function updateLivePreview() {
       const title = document.getElementById('inputTitle').value.trim();
-      const price = document.getElementById('inputPriceBasic').value.trim();
       const days = document.getElementById('inputDeliveryDays').value.trim();
       const thumb = document.getElementById('inputThumbnail').value.trim();
 
       if (title) document.getElementById('previewTitle').innerText = title;
-      if (price) {
-        let clean = price.replace(/[^\d]/g, '');
-        if (clean) {
-          document.getElementById('previewPriceDisplay').innerText = 'Rp ' + Number(clean).toLocaleString('id-ID');
-        }
-      }
-      if (days) document.getElementById('previewDays').innerText = '⚡ ' + days + ' Hari';
+      if (days) document.getElementById('previewDays').innerText = days + ' Hari Pengerjaan';
       if (thumb) document.getElementById('previewImg').src = thumb;
     }
 

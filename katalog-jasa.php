@@ -60,12 +60,6 @@ usort($services, function ($a, $b) use ($sort) {
     if ($sort === 'rating') {
         return ($b['rating'] ?? 5.0) <=> ($a['rating'] ?? 5.0);
     }
-    if ($sort === 'price_asc') {
-        return ($a['price_starting'] ?? 0) <=> ($b['price_starting'] ?? 0);
-    }
-    if ($sort === 'price_desc') {
-        return ($b['price_starting'] ?? 0) <=> ($a['price_starting'] ?? 0);
-    }
     if ($sort === 'popular') {
         return ($b['orders_count'] ?? 0) <=> ($a['orders_count'] ?? 0);
     }
@@ -473,14 +467,6 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .fw-badge-pro {
-      background: #e0f2fe;
-      color: #0284c7;
-      font-size: 0.65rem;
-      font-weight: 800;
-      padding: 1px 5px;
-      border-radius: 4px;
-    }
     .fw-card-title {
       font-size: 0.92rem;
       font-weight: 700;
@@ -521,20 +507,6 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
     .fw-card-rating-star {
       color: #f59e0b;
       font-weight: 800;
-    }
-    .fw-card-price-col {
-      text-align: right;
-    }
-    .fw-card-price-lbl {
-      font-size: 0.7rem;
-      color: #94a3b8;
-      display: block;
-      margin-bottom: -2px;
-    }
-    .fw-card-price-val {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: #0284c7;
     }
 
     /* Worker Promo Banner */
@@ -649,9 +621,6 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
     <div class="fw-toolbar">
       <div class="fw-toolbar-left">
         <span>Menampilkan <strong><?php echo count($services); ?></strong> katalog jasa</span>
-        <a href="katalog-jasa.php?<?php echo http_build_query(array_merge($_GET, ['fast' => $filterFast ? 0 : 1])); ?>" class="fw-toggle-btn <?php echo $filterFast ? 'active' : ''; ?>">
-          ⚡ Pengerjaan Cepat (≤ 2 Hari)
-        </a>
       </div>
 
       <div style="display:flex;align-items:center;gap:10px;">
@@ -664,8 +633,6 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
             <option value="recommended" <?php echo $sort === 'recommended' ? 'selected' : ''; ?>>Paling Sesuai</option>
             <option value="popular" <?php echo $sort === 'popular' ? 'selected' : ''; ?>>Terpopuler</option>
             <option value="rating" <?php echo $sort === 'rating' ? 'selected' : ''; ?>>Rating Tertinggi</option>
-            <option value="price_asc" <?php echo $sort === 'price_asc' ? 'selected' : ''; ?>>Harga Terendah</option>
-            <option value="price_desc" <?php echo $sort === 'price_desc' ? 'selected' : ''; ?>>Harga Tertinggi</option>
           </select>
         </form>
       </div>
@@ -685,13 +652,11 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
           <a href="katalog-jasa-detail.php?id=<?php echo urlencode($item['id']); ?>" class="fw-card">
             <div class="fw-card-thumb-wrap">
               <img src="<?php echo htmlspecialchars($item['thumbnail'] ?: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8'); ?>" class="fw-card-thumb" loading="lazy" />
-              <span class="fw-card-badge-top">⚡ <?php echo (int)($item['delivery_days'] ?? 2); ?> Hari</span>
             </div>
             <div class="fw-card-body">
               <div class="fw-card-seller">
-                <img src="<?php echo htmlspecialchars($item['worker_avatar'] ?: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" alt="Avatar" class="fw-card-avatar" />
+                <?php echo gig_katalog_render_avatar($item['worker_name'] ?? 'Worker', 26, '0.72rem'); ?>
                 <span class="fw-card-seller-name"><?php echo htmlspecialchars($item['worker_name'], ENT_QUOTES, 'UTF-8'); ?></span>
-                <span class="fw-badge-pro">Pro</span>
               </div>
               <h2 class="fw-card-title"><?php echo htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8'); ?></h2>
               <?php if (!empty($item['tag'])): ?>
@@ -700,11 +665,10 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
               <div class="fw-card-footer">
                 <div class="fw-card-rating">
                   <span class="fw-card-rating-star">★ <?php echo number_format((float)($item['rating'] ?? 5.0), 1); ?></span>
-                  <span>(<?php echo (int)($item['reviews_count'] ?? 0); ?>)</span>
+                  <span>(<?php echo (int)($item['reviews_count'] ?? 0); ?> ulasan)</span>
                 </div>
-                <div class="fw-card-price-col">
-                  <span class="fw-card-price-lbl">Mulai dari</span>
-                  <span class="fw-card-price-val"><?php echo gig_format_rupiah((int)($item['price_starting'] ?? 150000)); ?></span>
+                <div style="font-size:0.82rem;font-weight:700;color:#0284c7;display:flex;align-items:center;gap:4px;">
+                  <span>Lihat Jasa &rarr;</span>
                 </div>
               </div>
             </div>
@@ -717,7 +681,7 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
     <div class="fw-worker-banner">
       <div>
         <h2 style="margin:0 0 6px 0;font-size:1.4rem;font-weight:800;">Apakah Anda Freelancer Berbakat?</h2>
-        <p style="margin:0;font-size:0.92rem;color:#e0f2fe;max-width:640px;">Buka toko katalog jasa Anda di KarirHub Gig Workers secara gratis. Pasang penawaran, tentukan harga sendiri, dan dapatkan klien tanpa potongan biaya tersembunyi.</p>
+        <p style="margin:0;font-size:0.92rem;color:#e0f2fe;max-width:640px;">Buka katalog jasa Anda di KarirHub Gig Workers secara gratis. Tampilkan portofolio terbaik, diskusikan kebutuhan proyek langsung dengan klien, dan jalin kerja sama profesional.</p>
       </div>
       <a href="worker-katalog-tambah.php" class="fw-btn-upload" style="background:#fff;color:#0284c7;font-weight:800;padding:12px 24px;font-size:0.95rem;box-shadow:0 4px 14px rgba(0,0,0,0.15);">
         + Pasang Katalog Jasa Anda
