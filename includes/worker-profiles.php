@@ -281,7 +281,6 @@ function gig_worker_profiles_ensure_table(?PDO $pdo = null): void
                 `initials`           VARCHAR(10)  NOT NULL DEFAULT '',
                 `color`              VARCHAR(30)  NOT NULL DEFAULT '#2563eb',
                 `photo`              VARCHAR(500) NOT NULL DEFAULT '',
-                `title`              VARCHAR(150) NOT NULL DEFAULT '',
                 `location`           VARCHAR(100) NOT NULL DEFAULT '',
                 `rating`             DECIMAL(3,1) NOT NULL DEFAULT 5.0,
                 `reviews_count`      INT UNSIGNED NOT NULL DEFAULT 0,
@@ -305,20 +304,20 @@ function gig_worker_profiles_ensure_table(?PDO $pdo = null): void
                 `updated_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
+        try { $pdo->exec("ALTER TABLE `worker_profiles` DROP COLUMN `title`"); } catch (Throwable $ign) {}
 
         $count = (int)$pdo->query("SELECT COUNT(*) FROM `worker_profiles`")->fetchColumn();
         if ($count === 0) {
             $stmt = $pdo->prepare("
                 INSERT INTO `worker_profiles`
-                (`id`, `name`, `initials`, `color`, `photo`, `title`, `location`, `rating`, `reviews_count`, `completed_projects`, `total_projects`, `verified`, `agreed`, `category`, `applied_project`, `bid`, `eta`, `proposal`, `skills`, `social_media`, `video_url`, `contact`, `experience`, `portfolio`, `reviews`)
+                (`id`, `name`, `initials`, `color`, `photo`, `location`, `rating`, `reviews_count`, `completed_projects`, `total_projects`, `verified`, `agreed`, `category`, `applied_project`, `bid`, `eta`, `proposal`, `skills`, `social_media`, `video_url`, `contact`, `experience`, `portfolio`, `reviews`)
                 VALUES
-                (:id, :name, :initials, :color, :photo, :title, :location, :rating, :reviews_count, :completed_projects, :total_projects, :verified, :agreed, :category, :applied_project, :bid, :eta, :proposal, :skills, :social_media, :video_url, :contact, :experience, :portfolio, :reviews)
+                (:id, :name, :initials, :color, :photo, :location, :rating, :reviews_count, :completed_projects, :total_projects, :verified, :agreed, :category, :applied_project, :bid, :eta, :proposal, :skills, :social_media, :video_url, :contact, :experience, :portfolio, :reviews)
                 ON DUPLICATE KEY UPDATE
                   `name` = VALUES(`name`),
                   `initials` = VALUES(`initials`),
                   `color` = VALUES(`color`),
                   `photo` = VALUES(`photo`),
-                  `title` = VALUES(`title`),
                   `location` = VALUES(`location`),
                   `rating` = VALUES(`rating`),
                   `reviews_count` = VALUES(`reviews_count`),
@@ -347,7 +346,6 @@ function gig_worker_profiles_ensure_table(?PDO $pdo = null): void
                     ':initials' => $p['initials'] ?? '',
                     ':color' => $p['color'] ?? '#2563eb',
                     ':photo' => $p['photo'] ?? '',
-                    ':title' => $p['title'] ?? '',
                     ':location' => $p['location'] ?? '',
                     ':rating' => (float)($p['rating'] ?? 5.0),
                     ':reviews_count' => (int)($p['reviews_count'] ?? 0),
@@ -386,7 +384,7 @@ function gig_save_worker_profile(string $id, array $data, ?PDO $pdo = null): boo
     try {
         gig_worker_profiles_ensure_table($pdo);
         $fields = [
-            'name', 'initials', 'color', 'photo', 'title', 'location',
+            'name', 'initials', 'color', 'photo', 'location',
             'rating', 'reviews_count', 'completed_projects', 'total_projects',
             'verified', 'agreed', 'category', 'applied_project', 'bid', 'eta',
             'proposal', 'skills', 'social_media', 'video_url', 'contact',
@@ -446,7 +444,6 @@ function gig_worker_profiles(): array
                             'initials' => (string)$row['initials'],
                             'color' => (string)$row['color'],
                             'photo' => (string)$row['photo'],
-                            'title' => (string)$row['title'],
                             'location' => (string)$row['location'],
                             'rating' => (float)$row['rating'],
                             'reviews_count' => (int)$row['reviews_count'],
@@ -623,7 +620,6 @@ function gig_find_worker(string $id): ?array
         if (!empty($_SESSION['worker_custom_profile']) && is_array($_SESSION['worker_custom_profile'])) {
             $custom = $_SESSION['worker_custom_profile'];
             if (!empty($custom['name'])) $profiles[$cleanId]['name'] = $custom['name'];
-            if (!empty($custom['title'])) $profiles[$cleanId]['title'] = $custom['title'];
             if (!empty($custom['location'])) $profiles[$cleanId]['location'] = $custom['location'];
             if (!empty($custom['skills'])) $profiles[$cleanId]['skills'] = gig_normalize_skills($custom['skills']);
             if (!empty($custom['proposal'])) $profiles[$cleanId]['proposal'] = $custom['proposal'];
@@ -639,9 +635,6 @@ function gig_find_worker(string $id): ?array
         if ($reg !== null && $cleanId !== 'tessa') {
             if (!empty($reg['display_name'])) {
                 $profiles[$cleanId]['name'] = $reg['display_name'];
-            }
-            if (!empty($reg['bidang_keahlian'])) {
-                $profiles[$cleanId]['title'] = $reg['bidang_keahlian'];
             }
             if (!empty($reg['domicile'])) {
                 $profiles[$cleanId]['location'] = $reg['domicile'];
@@ -709,7 +702,6 @@ function gig_find_worker(string $id): ?array
             'initials' => strtoupper(substr($id, 0, 2)),
             'color' => '#2563eb',
             'photo' => 'https://api.dicebear.com/9.x/notionists/svg?seed=' . urlencode($id) . '&backgroundColor=dbeafe',
-            'title' => $reg['bidang_keahlian'] ?? 'Gig Worker Professional',
             'location' => $reg['domicile'] ?? ($siapkerja['lokasi'] ?? 'Jakarta, Indonesia'),
             'rating' => 5.0,
             'reviews_count' => 5,
@@ -1105,7 +1097,7 @@ function gig_worker_search_metadata(array $worker): array
     $textParts = [
         $wId,
         (string)($worker['name'] ?? $reg['display_name'] ?? ($siap['nama'] ?? '')),
-        (string)($worker['title'] ?? $reg['bidang_keahlian'] ?? ''),
+        (string)($reg['bidang_keahlian'] ?? ''),
         $cat,
         $catLabel,
         (string)($worker['location'] ?? $reg['domicile'] ?? ($siap['lokasi'] ?? '')),
@@ -1139,7 +1131,6 @@ function gig_worker_search_metadata(array $worker): array
         'full_text' => $corpus,
         'facets' => [
             'name' => (string)($worker['name'] ?? ''),
-            'title' => (string)($worker['title'] ?? ''),
             'location' => (string)($worker['location'] ?? ''),
             'bio' => $bio,
             'skills' => $skillFacets,
