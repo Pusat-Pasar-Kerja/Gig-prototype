@@ -689,9 +689,10 @@ $sampleReviews = [
         </a>
       </div>
       <div class="fw-nav-links">
-        <a href="katalog-jasa.php" class="fw-nav-link">&larr; Kembali ke Bursa Jasa</a>
-        <a href="worker-katalog-saya.php" class="fw-nav-link">Katalog Saya</a>
-        <a href="worker-katalog-tambah.php" class="fw-nav-link" style="color:#0284c7;font-weight:800;">+ Pasang Jasa</a>
+        <a href="worker-bursa.php" class="fw-nav-link">Bursa Proyek</a>
+        <a href="katalog-jasa.php" class="fw-nav-link" style="color:#0284c7;font-weight:700;">Bursa Jasa</a>
+        <a href="worker-katalog-saya.php" class="fw-nav-link" style="background:#eff6ff;color:#1d4ed8;padding:7px 12px;border-radius:8px;font-weight:700;border:1px solid #bfdbfe;">Katalog Saya</a>
+        <a href="worker-katalog-tambah.php" class="fw-nav-link" style="background:#0284c7;color:#fff;padding:7px 14px;border-radius:8px;font-weight:800;">+ Pasang Jasa</a>
       </div>
     </div>
   </header>

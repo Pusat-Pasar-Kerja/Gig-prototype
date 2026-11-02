@@ -370,8 +370,9 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
-      <a href="worker-bursa.php" style="font-size:0.86rem;color:#475569;text-decoration:none;font-weight:600;padding:6px 12px;">Bursa Lowongan</a>
-      <a href="worker-lamaran.php" style="font-size:0.86rem;color:#475569;text-decoration:none;font-weight:600;padding:6px 12px;">Lamaran</a>
+      <a href="worker-bursa.php" style="font-size:0.86rem;color:#475569;text-decoration:none;font-weight:600;padding:6px 12px;">Bursa Proyek</a>
+      <a href="katalog-jasa.php" style="font-size:0.86rem;color:#0284c7;text-decoration:none;font-weight:700;padding:6px 12px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">Bursa Jasa</a>
+      <a href="worker-katalog-tambah.php" style="font-size:0.86rem;color:#ffffff;text-decoration:none;font-weight:800;padding:6px 14px;background:#0284c7;border-radius:8px;box-shadow:0 2px 6px rgba(2,132,199,0.25);">+ Upload Jasa</a>
       <a href="worker-profile.php?id=tessa" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#0f172a;font-weight:700;font-size:0.86rem;padding:4px 10px;background:#f1f5f9;border-radius:20px;">
         <img src="<?php echo htmlspecialchars($workerAvatarUrl ?: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', ENT_QUOTES, 'UTF-8'); ?>" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" alt="Avatar" />
         <span><?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?></span>
