@@ -9,6 +9,8 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/user-avatars.php';
 require_once __DIR__ . '/includes/katalog-store.php';
+require_once __DIR__ . '/includes/project-vacancies.php';
+require_once __DIR__ . '/includes/project-offers.php';
 
 $id = trim((string)($_GET['id'] ?? ''));
 $service = null;
@@ -28,6 +30,38 @@ if (!$service) {
     exit;
 }
 
+// Find actual worker ID in the system
+$workerId = 'tessa';
+if (!empty($service['worker_id'])) {
+    $found = gig_find_worker((string)$service['worker_id']);
+    if ($found) {
+        $workerId = (string)$found['id'];
+    } elseif (!empty($service['worker_name'])) {
+        $foundByName = gig_find_worker((string)$service['worker_name']);
+        if ($foundByName) {
+            $workerId = (string)$foundByName['id'];
+        }
+    }
+}
+
+// Role and active vacancies detection for Company / Employer
+$role = (string)($_SESSION['role'] ?? '');
+$employerUser = (string)($_SESSION['employer_user'] ?? '');
+$isEmployer = ($role === 'employer' || !empty($employerUser));
+
+$activeVacancies = [];
+$vacancyOfferCounts = [];
+$alreadyOfferedMap = [];
+if ($isEmployer) {
+    $vacancies = gig_project_vacancies();
+    $activeVacancies = array_values(array_filter($vacancies, fn($v) => $v['status'] === 'active'));
+    foreach ($activeVacancies as $v) {
+        $vacancyOfferCounts[$v['id']] = gig_count_vacancy_offers($v['id']);
+    }
+    $employerKey = !empty($employerUser) ? $employerUser : ($_SESSION['username'] ?? '');
+    $alreadyOfferedMap = gig_employer_offered_map($employerKey);
+}
+
 // Load related services (excluding current)
 $allServices = gig_katalog_load_all();
 $relatedServices = array_values(array_filter($allServices, function ($s) use ($service) {
@@ -41,28 +75,28 @@ if (empty($gallery)) {
     $gallery = [$service['thumbnail'] ?: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80'];
 }
 
-// Sample Reviews
+// Sample Reviews from Companies / Project Clients
 $sampleReviews = [
     [
-        'name' => 'Hendro Wijaya',
+        'name' => 'PT Sinar Mulia Retail (Hendro W.)',
         'avatar' => 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
         'rating' => 5,
         'date' => '3 hari yang lalu',
-        'comment' => 'Luar biasa cepat dan hasilnya sangat elegan! Konsep pertama yang dikirim sudah langsung cocok dengan filosofi kedai kopi kami. Revisi minor warna dilayani dengan sangat ramah dan profesional. Sangat recommended!'
+        'comment' => 'Pengerjaan deliverables proyek sangat cepat dan rapi sesuai arahan brand guideline perusahaan kami. Hasil master file vector langsung siap digunakan oleh tim marketing. Sangat memuaskan!'
     ],
     [
-        'name' => 'Siti Nurhaliza',
+        'name' => 'Nusantara Creative Labs (Siti N.)',
         'avatar' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
         'rating' => 5,
         'date' => '1 minggu yang lalu',
-        'comment' => 'Puas sekali dengan Brand Guidelines Book yang diberikan. Sangat detail dan rapi, dari palet warna hingga aturan peletakan logo di berbagai media promosi. Kerja cepat dan komunikatif.'
+        'comment' => 'Deliverables Brand Guidelines Book yang diserahkan sangat komprehensif. Mulai dari sistem warna korporat hingga standar aplikasi mockup. Kerja terstruktur dan tepat waktu.'
     ],
     [
-        'name' => 'Bambang Pratama',
+        'name' => 'PT Mandiri Agro Lestari (Bambang P.)',
         'avatar' => 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=80',
         'rating' => 5,
         'date' => '2 minggu yang lalu',
-        'comment' => 'Layanan sangat profesional dengan hasil kualitas bintang lima. Dalam 24 jam sudah menerima file resolusi tinggi yang siap dipasang di kemasan produk kami. Terima kasih banyak!'
+        'comment' => 'Kualitas pengerjaan sangat profesional dengan standar industri. Berkas diserahkan lengkap di dashboard dan siap untuk diaplikasikan ke kemasan produk resmi kami.'
     ]
 ];
 ?>
@@ -552,8 +586,8 @@ $sampleReviews = [
       background: #0369a1;
       transform: translateY(-1px);
     }
-    .btn-chat-seller {
-      background: #f1f5f9;
+    .btn-action-profile-secondary {
+      background: #ffffff;
       color: #334155;
       border: 1.5px solid #cbd5e1;
       width: 100%;
@@ -566,11 +600,68 @@ $sampleReviews = [
       align-items: center;
       justify-content: center;
       gap: 8px;
+      text-decoration: none;
       transition: all 0.2s;
     }
-    .btn-chat-seller:hover {
-      background: #e2e8f0;
+    .btn-action-profile-secondary:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
       color: #0f172a;
+    }
+    .btn-hire {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-hire:hover {
+      background: #1d4ed8;
+    }
+    .modal-window {
+      background: #ffffff;
+      border-radius: 16px;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      animation: modalPop 0.25s ease;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    .modal-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: #f8fafc;
+    }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
     }
     .escrow-trust-box {
       margin-top: 18px;
@@ -625,10 +716,16 @@ $sampleReviews = [
         </a>
       </div>
       <div class="fw-nav-links">
-        <a href="worker-bursa.php" class="fw-nav-link">Bursa Proyek</a>
-        <a href="katalog-jasa.php" class="fw-nav-link" style="color:#0284c7;font-weight:700;">Bursa Jasa</a>
-        <a href="worker-katalog-saya.php" class="fw-nav-link" style="background:#eff6ff;color:#1d4ed8;padding:7px 12px;border-radius:8px;font-weight:700;border:1px solid #bfdbfe;">Katalog Saya</a>
-        <a href="worker-katalog-tambah.php" class="fw-nav-link" style="background:#0284c7;color:#fff;padding:7px 14px;border-radius:8px;font-weight:800;">+ Pasang Jasa</a>
+        <?php if ($isEmployer): ?>
+          <a href="employer-cari-mitra.php" class="fw-nav-link">Cari Mitra Kerja</a>
+          <a href="katalog-jasa.php" class="fw-nav-link" style="color:#0284c7;font-weight:700;">Bursa Jasa</a>
+          <a href="employer-lowongan.php" class="fw-nav-link" style="background:#eff6ff;color:#1d4ed8;padding:7px 12px;border-radius:8px;font-weight:700;border:1px solid #bfdbfe;">Kelola Lowongan</a>
+        <?php else: ?>
+          <a href="worker-bursa.php" class="fw-nav-link">Bursa Proyek</a>
+          <a href="katalog-jasa.php" class="fw-nav-link" style="color:#0284c7;font-weight:700;">Bursa Jasa</a>
+          <a href="worker-katalog-saya.php" class="fw-nav-link" style="background:#eff6ff;color:#1d4ed8;padding:7px 12px;border-radius:8px;font-weight:700;border:1px solid #bfdbfe;">Katalog Saya</a>
+          <a href="worker-katalog-tambah.php" class="fw-nav-link" style="background:#0284c7;color:#fff;padding:7px 14px;border-radius:8px;font-weight:800;">+ Pasang Jasa</a>
+        <?php endif; ?>
       </div>
     </div>
   </header>
@@ -663,12 +760,12 @@ $sampleReviews = [
             <span>•</span>
             <span class="meta-stat-pill">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-              <?php echo (int)($service['orders_count'] ?? 312); ?> Pesanan Selesai
+              <?php echo (int)($service['orders_count'] ?? 312); ?> Proyek Selesai
             </span>
             <span>•</span>
             <span class="meta-stat-pill">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
-              Balas dalam <?php echo htmlspecialchars($service['worker_response_time'] ?? '< 15 Menit', ENT_QUOTES, 'UTF-8'); ?>
+              Mitra Terverifikasi KarirHub
             </span>
           </div>
         </div>
@@ -694,11 +791,11 @@ $sampleReviews = [
 
         <!-- Section Navigation Anchor Tabs -->
         <nav class="content-nav-tabs">
-          <a href="#deskripsi" class="content-tab-btn active">Deskripsi Jasa</a>
-          <a href="#lingkup" class="content-tab-btn">Cakupan Layanan</a>
-          <a href="#profil" class="content-tab-btn">Tentang Freelancer</a>
-          <a href="#ulasan" class="content-tab-btn">Ulasan Pembeli (<?php echo (int)($service['reviews_count'] ?? 148); ?>)</a>
-          <a href="#faq" class="content-tab-btn">Syarat & FAQ</a>
+          <a href="#deskripsi" class="content-tab-btn active">Deskripsi Layanan</a>
+          <a href="#lingkup" class="content-tab-btn">Cakupan Deliverables</a>
+          <a href="#profil" class="content-tab-btn">Tentang Gig Worker</a>
+          <a href="#ulasan" class="content-tab-btn">Penilaian Perusahaan (<?php echo (int)($service['reviews_count'] ?? 148); ?>)</a>
+          <a href="#faq" class="content-tab-btn">Syarat & Ketentuan</a>
         </nav>
 
         <!-- SECTION 1: Deskripsi Layanan -->
@@ -712,7 +809,7 @@ $sampleReviews = [
         <!-- SECTION 2: Cakupan & Output Layanan -->
         <section class="detail-card" id="lingkup">
           <h2 class="card-heading">Cakupan & Output Layanan</h2>
-          <p style="font-size:0.86rem;color:#64748b;margin-bottom:16px;">Berikut rincian hasil kerja dan format berkas yang akan diserahkan kepada klien:</p>
+          <p style="font-size:0.86rem;color:#64748b;margin-bottom:16px;">Berikut rincian hasil kerja dan format berkas deliverables yang akan diserahkan kepada perusahaan pemberi kerja:</p>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:18px;background:#f8fafc;">
@@ -726,58 +823,58 @@ $sampleReviews = [
             </div>
 
             <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:18px;background:#f8fafc;">
-              <div style="font-size:0.95rem;font-weight:800;color:#0f172a;margin-bottom:10px;">🤝 Jaminan & Kerjasama Profesional</div>
+              <div style="font-size:0.95rem;font-weight:800;color:#0f172a;margin-bottom:10px;">🤝 Standar Kerjasama Proyek Perusahaan</div>
               <ul class="pkg-features-list" style="margin:0;">
-                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsultasi pra-proyek gratis melalui chat KarirHub</span></li>
-                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh langsung menjadi milik klien</span></li>
-                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Revisi terakomodasi sesuai kesepakatan brief kerja</span></li>
-                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Dukungan komunikasi responsif selama pengerjaan</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Penugasan proyek resmi melalui fitur Tawarkan Proyek KarirHub</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh langsung menjadi aset perusahaan</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Revisi terakomodasi sesuai kesepakatan brief kerja penugasan</span></li>
+                <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Pelaporan berkas dan serah terima resmi di dashboard KarirHub</span></li>
               </ul>
             </div>
           </div>
         </section>
 
-        <!-- SECTION 3: Profil Freelancer (as in Image 2) -->
+        <!-- SECTION 3: Profil Gig Worker -->
         <section class="detail-card" id="profil">
-          <h2 class="card-heading">Tentang Freelancer</h2>
+          <h2 class="card-heading">Tentang Gig Worker</h2>
           <div class="seller-profile-card">
             <?php echo gig_katalog_render_avatar($service['worker_name'] ?? 'Worker', 72, '1.5rem', 'border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);'); ?>
             <div class="seller-info-details">
               <div class="seller-name-row">
                 <span class="seller-full-name"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></span>
                 <span style="background:#e0f2fe;color:#0284c7;font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:6px;"><?php echo htmlspecialchars($service['worker_badge'] ?? 'Super Seller', ENT_QUOTES, 'UTF-8'); ?></span>
-                <span style="background:#ecfdf5;color:#059669;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;">Online Sekarang</span>
+                <span style="background:#ecfdf5;color:#059669;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;">Status: Siap Ditugaskan</span>
               </div>
               <div class="seller-meta-row">
                 <span>📍 Indonesia</span>
                 <span>•</span>
                 <span>⭐ Rating 4.95 / 5.0</span>
                 <span>•</span>
-                <span>Waktu Respon: <?php echo htmlspecialchars($service['worker_response_time'] ?? '< 15 Menit', ENT_QUOTES, 'UTF-8'); ?></span>
+                <span><?php echo (int)($service['orders_count'] ?? 312); ?> Proyek Selesai</span>
               </div>
-              <p style="font-size:0.86rem;color:#475569;margin-bottom:14px;line-height:1.5;">Desainer grafis & creative brand specialist berdedikasi dengan fokus pada hasil estetis, fungsional, dan orisinal. Berkomitmen memberikan kepuasan maksimal bagi setiap klien.</p>
-              <div style="display:flex;gap:12px;">
-                <button type="button" class="btn-chat-seller" style="width:auto;padding:8px 16px;font-size:0.82rem;" onclick="openChatModal()">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Hubungi Freelancer
+              <p style="font-size:0.86rem;color:#475569;margin-bottom:14px;line-height:1.5;">Gig Worker profesional berdedikasi dengan spesialisasi deliverables kreatif dan teknis berstandar tinggi. Berkomitmen menyelesaikan penugasan proyek perusahaan secara tepat waktu dan berkualitas.</p>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button type="button" class="btn-hire" style="padding:10px 20px;font-size:0.86rem;display:inline-flex;align-items:center;gap:6px;" onclick="triggerOfferProject('<?php echo htmlspecialchars($workerId, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes($service['worker_name']), ENT_QUOTES, 'UTF-8'); ?>')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Tawarkan Proyek ke Mitra
                 </button>
-                <a href="worker-profile.php?id=tessa" target="_blank" style="padding:8px 16px;font-size:0.82rem;background:#fff;border:1px solid #cbd5e1;border-radius:10px;text-decoration:none;color:#334155;font-weight:700;display:inline-flex;align-items:center;">
-                  Lihat Profil Lengkap &rarr;
+                <a href="worker-profile.php?id=<?php echo urlencode($workerId); ?>" target="_blank" style="padding:9px 18px;font-size:0.86rem;background:#fff;border:1.5px solid #cbd5e1;border-radius:8px;text-decoration:none;color:#334155;font-weight:700;display:inline-flex;align-items:center;">
+                  Lihat Profil Portofolio Lengkap &rarr;
                 </a>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- SECTION 4: Ulasan Klien (as in Image 2) -->
+        <!-- SECTION 4: Ulasan & Penilaian Perusahaan -->
         <section class="detail-card" id="ulasan">
-          <h2 class="card-heading">Ulasan & Penilaian Pembeli</h2>
+          <h2 class="card-heading">Ulasan & Penilaian Perusahaan Pemberi Kerja</h2>
           
           <div class="reviews-score-hero">
             <div>
               <div class="big-score-val">4.95</div>
               <div style="color:#f59e0b;font-size:1.1rem;font-weight:800;letter-spacing:2px;margin-bottom:4px;">★★★★★</div>
-              <div style="font-size:0.82rem;color:#64748b;"><?php echo (int)($service['reviews_count'] ?? 148); ?> penilaian terverifikasi</div>
+              <div style="font-size:0.82rem;color:#64748b;"><?php echo (int)($service['reviews_count'] ?? 148); ?> penilaian proyek selesai</div>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:6px;font-size:0.8rem;color:#475569;">
               <div style="display:flex;align-items:center;gap:10px;">
@@ -818,14 +915,14 @@ $sampleReviews = [
           </div>
         </section>
 
-        <!-- SECTION 5: Kebutuhan Klien & FAQ -->
+        <!-- SECTION 5: Kebutuhan Proyek & FAQ -->
         <section class="detail-card" id="faq">
-          <h2 class="card-heading">Syarat Pemesanan & Tanya Jawab (FAQ)</h2>
+          <h2 class="card-heading">Spesifikasi Brief & Ketentuan Pengerjaan</h2>
           
           <div style="margin-bottom:20px;">
-            <div style="font-size:0.92rem;font-weight:700;color:#0f172a;margin-bottom:8px;">Yang Perlu Disiapkan Sebelum Memesan:</div>
+            <div style="font-size:0.92rem;font-weight:700;color:#0f172a;margin-bottom:8px;">Yang Perlu Disiapkan Perusahaan Sebelum Menawarkan Proyek:</div>
             <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;font-size:0.86rem;color:#475569;white-space:pre-line;">
-              <?php echo htmlspecialchars($service['client_requirements'] ?? "1. Nama brand/bisnis Anda\n2. Bidang usaha dan target pasar\n3. Preferensi gaya & warna yang disukai", ENT_QUOTES, 'UTF-8'); ?>
+              <?php echo htmlspecialchars($service['client_requirements'] ?? "1. Profil perusahaan & nama brand\n2. Bidang industri dan target audiens proyek\n3. Dokumen brief proyek dan panduan brand (jika ada)", ENT_QUOTES, 'UTF-8'); ?>
             </div>
           </div>
 
@@ -863,8 +960,8 @@ $sampleReviews = [
       <aside class="right-sticky-wrap">
         <div class="purchase-box-card">
           <div style="background:#f8fafc;padding:16px 20px;border-bottom:1px solid var(--border-color);">
-            <div style="font-size:1.05rem;font-weight:800;color:#0f172a;">Tertarik dengan Jasa Ini?</div>
-            <div style="font-size:0.82rem;color:#64748b;margin-top:2px;">Diskusikan kebutuhan proyek Anda langsung dengan freelancer.</div>
+            <div style="font-size:1.05rem;font-weight:800;color:#0f172a;">Tugaskan Mitra untuk Proyek</div>
+            <div style="font-size:0.82rem;color:#64748b;margin-top:2px;">Tawarkan lowongan proyek aktif perusahaan Anda langsung ke Gig Worker ini.</div>
           </div>
 
           <div class="purchase-box-body">
@@ -872,36 +969,37 @@ $sampleReviews = [
               <?php echo gig_katalog_render_avatar($service['worker_name'] ?? 'Worker', 40, '0.95rem'); ?>
               <div>
                 <div style="font-size:0.9rem;font-weight:800;color:#0f172a;"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></div>
-                <div style="font-size:0.75rem;color:#0369a1;font-weight:600;">Tersedia untuk proyek baru</div>
+                <div style="font-size:0.75rem;color:#0369a1;font-weight:600;">Status: Siap Ditugaskan Perusahaan</div>
               </div>
             </div>
 
             <!-- Deliverables summary -->
             <ul class="pkg-features-list" style="margin-bottom:20px;">
-              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsep desain original & eksklusif</span></li>
-              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>File master vektor & resolusi tinggi</span></li>
-              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh</span></li>
-              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Diskusi langsung sebelum pengerjaan</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsep desain original & terstandarisasi</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>File master vektor & format resolusi tinggi lengkap</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh milik perusahaan</span></li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Penugasan & serah-terima resmi via KarirHub</span></li>
             </ul>
 
-            <!-- Primary Contact Button -->
-            <button type="button" class="btn-order-primary" onclick="openChatModal()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Hubungi & Diskusi Jasa Ini
+            <!-- Primary Action Button: Tawarkan Proyek Perusahaan -->
+            <button type="button" class="btn-order-primary" onclick="triggerOfferProject('<?php echo htmlspecialchars($workerId, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes($service['worker_name']), ENT_QUOTES, 'UTF-8'); ?>')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Tawarkan Proyek Perusahaan
             </button>
 
-            <a href="worker-profile.php?id=tessa" target="_blank" class="btn-chat-seller" style="text-decoration:none;margin-top:8px;">
+            <!-- Secondary Action Button: Lihat Profil Lengkap -->
+            <a href="worker-profile.php?id=<?php echo urlencode($workerId); ?>" target="_blank" class="btn-action-profile-secondary" style="margin-top:8px;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Lihat Profil Freelancer
+              Lihat Profil Portofolio Lengkap
             </a>
 
-            <!-- Escrow Trust Box -->
+            <!-- Trust Box -->
             <div class="escrow-trust-box" style="margin-top:16px;">
               <div style="font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Kerjasama Aman KarirHub
+                Kerjasama Resmi KarirHub
               </div>
-              <p style="margin:0;">Diskusikan brief dan ketentuan pengerjaan secara transparan dengan freelancer melalui platform resmi KarirHub.</p>
+              <p style="margin:0;">Seluruh penawaran lowongan, kesepakatan cakupan kerja, dan serah-terima berkas deliverables dicatat resmi di dashboard KarirHub.</p>
             </div>
 
           </div>
@@ -911,48 +1009,160 @@ $sampleReviews = [
     </div>
   </div>
 
-  <!-- CHAT INQUIRY MODAL -->
-  <div class="modal-backdrop" id="chatModal">
-    <div class="modal-content-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:1.2rem;font-weight:800;color:#0f172a;">Kirim Pesan ke <?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-        <button type="button" onclick="closeChatModal()" style="background:none;border:none;font-size:1.5rem;color:#94a3b8;cursor:pointer;">&times;</button>
+  <!-- OFFER PROJECT MODAL (FOR EMPLOYER) -->
+  <div class="modal-backdrop" id="offerProjectModal" onclick="if(event.target.id==='offerProjectModal') closeOfferModal();">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 style="font-size:1.15rem;font-weight:800;color:#0f172a;margin:0;">Tawarkan Proyek ke <span id="offer-worker-name"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></span></h3>
+        <button class="modal-close-btn" type="button" onclick="closeOfferModal()">&times;</button>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:16px;">
-        <?php echo gig_katalog_render_avatar($service['worker_name'] ?? 'Worker', 36, '0.85rem'); ?>
-        <div>
-          <div style="font-size:0.88rem;font-weight:700;color:#0f172a;"><?php echo htmlspecialchars($service['worker_name'], ENT_QUOTES, 'UTF-8'); ?></div>
-          <div style="font-size:0.74rem;color:#10b981;font-weight:700;">● Online (Respon &lt; 15 menit)</div>
-        </div>
+      <div class="modal-body" style="padding:20px;">
+        <?php if (!$isEmployer): ?>
+          <div style="text-align:center;padding:20px 0;">
+            <div style="font-size:2rem;margin-bottom:12px;">🏢</div>
+            <div style="font-weight:800;font-size:1rem;color:#0f172a;margin-bottom:6px;">Khusus Akun Perusahaan (Pemberi Kerja)</div>
+            <p style="font-size:0.86rem;color:#64748b;line-height:1.5;margin-bottom:16px;">Fitur Tawarkan Proyek digunakan oleh Perusahaan untuk menugaskan Gig Worker pada lowongan aktif. Silakan masuk dengan akun Perusahaan Anda.</p>
+            <div style="display:flex;gap:10px;justify-content:center;">
+              <a href="employer-login.php?redirect=<?php echo urlencode('katalog-jasa-detail.php?id=' . $service['id']); ?>" class="btn-hire" style="text-decoration:none;display:inline-block;padding:10px 20px;">Masuk Akun Perusahaan</a>
+              <a href="employer-register.php" style="display:inline-block;padding:10px 18px;background:#f1f5f9;color:#475569;border-radius:8px;font-size:0.85rem;font-weight:700;text-decoration:none;border:1px solid #cbd5e1;">Daftar Perusahaan</a>
+            </div>
+          </div>
+        <?php elseif (count($activeVacancies) === 0): ?>
+          <div style="text-align:center;padding:24px 0;">
+            <div style="font-size:2rem;margin-bottom:12px;">📋</div>
+            <div style="font-weight:700;font-size:0.95rem;color:#1e293b;margin-bottom:6px;">Belum Ada Lowongan Aktif</div>
+            <p style="font-size:0.85rem;color:#64748b;line-height:1.5;margin-bottom:16px;">Perusahaan Anda belum memiliki lowongan aktif yang siap ditawarkan. Ajukan lowongan baru terlebih dahulu.</p>
+            <a href="employer-lowongan.php" class="btn-hire" style="display:inline-block;text-decoration:none;padding:8px 20px;border-radius:8px;font-size:0.86rem;">Kelola Lowongan Perusahaan &rarr;</a>
+          </div>
+        <?php else: ?>
+          <p style="font-size:0.86rem;color:#64748b;margin-bottom:14px;">Pilih proyek aktif perusahaan Anda yang ingin ditawarkan kepada mitra ini (maksimal 3 penawaran per lowongan):</p>
+          <div style="display:flex;flex-direction:column;gap:10px;" id="offer-vacancy-list">
+            <?php foreach ($activeVacancies as $v): ?>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+                 data-vacancy-id="<?php echo htmlspecialchars($v['id'], ENT_QUOTES, 'UTF-8'); ?>"
+                 data-offer-count="<?php echo (int)($vacancyOfferCounts[$v['id']] ?? 0); ?>">
+              <div>
+                <div style="font-size:0.88rem;font-weight:700;color:#1e293b;"><?php echo htmlspecialchars($v['title'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div style="font-size:0.74rem;color:#64748b;margin-top:2px;">
+                  <?php echo htmlspecialchars($v['budget'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($v['duration'], ENT_QUOTES, 'UTF-8'); ?>
+                  · <span style="color:#059669;font-weight:700;">1 Penempatan Gig Worker</span>
+                </div>
+              </div>
+              <button type="button" class="btn-hire offer-send-btn"
+                onclick="sendOffer('<?php echo htmlspecialchars($v['id'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes($v['title']), ENT_QUOTES, 'UTF-8'); ?>')">
+                Kirim Tawaran
+              </button>
+            </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
       </div>
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:0.84rem;font-weight:700;color:#1e293b;margin-bottom:6px;">Pesan Anda:</label>
-        <textarea id="chatMsgInput" style="width:100%;height:100px;padding:10px;border:1.5px solid #cbd5e1;border-radius:10px;font-family:inherit;font-size:0.86rem;outline:none;">Halo kak <?php echo htmlspecialchars(explode(' ', $service['worker_name'])[0], ENT_QUOTES, 'UTF-8'); ?>, saya tertarik dengan layanan "<?php echo htmlspecialchars($service['title'], ENT_QUOTES, 'UTF-8'); ?>". Apakah bisa konsultasi terlebih dahulu mengenai konsep proyek saya?</textarea>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeOfferModal()">Tutup</button>
       </div>
-      <button type="button" class="btn-order-primary" onclick="sendSimulatedChat()">
-        Kirim Pesan Sekarang
-      </button>
     </div>
   </div>
 
   <script>
+    let currentOfferWorkerId = '<?php echo htmlspecialchars($workerId, ENT_QUOTES, 'UTF-8'); ?>';
+    let currentOfferWorkerName = '<?php echo htmlspecialchars(addslashes($service['worker_name']), ENT_QUOTES, 'UTF-8'); ?>';
+    let isEmployer = <?php echo $isEmployer ? 'true' : 'false'; ?>;
+    let offerCounts = <?php echo json_encode($vacancyOfferCounts, JSON_UNESCAPED_UNICODE); ?> || {};
+    const alreadyOffered = <?php echo json_encode($alreadyOfferedMap, JSON_UNESCAPED_UNICODE); ?> || {};
+
     function switchGalleryImg(url, el) {
       document.getElementById('mainGalleryImg').src = url;
       document.querySelectorAll('.thumb-item').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
     }
 
-    function openChatModal() {
-      document.getElementById('chatModal').classList.add('open');
+    function triggerOfferProject(wId, wName) {
+      currentOfferWorkerId = wId || currentOfferWorkerId;
+      currentOfferWorkerName = wName || currentOfferWorkerName;
+      document.getElementById('offer-worker-name').innerText = currentOfferWorkerName;
+      if (isEmployer) {
+        refreshOfferButtons();
+      }
+      document.getElementById('offerProjectModal').classList.add('open');
     }
 
-    function closeChatModal() {
-      document.getElementById('chatModal').classList.remove('open');
+    function closeOfferModal() {
+      document.getElementById('offerProjectModal').classList.remove('open');
     }
 
-    function sendSimulatedChat() {
-      alert('Pesan Anda berhasil terkirim ke freelancer! Freelancer akan membalas melalui ruang pesan KarirHub.');
-      closeChatModal();
+    function setOfferButtonState(container, vacancyId, sentToCurrent) {
+      const btn = container ? container.querySelector('.offer-send-btn') : null;
+      if (!btn) return;
+      const count = offerCounts[vacancyId] || 0;
+      if (sentToCurrent) {
+        btn.disabled = true;
+        btn.style.background = '#94a3b8';
+        btn.style.cursor = 'not-allowed';
+        btn.innerText = 'Sudah Ditawarkan';
+        return;
+      }
+      if (count >= 3) {
+        btn.disabled = true;
+        btn.style.background = '#94a3b8';
+        btn.style.cursor = 'not-allowed';
+        btn.innerText = 'Penawaran Penuh (3/3)';
+        return;
+      }
+      btn.disabled = false;
+      btn.style.background = '';
+      btn.style.cursor = 'pointer';
+      btn.innerText = 'Kirim Tawaran';
+    }
+
+    function refreshOfferButtons() {
+      const sent = alreadyOffered[currentOfferWorkerId] || [];
+      document.querySelectorAll('#offer-vacancy-list [data-vacancy-id]').forEach(function (row) {
+        const vacancyId = row.getAttribute('data-vacancy-id');
+        setOfferButtonState(row, vacancyId, sent.indexOf(vacancyId) !== -1);
+      });
+    }
+
+    function sendOffer(vacancyId, vacancyTitle) {
+      if (!currentOfferWorkerId) {
+        alert('Data Gig Worker tidak valid.');
+        return;
+      }
+
+      const container = document.querySelector('[data-vacancy-id="' + vacancyId + '"]');
+      const btn = container ? container.querySelector('.offer-send-btn') : null;
+      if (btn) btn.disabled = true;
+
+      fetch('offer-save.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          worker_id: currentOfferWorkerId,
+          vacancy_id: vacancyId
+        })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data || !data.ok) {
+            alert((data && data.error) ? data.error : 'Penawaran gagal dikirim.');
+            if (btn) btn.disabled = false;
+            refreshOfferButtons();
+            return;
+          }
+
+          offerCounts[vacancyId] = data.offer_count || ((offerCounts[vacancyId] || 0) + 1);
+          if (!alreadyOffered[currentOfferWorkerId]) alreadyOffered[currentOfferWorkerId] = [];
+          if (alreadyOffered[currentOfferWorkerId].indexOf(vacancyId) === -1) {
+            alreadyOffered[currentOfferWorkerId].push(vacancyId);
+          }
+
+          alert('Penawaran lowongan "' + vacancyTitle + '" berhasil dikirim ke ' + currentOfferWorkerName + '. Gig Worker dapat meninjau detail penugasan pada dashboard mereka.');
+          refreshOfferButtons();
+          closeOfferModal();
+        })
+        .catch(function () {
+          alert('Koneksi terputus. Silakan coba lagi.');
+          if (btn) btn.disabled = false;
+        });
     }
   </script>
 </body>

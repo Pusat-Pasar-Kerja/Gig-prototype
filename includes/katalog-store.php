@@ -70,7 +70,7 @@ function gig_katalog_default_seeds(): array
             'category' => 'Desain Grafis',
             'subcategory' => 'Desain Logo',
             'tag' => 'Minimalis',
-            'title' => 'Jasa Desain Logo Bisnis & Brand Identity Eksklusif (Free Konsultasi)',
+            'title' => 'Jasa Desain Logo Bisnis & Brand Identity Korporat Eksklusif',
             'slug' => 'jasa-desain-logo-bisnis-brand-identity-eksklusif',
             'thumbnail' => 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&auto=format&fit=crop&q=80',
             'gallery' => [
@@ -85,7 +85,7 @@ function gig_katalog_default_seeds(): array
             'price_starting' => 150000,
             'delivery_days' => 2,
             'revisions' => 'Bebas Revisi',
-            'description' => "Halo! Selamat datang di layanan desain logo profesional kami.\n\nApakah Anda sedang membangun bisnis baru, UMKM, atau ingin re-branding agar terlihat lebih berkelas dan kredibel? Kami siap membantu menciptakan identitas visual yang otentik, memikat, dan mudah diingat oleh calon pelanggan Anda.\n\n✨ Keunggulan Layanan Kami:\n• Desain 100% original, tanpa template siap pakai\n• Berorientasi pada karakter merek dan target pasar Anda\n• Komunikasi ramah, cepat, dan konsultasi gratis sebelum mulai\n• File siap cetak (300 DPI) dan siap aplikasi digital\n• Hak cipta penuh menjadi milik klien",
+            'description' => "Halo! Selamat datang di profil deliverables layanan desain identitas visual profesional kami.\n\nLayanan ini dirancang khusus untuk perusahaan, brand, dan unit bisnis yang membutuhkan identitas merek otentik, memikat, dan terstandarisasi untuk berbagai kebutuhan proyek.\n\n✨ Keunggulan Deliverables Kami:\n• Desain 100% original, dirancang terstruktur dari konsep dasar\n• Berorientasi pada karakter industri dan target audiens perusahaan\n• Pengerjaan terstruktur, profesional, dan sesuai timeline perusahaan\n• File siap cetak (300 DPI) dan siap aplikasi digital korporat\n• Hak cipta penuh langsung menjadi aset perusahaan",
             'packages' => [
                 'basic' => [
                     'name' => 'Paket Basic (Startup)',

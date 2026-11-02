@@ -380,7 +380,7 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
     <div class="dashboard-banner">
       <div>
         <h1 style="margin:0 0 8px 0;font-size:1.6rem;font-weight:800;letter-spacing:-0.3px;">Kelola Katalog Jasa Saya</h1>
-        <p style="margin:0;font-size:0.92rem;color:#cbd5e1;max-width:650px;">Tampilkan keahlian dan portofolio jasa Anda secara mandiri agar klien dapat langsung meninjau cakupan layanan dan berdiskusi secara langsung.</p>
+        <p style="margin:0;font-size:0.92rem;color:#cbd5e1;max-width:650px;">Tampilkan portofolio deliverables dan cakupan keahlian jasa Anda agar perusahaan pemberi kerja dapat langsung menawarkan proyek aktif.</p>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <a href="katalog-jasa.php" class="btn-bursa-view">
@@ -405,7 +405,7 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
       </div>
       <div class="stat-card">
         <div class="stat-label">
-          <span>Dilihat Klien</span>
+          <span>Dilihat Perusahaan</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
         </div>
         <div class="stat-value"><?php echo number_format($totalViews, 0, ',', '.'); ?></div>
@@ -460,7 +460,7 @@ $avgRating = count($myServices) > 0 ? round($ratingSum / count($myServices), 1) 
               </div>
               <div class="card-status-info-row" style="margin-top:auto;padding-top:14px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-size:0.8rem;color:#64748b;font-weight:600;">Status Katalog:</span>
-                <span style="font-size:0.82rem;font-weight:700;color:#0369a1;background:#e0f2fe;padding:3px 10px;border-radius:6px;">Aktif & Siap Menerima Order</span>
+                <span style="font-size:0.82rem;font-weight:700;color:#0369a1;background:#e0f2fe;padding:3px 10px;border-radius:6px;">Aktif & Siap Ditugaskan</span>
               </div>
             </div>
             <div class="card-actions-row">

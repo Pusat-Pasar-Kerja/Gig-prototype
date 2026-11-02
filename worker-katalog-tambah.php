@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (empty($faqs)) {
         $faqs = [
             ['q' => 'Apakah hasil karya dijamin original?', 'a' => 'Ya, kami menjamin 100% orisinalitas tanpa menggunakan template curian atau clipart gratisan.'],
-            ['q' => 'Bagaimana jika saya memerlukan revisi?', 'a' => 'Cukup berikan catatan feedback melalui fitur chat atau revisi di dashboard, kami akan memperbaikinya sesuai kesepakatan.']
+            ['q' => 'Bagaimana jika perusahaan memerlukan revisi?', 'a' => 'Catatan revisi disampaikan melalui menu pelaporan dan serah terima proyek di dashboard KarirHub sesuai kesepakatan penugasan.']
         ];
     }
 
@@ -679,7 +679,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
           <div class="section-step-num">3</div>
           <div>
             <h2 class="section-title">Cakupan Layanan & Output Hasil Kerja</h2>
-            <p class="section-subtitle">Tentukan waktu pengerjaan, ketentuan revisi, dan output berkas yang didapatkan klien.</p>
+            <p class="section-subtitle">Tentukan estimasi waktu pengerjaan, ketentuan revisi, dan berkas output deliverables yang diterima perusahaan pemberi kerja.</p>
           </div>
         </div>
 
@@ -691,8 +691,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
           </div>
           <div class="form-group">
             <label class="form-label">Ketentuan Revisi</label>
-            <input type="text" name="revisions" class="form-control" value="Revisi fleksibel hingga hasil sesuai brief" />
-            <div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Contoh: 3x Revisi, atau Bebas Revisi sesuai kesepakatan.</div>
+            <input type="text" name="revisions" class="form-control" value="Revisi fleksibel hingga hasil sesuai brief proyek" />
+            <div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Contoh: 3x Revisi, atau Sesuai kesepakatan timeline proyek.</div>
           </div>
         </div>
 
@@ -702,13 +702,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
 
         <div class="form-group">
-          <label class="form-label">Daftar Output / Fasilitas yang Didapat Klien (Satu per baris) <span style="color:#ef4444;">*</span></label>
-          <textarea name="deliverables" class="form-control" rows="5" placeholder="Contoh:&#10;Konsep desain orisinal sesuai brief&#10;File resolusi tinggi JPG & PNG HD&#10;File master vektor AI/EPS/SVG&#10;Lisensi hak cipta komersial penuh">Konsep desain orisinal sesuai brief
+          <label class="form-label">Daftar Output Deliverables yang Diterima Perusahaan (Satu per baris) <span style="color:#ef4444;">*</span></label>
+          <textarea name="deliverables" class="form-control" rows="5" placeholder="Contoh:&#10;Konsep desain orisinal sesuai brief&#10;File resolusi tinggi JPG & PNG HD&#10;File master vektor AI/EPS/SVG&#10;Lisensi hak cipta komersial penuh">Konsep desain orisinal sesuai brief proyek
 File resolusi tinggi (JPG & PNG HD 300 DPI)
 File master vektor (AI, EPS, SVG, PDF) siap cetak
 Mockup visual representatif
-Lisensi hak cipta komersial penuh
-Konsultasi dan asistensi pengerjaan</textarea>
+Lisensi hak cipta komersial penuh untuk perusahaan
+Dukungan asistensi teknis pengerjaan deliverables</textarea>
           <div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Tuliskan setiap deliverable atau berkas output pada baris baru.</div>
         </div>
       </div>
@@ -718,28 +718,28 @@ Konsultasi dan asistensi pengerjaan</textarea>
         <div class="section-header">
           <div class="section-step-num">4</div>
           <div>
-            <h2 class="section-title">Deskripsi Lengkap & Persyaratan Klien</h2>
-            <p class="section-subtitle">Jelaskan alur kerja dan apa yang harus disiapkan pembeli saat memesan.</p>
+            <h2 class="section-title">Deskripsi Lengkap & Kebutuhan Brief Proyek</h2>
+            <p class="section-subtitle">Jelaskan keahlian Anda, alur pengerjaan deliverables, dan apa yang harus disiapkan perusahaan pemberi kerja.</p>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Deskripsi Layanan & Alasan Memilih Anda</label>
-          <textarea name="description" class="form-control" rows="6" placeholder="Jelaskan secara rinci tentang keahlian Anda, alur pengerjaan, dan jaminan kepuasan...">Halo! Saya freelancer desainer profesional siap membantu bisnis atau UMKM Anda memiliki identitas visual yang memikat dan terpercaya.
+          <textarea name="description" class="form-control" rows="6" placeholder="Jelaskan secara rinci tentang keahlian Anda, alur pengerjaan, dan jaminan kepuasan...">Halo! Saya Gig Worker profesional bidang desain siap membantu perusahaan atau brand Anda memiliki identitas visual yang profesional dan kredibel.
 
 Mengapa Memilih Kami?
-• Desain 100% orisinal dan dikerjakan dari sketsa tangan
-• Respons ramah, cepat, dan siap berdiskusi
-• File siap cetak (300 DPI) dan siap aplikasi digital
-• Hak cipta komersial penuh langsung menjadi milik Anda</textarea>
+• Desain 100% orisinal dan dikerjakan terstruktur dari sketsa konsep
+• Pengerjaan tepat waktu sesuai timeline proyek perusahaan
+• File siap cetak (300 DPI) dan siap aplikasi digital korporat
+• Hak cipta komersial penuh langsung menjadi aset perusahaan</textarea>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Kebutuhan / Brief dari Pembeli (Apa yang harus disiapkan klien?)</label>
-          <textarea name="client_requirements" class="form-control" rows="4" placeholder="Contoh: Nama brand, bidang usaha, warna yang disukai...">1. Nama brand/bisnis dan tagline
-2. Bidang usaha dan target pasar
-3. Warna yang disukai atau dihindari
-4. Referensi contoh logo yang disukai (jika ada)</textarea>
+          <label class="form-label">Kebutuhan / Brief Proyek dari Perusahaan (Apa yang harus disiapkan pemberi kerja?)</label>
+          <textarea name="client_requirements" class="form-control" rows="4" placeholder="Contoh: Profil perusahaan, bidang industri, panduan merek/warna...">1. Profil perusahaan/bisnis dan nama brand/tagline
+2. Bidang industri dan target audiens utama
+3. Arahan warna korporat atau panduan merek (jika ada)
+4. Dokumen brief proyek dan referensi visual yang diharapkan</textarea>
         </div>
       </div>
 
@@ -774,15 +774,15 @@ Mengapa Memilih Kami?
             <span style="color:#64748b;font-weight:600;" id="previewDays">2 Hari Pengerjaan</span>
           </div>
           <div class="preview-card-meta">
-            <span style="font-size:0.75rem;color:#0369a1;font-weight:700;background:#e0f2fe;padding:3px 8px;border-radius:6px;">Tersedia untuk Dipesan</span>
+            <span style="font-size:0.75rem;color:#0369a1;font-weight:700;background:#e0f2fe;padding:3px 8px;border-radius:6px;">Siap Terima Proyek</span>
             <span style="font-size:0.82rem;font-weight:800;color:#0284c7;">Lihat Jasa &rarr;</span>
           </div>
         </div>
       </div>
 
       <div style="margin-top:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;font-size:0.78rem;color:#166534;line-height:1.4;">
-        <strong>🛡️ Perlindungan Komunikasi & Escrow KarirHub</strong>
-        <p style="margin:4px 0 0 0;">Klien menghubungi Anda langsung melalui chat terintegrasi KarirHub. Seluruh kesepakatan dan serah-terima dilindungi secara aman.</p>
+        <strong>🛡️ Penugasan Resmi Perusahaan & KarirHub</strong>
+        <p style="margin:4px 0 0 0;">Perusahaan pemberi kerja dapat langsung menawarkan proyek aktif berdasarkan deliverables katalog Anda. Semua kontrak dan penyerahan karya tercatat resmi di dashboard KarirHub.</p>
       </div>
     </aside>
 

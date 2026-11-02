@@ -12,6 +12,10 @@ require_once __DIR__ . '/includes/katalog-store.php';
 
 $allServices = gig_katalog_load_all();
 
+$role = (string)($_SESSION['role'] ?? '');
+$employerUser = (string)($_SESSION['employer_user'] ?? '');
+$isEmployer = ($role === 'employer' || !empty($employerUser));
+
 // Filter parameters
 $searchQ = trim((string)($_GET['q'] ?? ''));
 $selectedCategory = trim((string)($_GET['category'] ?? 'Semua'));
@@ -549,15 +553,26 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
 
       <!-- Nav Links -->
       <div class="fw-nav-links">
-        <a href="worker-bursa.php" class="fw-nav-link">Bursa Proyek</a>
-        <a href="worker-katalog-saya.php" class="fw-btn-sell">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-          Katalog Jasa Saya
-        </a>
-        <a href="worker-katalog-tambah.php" class="fw-btn-upload">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          + Pasang Jasa
-        </a>
+        <?php if ($isEmployer): ?>
+          <a href="employer-cari-mitra.php" class="fw-nav-link">Cari Mitra Kerja</a>
+          <a href="employer-lowongan.php" class="fw-btn-sell">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+            Kelola Lowongan
+          </a>
+          <a href="employer-proyek-aktif.php" class="fw-btn-upload">
+            Proyek Aktif
+          </a>
+        <?php else: ?>
+          <a href="worker-bursa.php" class="fw-nav-link">Bursa Proyek</a>
+          <a href="worker-katalog-saya.php" class="fw-btn-sell">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+            Katalog Jasa Saya
+          </a>
+          <a href="worker-katalog-tambah.php" class="fw-btn-upload">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            + Pasang Jasa
+          </a>
+        <?php endif; ?>
       </div>
     </div>
   </header>
@@ -601,7 +616,7 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
             Jasa Profesional Online untuk Berbagai Kebutuhan Bisnis & UMKM
           <?php endif; ?>
         </h1>
-        <p style="color:#64748b;font-size:0.88rem;margin-top:4px;">Pilih penawaran katalog jasa dari freelancer terverifikasi dengan sistem pembayaran escrow aman.</p>
+        <p style="color:#64748b;font-size:0.88rem;margin-top:4px;">Katalog keahlian &amp; output deliverables dari talenta Gig Workers terverifikasi untuk kebutuhan proyek perusahaan.</p>
       </div>
     </div>
 
@@ -680,8 +695,8 @@ $workerAvatarUrl = gig_worker_display_photo((string)($workerObj['id'] ?? 'tessa'
     <!-- Worker Promo Bottom Banner -->
     <div class="fw-worker-banner">
       <div>
-        <h2 style="margin:0 0 6px 0;font-size:1.4rem;font-weight:800;">Apakah Anda Freelancer Berbakat?</h2>
-        <p style="margin:0;font-size:0.92rem;color:#e0f2fe;max-width:640px;">Buka katalog jasa Anda di KarirHub Gig Workers secara gratis. Tampilkan portofolio terbaik, diskusikan kebutuhan proyek langsung dengan klien, dan jalin kerja sama profesional.</p>
+        <h2 style="margin:0 0 6px 0;font-size:1.4rem;font-weight:800;">Apakah Anda Talenta Gig Worker Berbakat?</h2>
+        <p style="margin:0;font-size:0.92rem;color:#e0f2fe;max-width:640px;">Buka katalog jasa dan portofolio Anda di KarirHub Gig Workers secara gratis. Tampilkan sampel deliverables terbaik Anda agar perusahaan pemberi kerja dapat langsung menawarkan proyek aktif kepada Anda.</p>
       </div>
       <a href="worker-katalog-tambah.php" class="fw-btn-upload" style="background:#fff;color:#0284c7;font-weight:800;padding:12px 24px;font-size:0.95rem;box-shadow:0 4px 14px rgba(0,0,0,0.15);">
         + Pasang Katalog Jasa Anda
