@@ -705,14 +705,6 @@ if ($isEmployer) {
           </div>
         </div>
 
-        <!-- Deliverables summary -->
-        <ul class="pkg-features-list" style="margin-bottom:20px;">
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsep desain original & terstandarisasi</span></li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>File master vektor & resolusi tinggi lengkap</span></li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh milik perusahaan</span></li>
-          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Penugasan & serah-terima resmi via KarirHub</span></li>
-        </ul>
-
         <!-- Primary Action Button: Tawarkan Proyek Perusahaan -->
         <button type="button" class="btn-hire-primary" onclick="triggerOfferProject('<?php echo htmlspecialchars($workerId, ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes($service['worker_name']), ENT_QUOTES, 'UTF-8'); ?>')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
