@@ -527,7 +527,6 @@ if ($isEmployer) {
       <a href="#lingkup" class="content-tab-btn">Cakupan Deliverables</a>
       <a href="#profil" class="content-tab-btn">Tentang Gig Worker</a>
       <a href="#ulasan" class="content-tab-btn">Penilaian Perusahaan (<?php echo (int)($service['reviews_count'] ?? 148); ?>)</a>
-      <a href="#faq" class="content-tab-btn">Syarat & Ketentuan</a>
     </nav>
 
     <!-- SECTION 1: Deskripsi Layanan -->
@@ -647,28 +646,7 @@ if ($isEmployer) {
       </div>
     </section>
 
-    <!-- SECTION 5: Kebutuhan Proyek & FAQ -->
-    <section class="detail-card" id="faq">
-      <h2 class="card-heading">Spesifikasi Brief & Ketentuan Pengerjaan</h2>
-      
-      <div style="margin-bottom:20px;">
-        <div style="font-size:0.92rem;font-weight:700;color:var(--text-main);margin-bottom:8px;">Yang Perlu Disiapkan Perusahaan Sebelum Menawarkan Proyek:</div>
-        <div style="background:#f8fafc;border:1px solid var(--border-subtle);border-radius:10px;padding:14px;font-size:0.86rem;color:#475569;white-space:pre-line;">
-          <?php echo htmlspecialchars($service['client_requirements'] ?? "1. Profil perusahaan & nama brand\n2. Bidang industri dan target audiens proyek\n3. Dokumen brief proyek dan panduan brand (jika ada)", ENT_QUOTES, 'UTF-8'); ?>
-        </div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <?php foreach (($service['faqs'] ?? []) as $faq): ?>
-          <div style="border:1px solid var(--border-subtle);border-radius:10px;padding:14px;">
-            <div style="font-size:0.88rem;font-weight:800;color:var(--text-main);margin-bottom:4px;">Q: <?php echo htmlspecialchars($faq['q'] ?? '', ENT_QUOTES, 'UTF-8'); ?></div>
-            <div style="font-size:0.84rem;color:#475569;line-height:1.5;">A: <?php echo htmlspecialchars($faq['a'] ?? '', ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    </section>
-
-    <!-- SECTION 6: Jasa Serupa Lainnya -->
+    <!-- SECTION 5: Jasa Serupa Lainnya -->
     <?php if (!empty($relatedServices)): ?>
       <section style="margin-top:10px;">
         <h2 style="font-size:1.25rem;font-weight:800;color:var(--text-main);margin-bottom:14px;">Katalog Jasa Lainnya untuk Anda</h2>
