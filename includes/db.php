@@ -119,6 +119,39 @@ function gig_db(): ?PDO
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
+        // --- worker_profiles table ---
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `worker_profiles` (
+                `id`                 VARCHAR(50)  NOT NULL PRIMARY KEY,
+                `name`               VARCHAR(150) NOT NULL,
+                `initials`           VARCHAR(10)  NOT NULL DEFAULT '',
+                `color`              VARCHAR(30)  NOT NULL DEFAULT '#2563eb',
+                `photo`              VARCHAR(500) NOT NULL DEFAULT '',
+                `title`              VARCHAR(150) NOT NULL DEFAULT '',
+                `location`           VARCHAR(100) NOT NULL DEFAULT '',
+                `rating`             DECIMAL(3,1) NOT NULL DEFAULT 5.0,
+                `reviews_count`      INT UNSIGNED NOT NULL DEFAULT 0,
+                `completed_projects` INT UNSIGNED NOT NULL DEFAULT 0,
+                `total_projects`     INT UNSIGNED NOT NULL DEFAULT 0,
+                `verified`           TINYINT(1)   NOT NULL DEFAULT 1,
+                `agreed`             TINYINT(1)   NOT NULL DEFAULT 0,
+                `category`           VARCHAR(50)  NOT NULL DEFAULT '',
+                `applied_project`    VARCHAR(255) NOT NULL DEFAULT '',
+                `bid`                VARCHAR(50)  NOT NULL DEFAULT '',
+                `eta`                VARCHAR(50)  NOT NULL DEFAULT '',
+                `proposal`           TEXT,
+                `skills`             LONGTEXT,
+                `social_media`       LONGTEXT,
+                `video_url`          VARCHAR(500) NOT NULL DEFAULT '',
+                `contact`            LONGTEXT,
+                `experience`         LONGTEXT,
+                `portfolio`          LONGTEXT,
+                `reviews`            LONGTEXT,
+                `created_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
         require_once __DIR__ . '/project-history.php';
         gig_history_ensure_table($pdo);
         gig_seed_project_history($pdo);

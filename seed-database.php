@@ -139,6 +139,10 @@ require_once __DIR__ . '/includes/admin-store.php';
 gig_admin_ensure_schema($pdo);
 gig_admin_seed_workers($pdo);
 
+require_once __DIR__ . '/includes/worker-profiles.php';
+gig_worker_profiles_ensure_table($pdo);
+log_r('CREATE & SEED worker_profiles', true, 'Populated all gig worker profiles');
+
 /* ══════════════════════════════════════════════════════════════════════════════
    2. project_history
    ══════════════════════════════════════════════════════════════════════════════ */

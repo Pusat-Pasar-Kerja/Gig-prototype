@@ -248,20 +248,11 @@ function gig_format_skills_summary(mixed $skills): string
 }
 
 /**
- * Shared Gig Worker account profiles.
- * Contact details stay hidden until both sides have agreed to work together.
- * Individual review ratings are whole integers (1–5).
- * The overall 'rating' field is a computed average and may be a decimal.
- * 'completed_projects' = completed rows in project_history.
- * 'total_projects' = completed + cancelled in project_history (same basis as Riwayat Proyek).
+ * Default seed Gig Worker account profiles.
  */
-function gig_worker_profiles(): array
+function gig_worker_default_profiles(): array
 {
-    if (!function_exists('gig_worker_project_stats')) {
-        require_once __DIR__ . '/project-history.php';
-    }
-
-    $profiles = [
+    return [
         'tessa' => [
             'id' => 'tessa',
             'name' => 'Theressa Zaratrusha',
@@ -1154,8 +1145,223 @@ function gig_worker_profiles(): array
             'reviews' => [],
         ],
     ];
+}
 
-    // ── Merge reviews from DB (primary source) ───────────────────────────────
+/**
+ * Ensures worker_profiles table exists in MySQL and seeds default profiles if empty.
+ */
+function gig_worker_profiles_ensure_table(?PDO $pdo = null): void
+{
+    $pdo = $pdo ?? (function_exists('gig_db') ? gig_db() : null);
+    if ($pdo === null) {
+        return;
+    }
+
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `worker_profiles` (
+                `id`                 VARCHAR(50)  NOT NULL PRIMARY KEY,
+                `name`               VARCHAR(150) NOT NULL,
+                `initials`           VARCHAR(10)  NOT NULL DEFAULT '',
+                `color`              VARCHAR(30)  NOT NULL DEFAULT '#2563eb',
+                `photo`              VARCHAR(500) NOT NULL DEFAULT '',
+                `title`              VARCHAR(150) NOT NULL DEFAULT '',
+                `location`           VARCHAR(100) NOT NULL DEFAULT '',
+                `rating`             DECIMAL(3,1) NOT NULL DEFAULT 5.0,
+                `reviews_count`      INT UNSIGNED NOT NULL DEFAULT 0,
+                `completed_projects` INT UNSIGNED NOT NULL DEFAULT 0,
+                `total_projects`     INT UNSIGNED NOT NULL DEFAULT 0,
+                `verified`           TINYINT(1)   NOT NULL DEFAULT 1,
+                `agreed`             TINYINT(1)   NOT NULL DEFAULT 0,
+                `category`           VARCHAR(50)  NOT NULL DEFAULT '',
+                `applied_project`    VARCHAR(255) NOT NULL DEFAULT '',
+                `bid`                VARCHAR(50)  NOT NULL DEFAULT '',
+                `eta`                VARCHAR(50)  NOT NULL DEFAULT '',
+                `proposal`           TEXT,
+                `skills`             LONGTEXT,
+                `social_media`       LONGTEXT,
+                `video_url`          VARCHAR(500) NOT NULL DEFAULT '',
+                `contact`            LONGTEXT,
+                `experience`         LONGTEXT,
+                `portfolio`          LONGTEXT,
+                `reviews`            LONGTEXT,
+                `created_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+
+        $count = (int)$pdo->query("SELECT COUNT(*) FROM `worker_profiles`")->fetchColumn();
+        if ($count === 0) {
+            $stmt = $pdo->prepare("
+                INSERT INTO `worker_profiles`
+                (`id`, `name`, `initials`, `color`, `photo`, `title`, `location`, `rating`, `reviews_count`, `completed_projects`, `total_projects`, `verified`, `agreed`, `category`, `applied_project`, `bid`, `eta`, `proposal`, `skills`, `social_media`, `video_url`, `contact`, `experience`, `portfolio`, `reviews`)
+                VALUES
+                (:id, :name, :initials, :color, :photo, :title, :location, :rating, :reviews_count, :completed_projects, :total_projects, :verified, :agreed, :category, :applied_project, :bid, :eta, :proposal, :skills, :social_media, :video_url, :contact, :experience, :portfolio, :reviews)
+                ON DUPLICATE KEY UPDATE
+                  `name` = VALUES(`name`),
+                  `initials` = VALUES(`initials`),
+                  `color` = VALUES(`color`),
+                  `photo` = VALUES(`photo`),
+                  `title` = VALUES(`title`),
+                  `location` = VALUES(`location`),
+                  `rating` = VALUES(`rating`),
+                  `reviews_count` = VALUES(`reviews_count`),
+                  `completed_projects` = VALUES(`completed_projects`),
+                  `total_projects` = VALUES(`total_projects`),
+                  `verified` = VALUES(`verified`),
+                  `agreed` = VALUES(`agreed`),
+                  `category` = VALUES(`category`),
+                  `applied_project` = VALUES(`applied_project`),
+                  `bid` = VALUES(`bid`),
+                  `eta` = VALUES(`eta`),
+                  `proposal` = VALUES(`proposal`),
+                  `skills` = VALUES(`skills`),
+                  `social_media` = VALUES(`social_media`),
+                  `video_url` = VALUES(`video_url`),
+                  `contact` = VALUES(`contact`),
+                  `experience` = VALUES(`experience`),
+                  `portfolio` = VALUES(`portfolio`),
+                  `reviews` = VALUES(`reviews`)
+            ");
+
+            foreach (gig_worker_default_profiles() as $wid => $p) {
+                $stmt->execute([
+                    ':id' => $wid,
+                    ':name' => $p['name'] ?? '',
+                    ':initials' => $p['initials'] ?? '',
+                    ':color' => $p['color'] ?? '#2563eb',
+                    ':photo' => $p['photo'] ?? '',
+                    ':title' => $p['title'] ?? '',
+                    ':location' => $p['location'] ?? '',
+                    ':rating' => (float)($p['rating'] ?? 5.0),
+                    ':reviews_count' => (int)($p['reviews_count'] ?? 0),
+                    ':completed_projects' => (int)($p['completed_projects'] ?? 0),
+                    ':total_projects' => (int)($p['total_projects'] ?? 0),
+                    ':verified' => !empty($p['verified']) ? 1 : 0,
+                    ':agreed' => !empty($p['agreed']) ? 1 : 0,
+                    ':category' => $p['category'] ?? '',
+                    ':applied_project' => $p['applied_project'] ?? '',
+                    ':bid' => $p['bid'] ?? '',
+                    ':eta' => $p['eta'] ?? '',
+                    ':proposal' => $p['proposal'] ?? '',
+                    ':skills' => json_encode($p['skills'] ?? [], JSON_UNESCAPED_UNICODE),
+                    ':social_media' => json_encode($p['social_media'] ?? [], JSON_UNESCAPED_UNICODE),
+                    ':video_url' => $p['video_url'] ?? '',
+                    ':contact' => json_encode($p['contact'] ?? [], JSON_UNESCAPED_UNICODE),
+                    ':experience' => json_encode($p['experience'] ?? [], JSON_UNESCAPED_UNICODE),
+                    ':portfolio' => json_encode($p['portfolio'] ?? [], JSON_UNESCAPED_UNICODE),
+                    ':reviews' => json_encode($p['reviews'] ?? [], JSON_UNESCAPED_UNICODE),
+                ]);
+            }
+        }
+    } catch (Throwable $e) {}
+}
+
+/**
+ * Updates a worker profile in the worker_profiles MySQL table.
+ */
+function gig_save_worker_profile(string $id, array $data, ?PDO $pdo = null): bool
+{
+    $pdo = $pdo ?? (function_exists('gig_db') ? gig_db() : null);
+    if ($pdo === null) {
+        return false;
+    }
+
+    try {
+        gig_worker_profiles_ensure_table($pdo);
+        $fields = [
+            'name', 'initials', 'color', 'photo', 'title', 'location',
+            'rating', 'reviews_count', 'completed_projects', 'total_projects',
+            'verified', 'agreed', 'category', 'applied_project', 'bid', 'eta',
+            'proposal', 'skills', 'social_media', 'video_url', 'contact',
+            'experience', 'portfolio', 'reviews'
+        ];
+        $updates = [];
+        $params = [':id' => $id];
+        foreach ($fields as $f) {
+            if (array_key_exists($f, $data)) {
+                $val = $data[$f];
+                if (is_array($val)) {
+                    $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                } elseif (is_bool($val)) {
+                    $val = $val ? 1 : 0;
+                }
+                $updates[] = "`$f` = :$f";
+                $params[":$f"] = $val;
+            }
+        }
+        if (empty($updates)) {
+            return false;
+        }
+        $sql = "UPDATE `worker_profiles` SET " . implode(', ', $updates) . " WHERE `id` = :id";
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Shared Gig Worker account profiles.
+ * Loaded from the worker_profiles MySQL database table (with memory fallback).
+ */
+function gig_worker_profiles(): array
+{
+    if (!function_exists('gig_worker_project_stats')) {
+        require_once __DIR__ . '/project-history.php';
+    }
+
+    $profiles = [];
+
+    // Load from MySQL worker_profiles table if available
+    if (function_exists('gig_db')) {
+        $pdo = gig_db();
+        if ($pdo !== null) {
+            try {
+                gig_worker_profiles_ensure_table($pdo);
+                $stmt = $pdo->query("SELECT * FROM `worker_profiles` ORDER BY `id` ASC");
+                $dbRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if (!empty($dbRows)) {
+                    foreach ($dbRows as $row) {
+                        $wid = (string)$row['id'];
+                        $profiles[$wid] = [
+                            'id' => $wid,
+                            'name' => (string)$row['name'],
+                            'initials' => (string)$row['initials'],
+                            'color' => (string)$row['color'],
+                            'photo' => (string)$row['photo'],
+                            'title' => (string)$row['title'],
+                            'location' => (string)$row['location'],
+                            'rating' => (float)$row['rating'],
+                            'reviews_count' => (int)$row['reviews_count'],
+                            'completed_projects' => (int)$row['completed_projects'],
+                            'total_projects' => (int)$row['total_projects'],
+                            'verified' => !empty($row['verified']),
+                            'agreed' => !empty($row['agreed']),
+                            'category' => (string)$row['category'],
+                            'applied_project' => (string)$row['applied_project'],
+                            'bid' => (string)$row['bid'],
+                            'eta' => (string)$row['eta'],
+                            'proposal' => (string)($row['proposal'] ?? ''),
+                            'skills' => json_decode((string)($row['skills'] ?? ''), true) ?: [],
+                            'social_media' => json_decode((string)($row['social_media'] ?? ''), true) ?: [],
+                            'video_url' => (string)($row['video_url'] ?? ''),
+                            'contact' => json_decode((string)($row['contact'] ?? ''), true) ?: [],
+                            'experience' => json_decode((string)($row['experience'] ?? ''), true) ?: [],
+                            'portfolio' => json_decode((string)($row['portfolio'] ?? ''), true) ?: [],
+                            'reviews' => json_decode((string)($row['reviews'] ?? ''), true) ?: [],
+                        ];
+                    }
+                }
+            } catch (Throwable $e) {
+                $profiles = [];
+            }
+        }
+    }
+
+    if (empty($profiles)) {
+        $profiles = gig_worker_default_profiles();
+    }
     // db.php is conditionally included here so worker-profiles.php can work
     // standalone without requiring a DB connection in every consumer.
     if (function_exists('gig_db')) {
