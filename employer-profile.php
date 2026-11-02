@@ -213,7 +213,7 @@ if ($role === 'employer') {
               </a>
             </h4>
             <div style="font-size: 0.82rem; color: #64748b;">
-              Gaji: <strong style="color: #1d4ed8;"><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi: <?php echo htmlspecialchars($job['duration'], ENT_QUOTES, 'UTF-8'); ?> &bull; Lokasi: <?php echo htmlspecialchars((string)($job['location'] ?? 'Indonesia'), ENT_QUOTES, 'UTF-8'); ?>
+              Nilai Proyek: <strong style="color: #1d4ed8;"><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Durasi: <?php echo htmlspecialchars($job['duration'], ENT_QUOTES, 'UTF-8'); ?> &bull; Lokasi: <?php echo htmlspecialchars((string)($job['location'] ?? 'Indonesia'), ENT_QUOTES, 'UTF-8'); ?>
             </div>
           </div>
 

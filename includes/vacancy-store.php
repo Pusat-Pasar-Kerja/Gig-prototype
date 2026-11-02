@@ -8,10 +8,10 @@ function gig_vacancy_budget_range(string $rawBudget): string
 {
     $rawBudget = trim($rawBudget);
     if ($rawBudget === '') {
-        return 'Gaji dapat dinegosiasikan';
+        return 'Nilai proyek dapat dinegosiasikan';
     }
 
-    // Keep non-numeric labels such as "Gaji dapat dinegosiasikan".
+    // Keep non-numeric labels such as "Nilai proyek dapat dinegosiasikan".
     if (!preg_match_all('/\d[\d\.]*/', $rawBudget, $m) || empty($m[0])) {
         return $rawBudget;
     }
@@ -267,7 +267,7 @@ function gig_vacancy_migrate_legacy_tables(PDO $pdo): void
                 continue;
             }
             $payload = json_decode((string)($sub['payload_json'] ?? ''), true) ?: [];
-            $budget = gig_vacancy_budget_range((string)($payload['budget'] ?? 'Gaji dapat dinegosiasikan'));
+            $budget = gig_vacancy_budget_range((string)($payload['budget'] ?? 'Nilai proyek dapat dinegosiasikan'));
             $vacancy = [
                 'id' => $id,
                 'title' => (string)$sub['title'],
@@ -489,7 +489,7 @@ function gig_vacancy_save_submission(string $employerUsername, array $vacancy): 
         'category' => (string)($vacancy['category'] ?? ''),
         'status' => 'review',
         'statusLabel' => 'Menunggu Verifikasi',
-        'budget' => gig_vacancy_budget_range($budgetRaw !== '' ? $budgetRaw : 'Gaji dapat dinegosiasikan'),
+        'budget' => gig_vacancy_budget_range($budgetRaw !== '' ? $budgetRaw : 'Nilai proyek dapat dinegosiasikan'),
         'duration' => (string)($vacancy['duration'] ?? ''),
         'applicantsCount' => 0,
         'acceptedCount' => 0,

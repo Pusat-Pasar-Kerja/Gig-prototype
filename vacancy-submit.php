@@ -28,7 +28,7 @@ $employer = (string)($_SESSION['username'] ?? 'Employer');
 $budgetRaw = trim((string)($payload['budget'] ?? ''));
 $showSalary = !empty($payload['show_salary']);
 $budgetMin = (int)($payload['budget_min'] ?? ($payload['salary'] ?? 0));
-$budget = 'Gaji dapat dinegosiasikan';
+$budget = 'Nilai proyek dapat dinegosiasikan';
 if ($showSalary) {
     if ($budgetMin > 0) {
         $budget = 'Rp ' . number_format($budgetMin, 0, ',', '.');

@@ -548,7 +548,7 @@ a.proyek-card-item:hover .apply-cta {
       'Data & Analitik' => 'Data & Analitik',
     ];
     $budgetMap = [
-      'all' => 'Semua Rentang Gaji',
+      'all' => 'Semua Rentang Nilai Proyek',
       'under_5m' => 'Di bawah 5 Juta',
       '5m_10m' => '5 Juta - 10 Juta',
       'over_10m' => 'Di atas 10 Juta',
@@ -644,7 +644,7 @@ a.proyek-card-item:hover .apply-cta {
       </div>
 
       <div class="filter-group">
-        <div class="filter-group-title">Rentang Gaji</div>
+        <div class="filter-group-title">Rentang Nilai Proyek</div>
         <ul class="filter-link-list">
           <?php foreach ($budgetMap as $budgetKey => $budgetLabel): ?>
             <?php $isBudgetActive = $selectedBudget === $budgetKey || ($selectedBudget === '' && $budgetKey === 'all'); ?>
@@ -710,7 +710,7 @@ a.proyek-card-item:hover .apply-cta {
 
                 <div class="card-meta-detail">
                   <div>
-                    <div class="card-salary-label">Gaji</div>
+                    <div class="card-salary-label">Nilai Proyek</div>
                     <div class="card-salary-value"><?php echo htmlspecialchars($cleanBudget, ENT_QUOTES, 'UTF-8'); ?></div>
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">

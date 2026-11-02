@@ -526,17 +526,13 @@ require __DIR__ . '/includes/employer-layout-start.php';
           </div>
         </div>
 
-        <!-- Second Row: Bidang Category Filters & Scope Badge -->
+        <!-- Second Row: Bidang Category Filters -->
         <div class="marketplace-toolbar-sub">
           <div class="marketplace-filter-group">
             <button class="filter-btn-pill active" type="button" onclick="filterWorkers('all', this)">Semua Bidang (<?php echo count($workerProfiles); ?>)</button>
             <button class="filter-btn-pill" type="button" onclick="filterWorkers('ui-ux', this)">UI/UX &amp; Desain</button>
             <button class="filter-btn-pill" type="button" onclick="filterWorkers('backend', this)">Backend &amp; API</button>
             <button class="filter-btn-pill" type="button" onclick="filterWorkers('marketing', this)">Pemasaran</button>
-          </div>
-          <div class="search-scope-badge" title="Pencarian memeriksa seluruh data profil Gig Worker tanpa kecuali">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Mencari di seluruh isi profil</span>
           </div>
         </div>
 

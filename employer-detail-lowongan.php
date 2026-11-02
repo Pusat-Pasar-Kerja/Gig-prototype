@@ -822,7 +822,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
       <?php endforeach; ?>
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px;margin-top:16px;">
-      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Gaji / Budget</span><strong><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
+      <div><span style="font-size:0.74rem;color:#64748b;display:block;">Nilai Proyek</span><strong><?php echo htmlspecialchars(gig_vacancy_budget_range((string)($job['budget'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></strong></div>
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Durasi Target</span><strong><?php echo htmlspecialchars((string)$job['duration'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Lokasi</span><strong><?php echo htmlspecialchars((string)$job['location'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Mode Pengerjaan</span><strong><?php echo gig_is_remote_work($job) ? '🌐 Remote (Kerja Jarak Jauh)' : '🏢 On-site / Hybrid'; ?></strong></div>

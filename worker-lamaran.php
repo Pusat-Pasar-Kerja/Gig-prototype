@@ -133,7 +133,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
             <div style="font-size:0.9rem;font-weight:700;color:var(--text-main);margin-top:2px;"><?php echo htmlspecialchars(date('d M Y, H:i', strtotime((string)($app['updated_at'] ?? 'now'))), ENT_QUOTES, 'UTF-8'); ?></div>
           </div>
           <div>
-            <div style="font-size:0.74rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Gaji</div>
+            <div style="font-size:0.74rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Nilai Proyek</div>
             <div style="font-size:0.9rem;font-weight:800;color:#2563eb;margin-top:2px;"><?php echo htmlspecialchars($cleanBid, ENT_QUOTES, 'UTF-8'); ?></div>
           </div>
         </div>

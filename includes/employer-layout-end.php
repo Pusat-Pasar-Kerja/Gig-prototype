@@ -410,7 +410,7 @@ declare(strict_types=1);
                   <span class="gig-section-icon">3</span>
                   <div>
                     <div class="gig-section-title">Tambahan &amp; Publikasi</div>
-                    <div class="gig-section-sub">Opsi remote, nominal gaji, dan periode tayang lowongan.</div>
+                    <div class="gig-section-sub">Opsi remote, nominal nilai proyek, dan periode tayang lowongan.</div>
                   </div>
                 </div>
 
@@ -430,14 +430,14 @@ declare(strict_types=1);
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_salary">Gaji (Rp) *</label>
+                  <label for="proj_salary">Nilai Proyek (Rp) *</label>
                   <input type="text" id="proj_salary" required placeholder="Contoh: 7500000" />
                 </div>
 
                 <div class="gig-toggle-row">
                   <label for="proj_show_salary" class="gig-checkbox-label">
                     <input type="checkbox" id="proj_show_salary" checked />
-                    <span>Tampilkan nominal gaji di postingan lowongan</span>
+                    <span>Tampilkan nominal nilai proyek di postingan lowongan</span>
                   </label>
                 </div>
 
@@ -509,7 +509,7 @@ declare(strict_types=1);
     const salaryRaw = document.getElementById('proj_salary').value || '';
     const salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
     if (!salaryVal || salaryVal < 10000) {
-      showToast('Gaji proyek belum valid. Masukkan nominal gaji yang sesuai.');
+      showToast('Nilai proyek belum valid. Masukkan nominal nilai proyek yang sesuai.');
       return;
     }
 

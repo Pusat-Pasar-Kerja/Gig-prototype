@@ -66,7 +66,7 @@ foreach ($historyProjects as $p) {
             </div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:0.74rem;color:var(--text-muted);">Gaji</div>
+            <div style="font-size:0.74rem;color:var(--text-muted);">Nilai Proyek</div>
             <div style="font-size:1.1rem;font-weight:800;color:var(--primary-blue);"><?php echo htmlspecialchars($item['budget'], ENT_QUOTES, 'UTF-8'); ?></div>
           </div>
         </div>
