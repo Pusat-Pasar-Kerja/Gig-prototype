@@ -192,10 +192,6 @@ require __DIR__ . '/includes/worker-layout-start.php';
     <p style="font-size:0.86rem;color:var(--text-muted);margin-top:4px;">Kelola sampel karya dan cakupan deliverables keahlian Anda untuk menarik penugasan proyek dari perusahaan.</p>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <a href="katalog-jasa.php" class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:0.85rem;font-weight:700;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      Bursa Katalog Jasa
-    </a>
     <a href="worker-katalog-tambah.php" class="btn-primary-add" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:10px;font-size:0.85rem;font-weight:700;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       + Upload Katalog Jasa
