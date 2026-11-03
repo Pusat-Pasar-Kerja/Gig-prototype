@@ -5,6 +5,36 @@ require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/project-vacancies.php';
 require_once __DIR__ . '/includes/project-applications.php';
 
+function gig_relative_time(string $datetime): string
+{
+    $timestamp = strtotime($datetime);
+    if (!$timestamp) {
+        return '-';
+    }
+    $diff = time() - $timestamp;
+    if ($diff < 60) {
+        return 'Melamar baru saja';
+    }
+    if ($diff < 3600) {
+        $mins = max(1, (int)floor($diff / 60));
+        return 'Melamar ' . $mins . ' menit yang lalu';
+    }
+    if ($diff < 86400) {
+        $hours = (int)floor($diff / 3600);
+        return 'Melamar ' . $hours . ' jam yang lalu';
+    }
+    $days = (int)floor($diff / 86400);
+    if ($days < 30) {
+        return 'Melamar ' . $days . ' hari yang lalu';
+    }
+    $months = (int)floor($days / 30);
+    if ($months < 12) {
+        return 'Melamar ' . $months . ' bulan yang lalu';
+    }
+    $years = (int)floor($months / 12);
+    return 'Melamar ' . $years . ' tahun yang lalu';
+}
+
 function gig_get_stage_rank(string $status): int
 {
     return match ($status) {
@@ -246,7 +276,7 @@ foreach ($jobApplications as $app) {
         default => 'Lamaran Masuk',
     };
     $appliedAt = trim((string)($app['created_at'] ?? ''));
-    $appliedLabel = $appliedAt !== '' ? date('d M Y', strtotime($appliedAt)) : '-';
+    $appliedLabel = $appliedAt !== '' ? gig_relative_time($appliedAt) : '-';
     $contactUnlocked = gig_is_hired_status($status) || $lane === 'accepted';
 
     $prevExp = (string)($profile['prev_experience'] ?? '');
@@ -277,11 +307,23 @@ foreach ($jobApplications as $app) {
         'status_ui' => $statusUi,
         'status_text' => $statusText,
         'applied_label' => $appliedLabel,
+        'created_at' => $appliedAt,
         'contact_unlocked' => $contactUnlocked ? '1' : '0',
         'lane_rank' => gig_get_stage_rank($status),
         'is_final' => (gig_get_stage_rank($status) >= 4) ? '1' : '0',
         'profile' => $profile,
     ];
+}
+
+// Sort each candidate lane by rating DESC, then submitted_at ASC (FSD-GW-BR-56, FSD-GW-047, NFR-GW-13)
+foreach ($lanes as $k => $items) {
+    usort($lanes[$k], static function(array $a, array $b): int {
+        $rDiff = ($b['rating'] <=> $a['rating']);
+        if ($rDiff !== 0) {
+            return $rDiff;
+        }
+        return strtotime((string)($a['created_at'] ?? '')) <=> strtotime((string)($b['created_at'] ?? ''));
+    });
 }
 
 $rawJobStatus = (string)($job['status'] ?? 'draft');
@@ -725,8 +767,8 @@ require __DIR__ . '/includes/employer-layout-start.php';
                   data-status-ui="<?php echo htmlspecialchars($c['status_ui'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-applied="<?php echo htmlspecialchars($c['applied_label'], ENT_QUOTES, 'UTF-8'); ?>"
                   data-contact-unlocked="<?php echo $isUnlocked ? '1' : '0'; ?>"
-                  data-contact-wa="<?php echo htmlspecialchars($waNum, ENT_QUOTES, 'UTF-8'); ?>"
-                  data-contact-email="<?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>"
+                  data-contact-wa="<?php echo $isUnlocked ? htmlspecialchars($waNum, ENT_QUOTES, 'UTF-8') : ''; ?>"
+                  data-contact-email="<?php echo $isUnlocked ? htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8') : ''; ?>"
                   data-profile-json="<?php echo htmlspecialchars(json_encode($c['profile'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
                 >
                   <div class="cand-card-top">
@@ -739,8 +781,12 @@ require __DIR__ . '/includes/employer-layout-start.php';
                     </div>
                     <div class="cand-card-info">
                       <div class="cand-card-name" title="<?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($c['name'], ENT_QUOTES, 'UTF-8'); ?></div>
-                      <div class="cand-card-sub" title="<?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>">
-                        <?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>
+                      <div class="cand-card-sub">
+                        <?php if ($isUnlocked): ?>
+                          <?php echo htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>
+                        <?php else: ?>
+                          <span style="color:#64748b;font-size:0.75rem;">🔒 Kontak dibuka saat diterima</span>
+                        <?php endif; ?>
                       </div>
                     </div>
                     <button type="button" class="cand-card-pin" title="Tandai pelamar" onclick="togglePinCard(event, this)">📌</button>
@@ -770,6 +816,10 @@ require __DIR__ . '/includes/employer-layout-start.php';
                   <div class="cand-meta-row cand-rating-row">
                     <span>★ <?php echo number_format((float)$c['rating'], 1); ?></span>
                     <span class="cand-rating-reviews">(<?php echo (int)$c['reviews_count']; ?> ulasan)</span>
+                  </div>
+                  <div style="font-size:0.75rem;color:#64748b;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span><?php echo htmlspecialchars($c['applied_label'], ENT_QUOTES, 'UTF-8'); ?></span>
                   </div>
 
                   <!-- Dynamic Contact Section -->

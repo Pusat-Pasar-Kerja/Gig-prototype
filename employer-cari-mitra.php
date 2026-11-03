@@ -581,8 +581,13 @@ require __DIR__ . '/includes/employer-layout-start.php';
           'marketing' => 'Digital Marketing',
           default => 'Freelancer'
         };
+        $wActiveCount = function_exists('gig_worker_active_project_count') ? gig_worker_active_project_count((string)$w['id'], (string)$w['id']) : 0;
+        $wIsAvailable = ($wActiveCount < 2);
       ?>
       <div class="mitra-box" 
+           data-worker-id="<?php echo htmlspecialchars((string)$w['id'], ENT_QUOTES, 'UTF-8'); ?>"
+           data-available="<?php echo $wIsAvailable ? '1' : '0'; ?>"
+           data-active-projects="<?php echo $wActiveCount; ?>"
            data-category="<?php echo htmlspecialchars($w['category'], ENT_QUOTES, 'UTF-8'); ?>"
            data-search-corpus="<?php echo htmlspecialchars($searchMeta['full_text'], ENT_QUOTES, 'UTF-8'); ?>"
            data-search-facets="<?php echo htmlspecialchars(json_encode($searchMeta['facets'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
@@ -603,9 +608,19 @@ require __DIR__ . '/includes/employer-layout-start.php';
           <div class="mitra-name-row">
             <div class="mitra-name"><?php echo htmlspecialchars($w['name'], ENT_QUOTES, 'UTF-8'); ?></div>
           </div>
-          <?php if (!empty($w['title'])): ?>
-          <div class="mitra-role"><?php echo htmlspecialchars($w['title'], ENT_QUOTES, 'UTF-8'); ?></div>
-          <?php endif; ?>
+          
+          <!-- Availability Badge (FSD Page 32, 44) -->
+          <div style="margin:4px 0 6px 0;">
+            <?php if ($wIsAvailable): ?>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 8px;border-radius:12px;">
+                ✓ Tersedia (<?php echo $wActiveCount; ?>/2 Proyek Aktif)
+              </span>
+            <?php else: ?>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:2px 8px;border-radius:12px;">
+                ✕ Unavailable (2/2 Proyek Aktif)
+              </span>
+            <?php endif; ?>
+          </div>
           
           <!-- Dynamic Match Badge Snippet (shows where keyword matched) -->
           <div class="mitra-match-pill" style="display:none;"></div>
@@ -898,17 +913,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
           }
         }
 
-        // 8. Contact Details
-        if (facets.contact && facets.contact.toLowerCase().includes(primaryTerm)) {
-          return { type: 'Kontak', text: facets.contact };
-        }
-
-        // 9. Job Headline
-        if (facets.title && facets.title.toLowerCase().includes(primaryTerm)) {
-          return { type: 'Jabatan / Headline', text: facets.title };
-        }
-
-        // 10. Worker Name
+        // 8. Worker Name
         if (facets.name && facets.name.toLowerCase().includes(primaryTerm)) {
           return { type: 'Nama Gig Worker', text: facets.name };
         }
@@ -1062,6 +1067,11 @@ require __DIR__ . '/includes/employer-layout-start.php';
       }
 
       function openOfferModal(workerId, workerName) {
+        const card = document.querySelector(`.mitra-box[data-worker-id="${workerId}"]`);
+        if (card && card.getAttribute('data-available') === '0') {
+          alert('Gig Worker ini sedang Unavailable (telah memiliki 2 Penugasan Proyek aktif secara bersamaan).');
+          return;
+        }
         currentOfferWorkerId = workerId;
         currentOfferWorkerName = workerName;
         document.getElementById('offer-worker-name').innerText = workerName;

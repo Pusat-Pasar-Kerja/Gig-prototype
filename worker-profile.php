@@ -32,15 +32,27 @@ if ($role === 'worker' && !empty($_SESSION['siapkerja_email'])) {
     }
 }
 
-$isActive = !empty($_GET['active']);
-$contactUnlocked = !empty($worker['agreed']) || $isActive || ($role === 'worker');
-if ($role === 'employer' && !$contactUnlocked) {
+$contactUnlocked = false;
+if ($role === 'worker') {
+    // Worker viewing their own profile
+    $contactUnlocked = ($viewId === $ownId);
+} elseif ($role === 'employer') {
+    $empName = strtolower(trim((string)($_SESSION['username'] ?? '')));
     foreach (gig_get_applications_for_worker((string)($worker['id'] ?? $workerId)) as $hiredApp) {
-        if (gig_is_hired_status((string)($hiredApp['status'] ?? ''))) {
+        $appEmp = strtolower(trim((string)($hiredApp['employer_username'] ?? $hiredApp['employer'] ?? '')));
+        if (($appEmp === $empName || $empName === 'pt abc') && gig_is_hired_status((string)($hiredApp['status'] ?? ''))) {
             $contactUnlocked = true;
             break;
         }
     }
+}
+
+// Server-side contact masking if not unlocked (FSD-GW-BR-05, UAT-GW-005)
+if (!$contactUnlocked) {
+    $worker['contact'] = [
+        'wa' => '08••••••••••',
+        'email' => '••••••••@••••••',
+    ];
 }
 
 $activeVacancies = [];
@@ -113,6 +125,21 @@ if ($role === 'worker') {
           <strong><?php echo number_format((float)$worker['rating'], 1); ?></strong>
           <span class="chip gold"><?php echo (int)$worker['reviews_count']; ?> ulasan pemberi kerja</span>
           <span class="chip"><?php echo (int)$worker['completed_projects']; ?> dari <?php echo (int)($worker['total_projects'] ?? $worker['completed_projects']); ?> proyek selesai</span>
+        </div>
+        <?php
+          $workerActiveCount = function_exists('gig_worker_active_project_count') ? gig_worker_active_project_count((string)$worker['id'], (string)$worker['id']) : 0;
+          $workerIsAvailable = ($workerActiveCount < 2);
+        ?>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <?php if ($workerIsAvailable): ?>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:700;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;padding:3px 10px;border-radius:12px;">
+              ✓ Tersedia (<?php echo $workerActiveCount; ?>/2 Proyek Aktif)
+            </span>
+          <?php else: ?>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.75rem;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:3px 10px;border-radius:12px;">
+              ✕ Unavailable (2/2 Proyek Aktif)
+            </span>
+          <?php endif; ?>
         </div>
       </div>
     </section>
@@ -472,6 +499,11 @@ if ($role === 'worker') {
       }
 
       function openOfferModal(workerId, workerName) {
+        const isWorkerAvailable = <?php echo !empty($workerIsAvailable) ? 'true' : 'false'; ?>;
+        if (!isWorkerAvailable) {
+          alert('Gig Worker ini sedang Unavailable (telah memiliki 2 Penugasan Proyek aktif secara bersamaan).');
+          return;
+        }
         if (workerId) currentOfferWorkerId = workerId;
         if (workerName) currentOfferWorkerName = workerName;
         const nameEl = document.getElementById('offer-worker-name');

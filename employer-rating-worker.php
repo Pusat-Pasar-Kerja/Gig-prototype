@@ -151,7 +151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review'])) {
     if (!$canSubmitReview) {
         $errorMessage = 'Ulasan belum bisa dikirim. Kedua pihak harus mengonfirmasi bahwa proyek selesai terlebih dahulu.';
     } elseif ($comment === '') {
-        $errorMessage = 'Mohon tuliskan ulasan atau testimoni singkat untuk mitra proyek.';
+        $errorMessage = 'Mohon tuliskan ulasan atau testimoni untuk mitra proyek.';
+    } elseif (mb_strlen($comment) < 100) {
+        $errorMessage = 'Ulasan wajib diisi minimal 100 karakter sesuai standar evaluasi KarirHub (saat ini ' . mb_strlen($comment) . ' karakter).';
     } else {
         $badgesJson   = implode('||', $selectedBadges);
         $todayDate    = date('Y-m-d');
@@ -507,7 +509,11 @@ $displayComment = $submitted
         <label for="comment" style="display:block;font-size:0.92rem;font-weight:800;color:var(--text-main);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">
           Ulasan &amp; Testimoni <span style="color:#ef4444;">*</span>
         </label>
-        <textarea id="comment" name="comment" rows="4" required placeholder="Tuliskan pengalaman Anda bekerja bersama mitra ini..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;line-height:1.5;outline:none;font-family:inherit;resize:vertical;"></textarea>
+        <textarea id="comment" name="comment" rows="4" required minlength="100" placeholder="Tuliskan pengalaman Anda bekerja bersama mitra ini (minimal 100 karakter)..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;line-height:1.5;outline:none;font-family:inherit;resize:vertical;"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:0.75rem;">
+          <span style="color:#64748b;">Wajib diisi minimal 100 karakter</span>
+          <span id="comment-char-count" style="color:#ef4444;font-weight:700;">0/100 karakter</span>
+        </div>
       </div>
 
       <div style="display:flex;gap:12px;justify-content:flex-end;align-items:center;margin-top:20px;">
@@ -608,7 +614,13 @@ $displayComment = $submitted
 
       function validateForm() {
         if (!commentInput || !submitBtn) return;
-        const isValid = commentInput.value.trim().length > 0;
+        const len = commentInput.value.trim().length;
+        const countEl = document.getElementById('comment-char-count');
+        if (countEl) {
+          countEl.innerText = len + '/100 karakter';
+          countEl.style.color = len >= 100 ? '#10b981' : '#ef4444';
+        }
+        const isValid = len >= 100;
         submitBtn.disabled = !isValid;
         submitBtn.setAttribute('aria-disabled', isValid ? 'false' : 'true');
         if (isValid) {

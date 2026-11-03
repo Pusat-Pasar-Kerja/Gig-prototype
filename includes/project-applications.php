@@ -13,6 +13,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/project-vacancies.php';
 require_once __DIR__ . '/project-schedule.php';
+require_once __DIR__ . '/vacancy-store.php';
 
 function gig_is_hired_status(string $status): bool
 {
@@ -98,6 +99,8 @@ function gig_apps_ensure_tables(?PDO $pdo): void
         // Add vacancy_id column if it was created before this migration
         try { $pdo->exec("ALTER TABLE `employer_notifications` ADD COLUMN `vacancy_id` VARCHAR(50) NOT NULL DEFAULT '' AFTER `message`"); } catch (Throwable) {}
         try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `rejection_reason` VARCHAR(150) NOT NULL DEFAULT '' AFTER `note`"); } catch (Throwable) {}
+        try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `consent_version` VARCHAR(20) NOT NULL DEFAULT 'v1.0' AFTER `rejection_reason`"); } catch (Throwable) {}
+        try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `consent_at` DATETIME NULL AFTER `consent_version`"); } catch (Throwable) {}
 
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS `worker_notifications` (
@@ -692,6 +695,8 @@ function gig_apply_for_project(string $workerId, string $workerName, string $vac
         'bid_amount'         => $vacancy['budget'] ?? 'Rp 5.000.000',
         'status'             => 'applied',
         'note'               => $note,
+        'consent_version'    => 'v1.0',
+        'consent_at'         => date('Y-m-d H:i:s'),
         'created_at'         => date('Y-m-d H:i:s'),
         'updated_at'         => date('Y-m-d H:i:s'),
     ];
@@ -702,9 +707,9 @@ function gig_apply_for_project(string $workerId, string $workerName, string $vac
             gig_apps_ensure_tables($pdo);
             $stmt = $pdo->prepare("
                 INSERT INTO `project_applications`
-                    (`id`, `vacancy_id`, `worker_id`, `worker_name`, `employer_username`, `bid_amount`, `status`, `note`, `created_at`, `updated_at`)
+                    (`id`, `vacancy_id`, `worker_id`, `worker_name`, `employer_username`, `bid_amount`, `status`, `note`, `consent_version`, `consent_at`, `created_at`, `updated_at`)
                 VALUES
-                    (:id, :vac, :wid, :wname, :emp, :bid, 'applied', :note, NOW(), NOW())
+                    (:id, :vac, :wid, :wname, :emp, :bid, 'applied', :note, :cver, NOW(), NOW(), NOW())
             ");
             $stmt->execute([
                 ':id'    => $appData['id'],
@@ -714,6 +719,7 @@ function gig_apply_for_project(string $workerId, string $workerName, string $vac
                 ':emp'   => $appData['employer_username'],
                 ':bid'   => $appData['bid_amount'],
                 ':note'  => $appData['note'],
+                ':cver'  => $appData['consent_version'],
             ]);
         } catch (Throwable $ignored) {}
     }
@@ -760,16 +766,12 @@ function gig_employer_respond_application(string $appId, string $decision, strin
     $vacancy = gig_find_vacancy($app['vacancy_id']);
     $projectTitle = $vacancy['title'] ?? 'Proyek';
 
-    if ($decision === 'accept' && $vacancy) {
-        $maxQuota = max(5, (int)($vacancy['quota'] ?? 1));
-        $currentHiredCount = 0;
-        foreach (gig_get_all_applications() as $otherApp) {
-            if ($otherApp['id'] !== $appId && strcasecmp((string)($otherApp['vacancy_id'] ?? ''), (string)$vacancy['id']) === 0 && gig_is_hired_status((string)($otherApp['status'] ?? ''))) {
-                $currentHiredCount++;
-            }
+    if ($decision === 'accept') {
+        if ($vacancy && gig_vacancy_hired_application((string)$vacancy['id'], $appId) !== null) {
+            return ['ok' => false, 'error' => 'Lowongan Proyek ini sudah terisi oleh Gig Worker lain.'];
         }
-        if ($currentHiredCount >= $maxQuota) {
-            return ['ok' => false, 'error' => 'Kuota pelamar diterima untuk lowongan ini sudah penuh (' . $maxQuota . ' kandidat).'];
+        if (!gig_worker_has_active_project_capacity((string)$app['worker_id'])) {
+            return ['ok' => false, 'error' => 'Gig Worker ini sedang Unavailable (telah memiliki 2 penugasan proyek aktif secara bersamaan).'];
         }
     }
 
@@ -789,6 +791,35 @@ function gig_employer_respond_application(string $appId, string $decision, strin
     $_SESSION['gig_applications'][$appId] = $app;
 
     if ($decision === 'accept') {
+        // Update vacancy status to 'filled' (RULE-GW-08, FSD-GW-027)
+        if ($vacancy) {
+            gig_vacancy_set_status((string)$vacancy['id'], 'filled');
+
+            // Close other applicants as vacancy is now filled (FSD-GW-027)
+            foreach (gig_get_all_applications() as $otherApp) {
+                $otherId = (string)($otherApp['id'] ?? '');
+                if ($otherId !== $appId && strcasecmp((string)($otherApp['vacancy_id'] ?? ''), (string)$vacancy['id']) === 0 && !gig_is_hired_status((string)($otherApp['status'] ?? ''))) {
+                    $otherApp['status'] = 'rejected_by_employer';
+                    $otherApp['rejection_reason'] = 'Lowongan telah terisi oleh Gig Worker lain.';
+                    $otherApp['updated_at'] = date('Y-m-d H:i:s');
+                    $_SESSION['gig_applications'][$otherId] = $otherApp;
+                    if ($pdo) {
+                        try {
+                            $closeStmt = $pdo->prepare("UPDATE `project_applications` SET `status` = 'rejected_by_employer', `rejection_reason` = 'Lowongan telah terisi oleh Gig Worker lain.', `updated_at` = NOW() WHERE `id` = :id");
+                            $closeStmt->execute([':id' => $otherId]);
+                        } catch (Throwable) {}
+                    }
+                    gig_add_worker_notification(
+                        (string)$otherApp['worker_id'],
+                        'app_rejected',
+                        'Lowongan Proyek Terisi',
+                        'Lowongan untuk proyek "' . $projectTitle . '" telah terisi oleh kandidat lain. Terima kasih atas partisipasi Anda.',
+                        (string)($otherApp['vacancy_id'] ?? '')
+                    );
+                }
+            }
+        }
+
         gig_add_employer_notification(
             $employerUsername,
             'worker_confirmed',
@@ -873,6 +904,35 @@ function gig_worker_confirm_application(string $appId, string $action, string $w
         $newStatus = 'confirmed_by_worker';
         $app['status'] = $newStatus;
         $app['updated_at'] = date('Y-m-d H:i:s');
+
+        // Update vacancy status to 'filled' (RULE-GW-08, FSD-GW-027)
+        if ($vacancy) {
+            gig_vacancy_set_status((string)$vacancy['id'], 'filled');
+
+            // Close other applicants as vacancy is now filled
+            foreach (gig_get_all_applications() as $otherApp) {
+                $otherId = (string)($otherApp['id'] ?? '');
+                if ($otherId !== $appId && strcasecmp((string)($otherApp['vacancy_id'] ?? ''), (string)$vacancy['id']) === 0 && !gig_is_hired_status((string)($otherApp['status'] ?? ''))) {
+                    $otherApp['status'] = 'rejected_by_employer';
+                    $otherApp['rejection_reason'] = 'Lowongan telah terisi oleh Gig Worker lain.';
+                    $otherApp['updated_at'] = date('Y-m-d H:i:s');
+                    $_SESSION['gig_applications'][$otherId] = $otherApp;
+                    if ($pdo) {
+                        try {
+                            $closeStmt = $pdo->prepare("UPDATE `project_applications` SET `status` = 'rejected_by_employer', `rejection_reason` = 'Lowongan telah terisi oleh Gig Worker lain.', `updated_at` = NOW() WHERE `id` = :id");
+                            $closeStmt->execute([':id' => $otherId]);
+                        } catch (Throwable) {}
+                    }
+                    gig_add_worker_notification(
+                        (string)$otherApp['worker_id'],
+                        'app_rejected',
+                        'Lowongan Proyek Terisi',
+                        'Lowongan untuk proyek "' . $projectTitle . '" telah terisi oleh kandidat lain. Terima kasih atas partisipasi Anda.',
+                        (string)($otherApp['vacancy_id'] ?? '')
+                    );
+                }
+            }
+        }
 
         // Notify Employer that worker officially confirmed & is recruited!
         gig_add_employer_notification(

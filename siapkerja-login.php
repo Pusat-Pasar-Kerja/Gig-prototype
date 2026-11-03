@@ -153,8 +153,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $resolvedUsername = 'PT ABC';
             $userEmail = 'employer@pasker.id';
         }
-        // Admin Kemnaker: admin@kemnaker.go.id / admin123
-        elseif ($lowerInput === 'admin@kemnaker.go.id' || $lowerInput === 'admin') {
+        // Admin Kemnaker: admin@paskerid.test or admin@kemnaker.go.id / admin123
+        elseif ($lowerInput === 'admin@paskerid.test' || $lowerInput === 'admin@kemnaker.go.id' || $lowerInput === 'admin') {
             if ($passwordInput !== 'admin123') {
                 $message = 'Kata sandi admin tidak valid.';
                 $messageType = 'error';

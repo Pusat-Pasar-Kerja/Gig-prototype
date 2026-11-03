@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/admin-store.php';
 require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/project-vacancies.php';
 require_once __DIR__ . '/includes/vacancy-store.php';
+require_once __DIR__ . '/includes/project-offers.php';
 
 $flash = '';
 $flashType = 'success';
@@ -12,7 +13,7 @@ $tab = (string)($_GET['tab'] ?? 'verification');
 if ($tab === 'overview') {
     $tab = 'verification';
 }
-$allowedTabs = ['verification', 'workers', 'projects'];
+$allowedTabs = ['verification', 'workers', 'projects', 'offers'];
 if (!in_array($tab, $allowedTabs, true)) {
     $tab = 'verification';
 }
@@ -295,6 +296,8 @@ require __DIR__ . '/includes/admin-layout-start.php';
           $mainHeading = 'Verifikasi Gig Worker';
       } elseif ($tab === 'projects') {
           $mainHeading = 'Verifikasi Lowongan Proyek';
+      } elseif ($tab === 'offers') {
+          $mainHeading = 'Riwayat Tawaran Proyek';
       }
     ?>
     <div class="admin-page-head">
@@ -309,6 +312,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <a href="?tab=verification" class="<?php echo $tab === 'verification' ? 'active' : ''; ?>">Verifikasi</a>
       <a href="?tab=workers" class="<?php echo $tab === 'workers' ? 'active' : ''; ?>">Gig Worker<?php $wQueue = (int)$metrics['workers_pending'] + (int)$metrics['worker_profile_edits_pending']; echo $wQueue > 0 ? ' (' . $wQueue . ')' : ''; ?></a>
       <a href="?tab=projects" class="<?php echo $tab === 'projects' ? 'active' : ''; ?>">Lowongan Proyek<?php echo $metrics['vacancies_review'] > 0 ? ' (' . (int)$metrics['vacancies_review'] . ')' : ''; ?></a>
+      <a href="?tab=offers" class="<?php echo $tab === 'offers' ? 'active' : ''; ?>">Riwayat Tawaran Proyek</a>
     </nav>
 
     <?php if ($tab === 'verification'): ?>
@@ -554,12 +558,22 @@ require __DIR__ . '/includes/admin-layout-start.php';
                     $firstPendingEdit = $rowPendingEdits[0] ?? null;
                     $createdAt = trim((string)($row['created_at'] ?? ''));
                     $createdLabel = $createdAt !== '' ? date('d M Y', strtotime($createdAt)) : '-';
+                    $submittedTs = strtotime($createdAt !== '' ? $createdAt : 'now');
+                    $isPendingVerification = (($row['status'] ?? 'pending') === 'pending' || $rowPendingEdits !== []);
+                    $isOverdueSla = $isPendingVerification && ((time() - $submittedTs) > (3 * 86400));
                   ?>
                   <tr>
                     <td class="verify-col-name">
                       <a class="verify-main-text" href="admin-worker-detail.php?u=<?php echo urlencode((string)$row['username']); ?>&email=<?php echo urlencode((string)$row['contact_email']); ?><?php echo $firstPendingEdit ? '&edit_id=' . (int)$firstPendingEdit['id'] : ''; ?>" style="text-decoration:none;color:inherit;">
                         <?php echo htmlspecialchars((string)$row['username'], ENT_QUOTES, 'UTF-8'); ?>
                       </a>
+                      <?php if ($isOverdueSla): ?>
+                        <div style="margin-top:4px;">
+                          <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">
+                            🚨 Lewat SLA 3 Hari · Eskalasi Admin Pusat
+                          </span>
+                        </div>
+                      <?php endif; ?>
                       <?php if ($rowPendingEdits !== []): ?>
                         <div class="verify-sub-text" style="margin-top:4px;">
                           <span class="verify-edit-chip">Permintaan Edit Profil: <?php echo count($rowPendingEdits); ?></span>
@@ -931,6 +945,91 @@ require __DIR__ . '/includes/admin-layout-start.php';
         }
       });
       </script>
+    <?php endif; ?>
+
+    <?php if ($tab === 'offers'): ?>
+      <?php
+        $allOffers = gig_offers_all();
+      ?>
+      <section class="verify-board">
+        <div class="verify-board-head">
+          <h2>Riwayat Tawaran Proyek Langsung</h2>
+          <div style="font-size:0.84rem;color:#64748b;">
+            Total tawaran proyek langsung dari Perusahaan ke Gig Worker: <strong><?php echo count($allOffers); ?></strong>
+          </div>
+        </div>
+
+        <div class="verify-table-wrap">
+          <table class="verify-table is-scrollable">
+            <thead>
+              <tr>
+                <th>Perusahaan (Pemberi Kerja)</th>
+                <th>Gig Worker</th>
+                <th>Lowongan Proyek</th>
+                <th>Tanggal Dikirim</th>
+                <th>Tanggal Respon</th>
+                <th>Status Tawaran</th>
+                <th>Alasan Penolakan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($allOffers === []): ?>
+                <tr><td colspan="7"><div class="empty-state">Belum ada data tawaran proyek yang tercatat.</div></td></tr>
+              <?php endif; ?>
+              <?php foreach ($allOffers as $off): ?>
+                <?php
+                  $st = (string)($off['app_status'] ?? $off['status'] ?? 'sent');
+                  $stLabel = match($st) {
+                    'confirmed_by_worker', 'accepted' => 'Diterima',
+                    'declined_by_worker', 'rejected' => 'Ditolak',
+                    'expired' => 'Kadaluwarsa',
+                    'viewed' => 'Dilihat',
+                    default => 'Dikirim',
+                  };
+                  $badgeColor = match($st) {
+                    'confirmed_by_worker', 'accepted' => 'background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;',
+                    'declined_by_worker', 'rejected' => 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;',
+                    'expired' => 'background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;',
+                    default => 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;',
+                  };
+                  $sentDate = !empty($off['created_at']) ? date('d M Y, H:i', strtotime((string)$off['created_at'])) : '-';
+                  $respDate = !empty($off['responded_at']) ? date('d M Y, H:i', strtotime((string)$off['responded_at'])) : '-';
+                  $rejReason = (string)($off['rejection_reason'] ?? '');
+                ?>
+                <tr>
+                  <td>
+                    <strong style="color:#0f172a;"><?php echo htmlspecialchars((string)($off['employer_display'] ?? $off['employer_username'] ?? 'Perusahaan'), ENT_QUOTES, 'UTF-8'); ?></strong>
+                  </td>
+                  <td>
+                    <div style="font-weight:700;color:#0f172a;"><?php echo htmlspecialchars((string)($off['worker_name'] ?? $off['worker_id']), ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div style="font-size:0.75rem;color:#64748b;">ID: <?php echo htmlspecialchars((string)$off['worker_id'], ENT_QUOTES, 'UTF-8'); ?></div>
+                  </td>
+                  <td>
+                    <div style="font-weight:700;color:#1e3a8a;"><?php echo htmlspecialchars((string)($off['project_title'] ?? $off['vacancy_id']), ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div style="font-size:0.75rem;color:#64748b;">ID: <?php echo htmlspecialchars((string)$off['vacancy_id'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars((string)($off['budget'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+                  </td>
+                  <td style="font-size:0.82rem;color:#334155;"><?php echo htmlspecialchars($sentDate, ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td style="font-size:0.82rem;color:#334155;"><?php echo htmlspecialchars($respDate, ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td>
+                    <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;<?php echo $badgeColor; ?>">
+                      <?php echo htmlspecialchars($stLabel, ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                  </td>
+                  <td style="font-size:0.82rem;color:#991b1b;max-width:240px;">
+                    <?php if ($rejReason !== ''): ?>
+                      <span title="<?php echo htmlspecialchars($rejReason, ENT_QUOTES, 'UTF-8'); ?>" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                        "<?php echo htmlspecialchars($rejReason, ENT_QUOTES, 'UTF-8'); ?>"
+                      </span>
+                    <?php else: ?>
+                      <span style="color:#94a3b8;">-</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
     <?php endif; ?>
 
 <?php require __DIR__ . '/includes/admin-layout-end.php'; ?>

@@ -132,6 +132,32 @@ function gig_offers_for_worker(string $username): array
     return $out;
 }
 
+function gig_offers_all(): array
+{
+    $list = [];
+    foreach (gig_offers_all_raw() as $raw) {
+        $offer = gig_offer_enrich($raw);
+        $wProf = function_exists('gig_find_worker') ? gig_find_worker((string)$offer['worker_id']) : null;
+        $offer['worker_name'] = $wProf['name'] ?? ucfirst((string)$offer['worker_id']);
+
+        $app = null;
+        if (function_exists('gig_get_applications_for_worker')) {
+            foreach (gig_get_applications_for_worker((string)$offer['worker_id']) as $a) {
+                if (strcasecmp((string)($a['vacancy_id'] ?? ''), (string)$offer['vacancy_id']) === 0) {
+                    $app = $a;
+                    break;
+                }
+            }
+        }
+        $appStatus = $app['status'] ?? ($offer['status'] ?? 'sent');
+        $offer['app_status'] = $appStatus;
+        $offer['rejection_reason'] = $app['rejection_reason'] ?? '';
+        $offer['responded_at'] = !empty($app['updated_at']) && $appStatus !== 'applied' && $appStatus !== 'sent' ? $app['updated_at'] : null;
+        $list[] = $offer;
+    }
+    return $list;
+}
+
 function gig_count_vacancy_offers(string $vacancyId): int
 {
     $clean = strtolower(trim($vacancyId));
@@ -222,6 +248,10 @@ function gig_save_offer(string $employer, string $workerId, string $vacancyId, s
     $workerKey = gig_offer_worker_key($workerId);
     if ($workerKey === '') {
         return ['ok' => false, 'error' => 'Gig Worker tidak valid.'];
+    }
+
+    if (function_exists('gig_worker_has_active_project_capacity') && !gig_worker_has_active_project_capacity($workerKey)) {
+        return ['ok' => false, 'error' => 'Gig Worker ini sedang Unavailable karena telah memiliki 2 Penugasan Proyek aktif.'];
     }
 
     if (gig_has_offer($employer, $workerKey, $vacancy['id'])) {
