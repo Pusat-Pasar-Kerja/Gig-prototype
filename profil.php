@@ -2,93 +2,431 @@
 declare(strict_types=1);
 session_start();
 
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/worker-profiles.php';
+require_once __DIR__ . '/includes/user-avatars.php';
+require_once __DIR__ . '/includes/admin-session.php';
+gig_admin_session_normalize();
+
+$isLoggedIn = !empty($_SESSION['siapkerja_email']) || !empty($_SESSION['username']);
+$sessionName = trim((string)($_SESSION['siapkerja_name'] ?? $_SESSION['username'] ?? ''));
+$sessionEmail = trim((string)($_SESSION['siapkerja_email'] ?? ''));
+$sessionRole = trim((string)($_SESSION['role'] ?? ''));
+
+$requestedUser = trim((string)($_GET['id'] ?? $_GET['user'] ?? ''));
+$lookupKey = $requestedUser !== '' ? $requestedUser : ($sessionEmail !== '' ? $sessionEmail : $sessionName);
+
+if ($lookupKey === '' && !$isLoggedIn) {
+    $lookupKey = 'theressaz@pasker.id';
+}
+
+$workerData = $lookupKey !== '' ? gig_find_worker($lookupKey) : null;
+if ($workerData === null && $sessionName !== '' && $sessionName !== $lookupKey) {
+    $workerData = gig_find_worker($sessionName);
+}
+
+$workerKey = (string)($workerData['id'] ?? $lookupKey);
+$regData = $workerKey !== '' ? gig_get_worker_registration($workerKey) : null;
+if ($regData === null && $sessionName !== '') {
+    $regData = gig_get_worker_registration($sessionName);
+}
+if ($regData === null && $workerData !== null && !empty($workerData['name'])) {
+    $regData = gig_get_worker_registration((string)$workerData['name']);
+}
+
+$siapkerjaInfo = gig_get_siapkerja_profile($lookupKey !== '' ? $lookupKey : 'theressaz@pasker.id');
+
+$resolvedName = (string)(
+    $workerData['name']
+    ?? $regData['display_name']
+    ?? ($sessionName !== '' ? $sessionName : ($siapkerjaInfo['nama'] ?? 'Theressa Zaratrusha'))
+);
+
+$resolvedEmail = (string)(
+    $workerData['contact']['email']
+    ?? $regData['contact_email']
+    ?? ($sessionEmail !== '' ? $sessionEmail : ($siapkerjaInfo['email'] ?? 'theressaz@pasker.id'))
+);
+
+$resolvedLocation = (string)(
+    $regData['domicile']
+    ?? $workerData['location']
+    ?? $siapkerjaInfo['lokasi']
+    ?? 'Jakarta Selatan, DKI Jakarta'
+);
+
+$resolvedPhone = (string)(
+    $workerData['contact']['wa']
+    ?? $regData['contact_wa']
+    ?? ($_SESSION['siapkerja_phone'] ?? $siapkerjaInfo['wa'] ?? '0811-7671-208')
+);
+
+$resolvedNik = (string)($_SESSION['siapkerja_nik'] ?? $siapkerjaInfo['nik'] ?? '1471 0252 0803 0001');
+$resolvedSiapkerjaId = (string)($siapkerjaInfo['siapkerja_id'] ?? 'SK-2026-8F4A21');
+
+$resolvedRole = $sessionRole;
+if ($resolvedRole === '') {
+    $lowerEmail = strtolower($resolvedEmail);
+    if (in_array($lowerEmail, ['employer@pasker.id', 'calon.employer@pasker.id'], true)) {
+        $resolvedRole = 'employer';
+    } elseif ($lowerEmail === 'admin@kemnaker.go.id') {
+        $resolvedRole = 'admin';
+    } else {
+        $resolvedRole = 'worker';
+    }
+}
+
+$resolvedAvatar = '';
+if ($workerData !== null && !empty($workerData['photo'])) {
+    $resolvedAvatar = (string)$workerData['photo'];
+} elseif ($isLoggedIn) {
+    $avatarRole = ($resolvedRole === 'employer' || $resolvedRole === 'admin') ? 'employer' : 'worker';
+    $resolvedAvatar = $avatarRole === 'worker'
+        ? gig_worker_display_photo($workerKey !== '' ? $workerKey : null)
+        : gig_resolve_user_avatar($resolvedEmail, 'employer');
+} else {
+    $resolvedAvatar = gig_avatar_preset_photo($workerKey !== '' ? $workerKey : 'tessa');
+}
+
+$resolvedColor = (string)($workerData['color'] ?? '#2563eb');
+$resolvedInitials = (string)($workerData['initials'] ?? '');
+if ($resolvedInitials === '') {
+    $words = preg_split('/\s+/', trim($resolvedName)) ?: [];
+    if (count($words) >= 2) {
+        $resolvedInitials = strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+    } else {
+        $resolvedInitials = strtoupper(substr(preg_replace('/\s+/', '', $resolvedName), 0, 2));
+    }
+    if ($resolvedInitials === '') {
+        $resolvedInitials = 'SK';
+    }
+}
+
+$bioFull = trim((string)(
+    $regData['profile_summary']
+    ?? $workerData['proposal']
+    ?? ''
+));
+
+$lowerKey = strtolower($workerKey !== '' ? $workerKey : $resolvedEmail);
+$isTessa = in_array($lowerKey, ['tessa', 'theressaz@pasker.id', 'theressa zaratrusha'], true)
+    || str_contains(strtolower($resolvedName), 'theressa')
+    || str_contains(strtolower($resolvedEmail), 'theressaz');
+
+if ($isTessa && mb_strlen($bioFull) < 180) {
+    $bioFull = 'Saya merupakan seorang profesional Lead UI/UX Designer dengan pengalaman kerja lebih dari 4 tahun dalam merancang design system berskala besar, menyusun wireframe & prototype interaktif di Figma, serta memimpin pengujian ketergunaan (usability testing) untuk berbagai platform layanan publik dan ketenagakerjaan digital di ekosistem SIAPkerja Kemnaker RI.';
+} elseif ($bioFull === '') {
+    if ($resolvedRole === 'employer') {
+        $bioFull = $resolvedName . ' merupakan mitra pemberi kerja resmi yang terhubung dengan ekosistem SIAPkerja Kemnaker RI untuk rekrutmen tenaga kerja dan pengelolaan proyek profesional di berbagai sektor industri.';
+    } elseif ($resolvedRole === 'admin') {
+        $bioFull = 'Pengelola dan verifikator resmi platform Karirhub & Gig Workers di bawah ekosistem SIAPkerja Kementerian Ketenagakerjaan Republik Indonesia.';
+    } else {
+        $bidangLabel = trim((string)($regData['bidang_keahlian'] ?? 'Teknologi & Layanan Digital'));
+        $bioFull = 'Saya merupakan seorang profesional di bidang ' . $bidangLabel . ' yang terdaftar pada ekosistem SIAPkerja Kemnaker RI. Berfokus pada penyelesaian proyek secara terstruktur, komunikatif, dan berorientasi pada kualitas hasil kerja terbaik.';
+    }
+}
+
+if (mb_strlen($bioFull) > 175) {
+    $bioShort = rtrim(mb_substr($bioFull, 0, 172)) . '...';
+} else {
+    $bioShort = $bioFull;
+}
+
 $profile = [
-    'name' => 'Achmad Rizky Mauludi',
-    'email' => 'achmadky555@gmail.com',
-    'bio_short' => 'Saya merupakan seorang profesional di bidang Teknologi Informasi dengan pengalaman kerja selama kurang lebih 3 tahun dalam pengembangan, pengujian, dan pemeliharaan sistem aplikasi. Saya memiliki...',
-    'bio_full' => 'Saya merupakan seorang profesional di bidang Teknologi Informasi dengan pengalaman kerja selama kurang lebih 3 tahun dalam pengembangan, pengujian, dan pemeliharaan sistem aplikasi. Saya memiliki keahlian dalam membangun solusi perangkat lunak yang andal, melakukan otomatisasi pengujian (QA Automation), serta mengelola integrasi sistem berbasis middleware.',
-    'avatar' => 'assets/profile-avatar-crop.png',
-    'banner_art' => 'assets/profile-banner-right.png',
+    'id'           => $workerKey !== '' ? $workerKey : 'tessa',
+    'name'         => $resolvedName,
+    'email'        => $resolvedEmail,
+    'phone'        => $resolvedPhone,
+    'nik'          => $resolvedNik,
+    'siapkerja_id' => $resolvedSiapkerjaId,
+    'location'     => $resolvedLocation,
+    'bidang'       => (string)($regData['bidang_keahlian'] ?? ($isTessa ? 'Lead UI/UX Designer' : 'Profesional Terverifikasi SIAPKerja')),
+    'status_akun'  => (string)($siapkerjaInfo['status_akun'] ?? 'Terverifikasi (KYC Kemnaker RI)'),
+    'bio_short'    => $bioShort,
+    'bio_full'     => $bioFull,
+    'avatar'       => $resolvedAvatar,
+    'initials'     => $resolvedInitials,
+    'color'        => $resolvedColor,
+    'banner_art'   => 'assets/profile-banner-right.png',
+    'role'         => $resolvedRole,
 ];
 
-$experiences = [
-    [
-        'title' => 'Application Developer',
-        'verified' => true,
-        'company' => 'PT infracom Technology',
-        'period' => 'Januari 2024 - November 2024',
-        'location' => 'Petojo Selatan, Gambir, KOTA ADM. JAKARTA PUSAT, DKI JAKARTA',
+// --- Pengalaman Kerja (synchronized from worker_profiles, gig_worker_registrations, and SIAPkerja) ---
+$experiences = [];
+$seenExpKeys = [];
+$addExperienceItem = static function (string $title, string $company, string $period, string $location = '', string $summary = '', bool $verified = true) use (&$experiences, &$seenExpKeys, $resolvedLocation): void {
+    $title = trim($title);
+    $company = trim($company);
+    if ($title === '' && $company === '') {
+        return;
+    }
+    $cleanCompany = strtolower((string)preg_replace('/\s*\(berjalan\)\s*/i', '', $company));
+    $dedupKey = strtolower($title) . '||' . trim($cleanCompany);
+    if (isset($seenExpKeys[$dedupKey])) {
+        return;
+    }
+    $seenExpKeys[$dedupKey] = true;
+    $experiences[] = [
+        'title'    => $title !== '' ? $title : 'Profesional',
+        'verified' => $verified,
+        'company'  => $company !== '' ? $company : 'Mitra SIAPKerja Kemnaker',
+        'period'   => trim($period) !== '' ? trim($period) : '2025 - 2026',
+        'location' => trim($location) !== '' ? trim($location) : $resolvedLocation,
+        'summary'  => trim($summary),
+    ];
+};
+
+if (!empty($workerData['experience']) && is_array($workerData['experience'])) {
+    foreach ($workerData['experience'] as $exp) {
+        $addExperienceItem(
+            (string)($exp['role'] ?? $exp['title'] ?? ''),
+            (string)($exp['company'] ?? $exp['project'] ?? $exp['institution'] ?? ''),
+            (string)($exp['period'] ?? ''),
+            (string)($exp['location'] ?? $resolvedLocation),
+            (string)($exp['summary'] ?? ''),
+            true
+        );
+    }
+}
+
+if (!empty($regData['previous_projects']) && is_array($regData['previous_projects'])) {
+    foreach ($regData['previous_projects'] as $proj) {
+        $addExperienceItem(
+            (string)($proj['role'] ?? $proj['title'] ?? ''),
+            (string)($proj['company'] ?? $proj['project'] ?? ''),
+            (string)($proj['period'] ?? ''),
+            (string)($proj['location'] ?? $resolvedLocation),
+            (string)($proj['summary'] ?? ''),
+            true
+        );
+    }
+}
+
+if (!empty($siapkerjaInfo['pengalaman_siapkerja']) && is_array($siapkerjaInfo['pengalaman_siapkerja'])) {
+    foreach ($siapkerjaInfo['pengalaman_siapkerja'] as $skExp) {
+        if ($isTessa || empty($experiences)) {
+            $addExperienceItem(
+                (string)($skExp['role'] ?? ''),
+                (string)($skExp['institution'] ?? ''),
+                (string)($skExp['period'] ?? ''),
+                (string)($skExp['location'] ?? 'Setiabudi, KOTA ADM. JAKARTA SELATAN, DKI JAKARTA'),
+                (string)($skExp['summary'] ?? ''),
+                true
+            );
+        }
+    }
+}
+
+// --- Keahlian (synchronized from worker_profiles & gig_worker_registrations) ---
+$rawSkills = !empty($workerData['skills']) ? $workerData['skills'] : ($regData['skills'] ?? []);
+$normalizedSkills = gig_normalize_skills($rawSkills);
+$skills = [];
+foreach ($normalizedSkills as $skItem) {
+    $sName = gig_skill_name($skItem);
+    if ($sName !== '' && !in_array($sName, $skills, true)) {
+        $skills[] = $sName;
+    }
+}
+if ($isTessa) {
+    foreach (['UI/UX Design', 'Figma Design', 'Design System', 'UI/UX Prototyping', 'Wireframing', 'Usability Testing', 'HTML/CSS', 'Design Tokens', 'Interaction Design', 'User Research'] as $extraSkill) {
+        if (!in_array($extraSkill, $skills, true)) {
+            $skills[] = $extraSkill;
+        }
+    }
+} elseif (empty($skills)) {
+    $skills = ['Komunikasi Profesional', 'Manajemen Proyek', 'Microsoft Office', 'Kolaborasi Tim', 'Problem Solving'];
+}
+
+// --- Pelatihan, Pendidikan, Sertifikasi, Pencapaian, Bahasa per profil user ---
+$presetDetails = [
+    'tessa' => [
+        'trainings' => [
+            [
+                'title'             => 'Advanced Design System & UI/UX Accessibility',
+                'verified'          => true,
+                'category'          => 'DESAIN ANTARMUKA & PENGALAMAN PENGGUNA (UI/UX)',
+                'provider'          => 'Balai Besar Pelatihan Vokasi dan Produktivitas (BBPVP) Kemnaker RI',
+                'period'            => 'Mei 2024 - Juni 2024',
+                'description'       => 'Pelatihan intensif perancangan sistem desain berskala enterprise, pembuatan komponen interaktif berbasis Figma variables, serta audit aksesibilitas standar WCAG 2.1 untuk platform layanan publik.',
+                'certificate_label' => 'Sertifikat Pelatihan',
+            ],
+            [
+                'title'             => 'UX Research & Usability Testing Bootcamp',
+                'verified'          => true,
+                'category'          => 'TEKNOLOGI INFORMASI DAN KOMUNIKASI',
+                'provider'          => 'Digital Talent Scholarship (DTS) Kominfo & Kemnaker',
+                'period'            => 'Agustus 2023 - September 2023',
+                'description'       => 'Program pelatihan metodologi riset pengguna, penyusunan user persona, pemetaan customer journey, dan evaluasi ketergunaan prototipe bersama partisipan nyata.',
+                'certificate_label' => 'Sertifikat Pelatihan',
+            ],
+        ],
+        'educations' => [
+            [
+                'school'            => 'Universitas Indonesia',
+                'verified'          => true,
+                'degree'            => 'S1 - Ilmu Komputer / Sistem Informasi',
+                'gpa'               => '3.78',
+                'period'            => '2018 - 2022',
+                'location'          => 'Pondok Cina, Beji, KOTA DEPOK, JAWA BARAT',
+                'certificate_label' => 'Ijasah Pendidikan',
+            ],
+        ],
+        'certifications' => [
+            [
+                'title'             => 'BNSP Certified UI/UX Designer',
+                'verified'          => true,
+                'issuer'            => 'Badan Nasional Sertifikasi Profesi (BNSP)',
+                'period'            => 'Berlaku: Jan 2025 - Jan 2028',
+                'credential_id'     => 'No. Reg: TIK.UIUX.02948.2025',
+                'certificate_label' => 'Sertifikat Kompetensi BNSP',
+            ],
+            [
+                'title'             => 'Google UX Design Professional Certificate',
+                'verified'          => true,
+                'issuer'            => 'Google Career Certificates',
+                'period'            => 'Diterbitkan: Oktober 2024',
+                'credential_id'     => 'ID Kredensial: GUX-2024-883920',
+                'certificate_label' => 'Sertifikat Google UX',
+            ],
+        ],
+        'achievements' => [
+            [
+                'title'       => 'Desainer Terbaik Proyek Transformasi Digital KarirHub',
+                'verified'    => true,
+                'issuer'      => 'Pusat Pasar Kerja — Kementerian Ketenagakerjaan RI',
+                'year'        => '2026',
+                'description' => 'Penghargaan atas kontribusi perancangan ulang antarmuka dan Design System v2 pada ekosistem layanan pencari kerja dan pemberi kerja KarirHub.',
+            ],
+        ],
+        'languages' => [
+            ['name' => 'Bahasa Indonesia', 'level' => 'Tingkat Fasih atau Bahasa Ahli'],
+            ['name' => 'English (Bahasa Inggris)', 'level' => 'Tingkat Menengah - Mahir (Professional Working Proficiency)'],
+        ],
     ],
-    [
-        'title' => 'QA Automation Engineer',
-        'verified' => true,
-        'company' => 'PT. KPSG',
-        'period' => 'November 2024 - Mei 2025',
-        'location' => 'Karet Semanggi, Setiabudi, KOTA ADM. JAKARTA SELATAN, DKI JAKARTA',
+    'rian' => [
+        'trainings' => [
+            [
+                'title'             => 'Cloud Native Backend & RESTful API Architecture',
+                'verified'          => true,
+                'category'          => 'TEKNOLOGI INFORMASI DAN KOMUNIKASI',
+                'provider'          => 'AWS Skill Builder & Kemnaker RI',
+                'period'            => 'Maret 2024 - April 2024',
+                'description'       => 'Pelatihan arsitektur backend berkinerja tinggi, pengamanan endpoint API, integrasi webhook pembayaran, serta pengujian beban (load testing).',
+                'certificate_label' => 'Sertifikat Pelatihan',
+            ],
+        ],
+        'educations' => [
+            [
+                'school'            => 'Institut Teknologi Bandung',
+                'verified'          => true,
+                'degree'            => 'S1 - Teknik Informatika',
+                'gpa'               => '3.68',
+                'period'            => '2017 - 2021',
+                'location'          => 'Coblong, KOTA BANDUNG, JAWA BARAT',
+                'certificate_label' => 'Ijasah Pendidikan',
+            ],
+        ],
+        'certifications' => [
+            [
+                'title'             => 'AWS Certified Developer – Associate',
+                'verified'          => true,
+                'issuer'            => 'Amazon Web Services (AWS)',
+                'period'            => 'Berlaku: 2025 - 2028',
+                'credential_id'     => 'ID Kredensial: AWS-DVA-99281',
+                'certificate_label' => 'Sertifikat AWS Developer',
+            ],
+        ],
+        'achievements' => [],
+        'languages' => [
+            ['name' => 'Bahasa Indonesia', 'level' => 'Tingkat Fasih atau Bahasa Ahli'],
+            ['name' => 'English (Bahasa Inggris)', 'level' => 'Tingkat Menengah'],
+        ],
     ],
-    [
-        'title' => 'Middleware Engineer',
-        'verified' => true,
-        'company' => 'PT infracom Technology',
-        'period' => 'Maret 2023 - Desember 2023',
-        'location' => 'Petojo Selatan, Gambir, KOTA ADM. JAKARTA PUSAT, DKI JAKARTA',
+    'siti' => [
+        'trainings' => [
+            [
+                'title'             => 'Digital Marketing & Copywriting Konversi Tinggi',
+                'verified'          => true,
+                'category'          => 'PEMASARAN DIGITAL DAN KOMUNIKASI',
+                'provider'          => 'BBPVP Bekasi — Kemnaker RI',
+                'period'            => 'Februari 2024 - Maret 2024',
+                'description'       => 'Pelatihan penyusunan strategi konten media sosial, penulisan copywriting persuasif, serta optimasi kampanye digital lintas kanal.',
+                'certificate_label' => 'Sertifikat Pelatihan',
+            ],
+        ],
+        'educations' => [
+            [
+                'school'            => 'Universitas Airlangga',
+                'verified'          => true,
+                'degree'            => 'S1 - Ilmu Komunikasi',
+                'gpa'               => '3.72',
+                'period'            => '2018 - 2022',
+                'location'          => 'Gubeng, KOTA SURABAYA, JAWA TIMUR',
+                'certificate_label' => 'Ijasah Pendidikan',
+            ],
+        ],
+        'certifications' => [
+            [
+                'title'             => 'BNSP Digital Marketing Specialist',
+                'verified'          => true,
+                'issuer'            => 'Badan Nasional Sertifikasi Profesi (BNSP)',
+                'period'            => 'Berlaku: 2025 - 2028',
+                'credential_id'     => 'No. Reg: MKT.DIG.01184.2025',
+                'certificate_label' => 'Sertifikat Kompetensi BNSP',
+            ],
+        ],
+        'achievements' => [],
+        'languages' => [
+            ['name' => 'Bahasa Indonesia', 'level' => 'Tingkat Fasih atau Bahasa Ahli'],
+            ['name' => 'English (Bahasa Inggris)', 'level' => 'Tingkat Menengah'],
+        ],
     ],
 ];
 
-$trainings = [
-    [
-        'title' => 'Quality Assurance',
-        'verified' => true,
-        'category' => 'TEKNOLOGI INFORMASI DAN KOMUNIKASI',
-        'provider' => 'PT Santai Berkualitas Syberindo',
-        'period' => 'Mei 2024 - Mei 2024',
-        'description' => 'Sebuah pelatihan untuk mengetahui apa itu quality assurance, bagaimana cara kerjanya dan mengetahui bagaimana cara para tester mengetahui sebuah bug yang ada di dalam sistem',
-        'certificate_label' => 'Sertifikat Pelatihan',
+$detailKey = $isTessa ? 'tessa' : strtolower($workerKey);
+$activeDetails = $presetDetails[$detailKey] ?? [
+    'trainings' => [
+        [
+            'title'             => 'Pelatihan Berbasis Kompetensi: ' . $profile['bidang'],
+            'verified'          => true,
+            'category'          => 'PENGEMBANGAN KOMPETENSI KERJA (SIAPKERJA)',
+            'provider'          => 'Balai Pelatihan Vokasi dan Produktivitas (BPVP) Kemnaker RI',
+            'period'            => 'Mei 2024 - Juni 2024',
+            'description'       => 'Program peningkatan kompetensi teknis dan kesiapan kerja profesional terintegrasi pada ekosistem SIAPkerja Kementerian Ketenagakerjaan RI.',
+            'certificate_label' => 'Sertifikat Pelatihan',
+        ],
+    ],
+    'educations' => [
+        [
+            'school'            => 'Politeknik Negeri Jakarta',
+            'verified'          => true,
+            'degree'            => 'D4 / S1 Terapan',
+            'gpa'               => '3.65',
+            'period'            => '2018 - 2022',
+            'location'          => $resolvedLocation,
+            'certificate_label' => 'Ijasah Pendidikan',
+        ],
+    ],
+    'certifications' => [],
+    'achievements'   => [],
+    'languages'      => [
+        ['name' => 'Bahasa Indonesia', 'level' => 'Tingkat Fasih atau Bahasa Ahli'],
+        ['name' => 'English (Bahasa Inggris)', 'level' => 'Tingkat Menengah'],
     ],
 ];
 
-$educations = [
-    [
-        'school' => 'Politeknik Negeri Jakarta',
-        'verified' => true,
-        'degree' => 'D4',
-        'gpa' => '3.62',
-        'period' => '2017 - 2021',
-        'location' => 'Kukusan, Beji, KOTA DEPOK, JAWA BARAT',
-        'certificate_label' => 'Ijasah Pendidikan',
-    ],
-];
+$trainings      = $activeDetails['trainings'];
+$educations     = $activeDetails['educations'];
+$certifications = $activeDetails['certifications'];
+$achievements   = $activeDetails['achievements'];
+$languages      = $activeDetails['languages'];
 
-$certifications = [];
-
-$achievements = [];
-
-$skills = [
-    'Kotlin',
-    'cypress',
-    'Flutter',
-    'Outsystems',
-    'Laravel',
-    'CSS',
-    'SQL',
-    'PHP',
-    'Javascript Frameworks',
-    'HTML',
-    'JMeter',
-    'Android',
-    'Vue.js',
-];
-
-$languages = [
-    [
-        'name' => 'English (Bahasa Inggris)',
-        'level' => 'Tingkat Menengah',
-    ],
-    [
-        'name' => 'Bahasa Indonesia',
-        'level' => 'Tingkat Fasih atau Bahasa Ahli',
-    ],
-];
+$editProfilHref = ($resolvedRole === 'employer')
+    ? 'employer-profile.php'
+    : ($isTessa || $workerData !== null ? 'worker-edit-profile.php' : 'worker-register.php');
+$gigProfileHref = ($resolvedRole === 'employer')
+    ? 'employer-profile.php'
+    : 'worker-profile.php?id=' . urlencode($profile['id']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -220,20 +558,76 @@ $languages = [
     .avatar-img {
       width: 99px;
       height: 99px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid #ffffff;
+      background-color: #dbeafe;
+      box-shadow: 0 2px 10px rgba(17, 24, 39, 0.12);
       display: block;
     }
 
     .camera-btn {
       position: absolute;
-      right: -1px;
+      right: 0;
       bottom: 0;
       width: 31px;
       height: 31px;
       border-radius: 50%;
-      background: transparent;
-      border: none;
+      background: #ffffff;
+      border: 1.5px solid #e5e7eb;
+      box-shadow: 0 2px 6px rgba(17, 24, 39, 0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #111827;
       cursor: pointer;
       padding: 0;
+    }
+
+    .camera-btn:hover {
+      background: #f9fafb;
+    }
+
+    .biodata-panel {
+      display: none;
+      border-top: 1px solid #f3f4f6;
+      padding: 16px 23px 20px 23px;
+      background-color: #f8fafc;
+    }
+
+    .biodata-panel.open {
+      display: block;
+    }
+
+    .biodata-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+    }
+
+    .biodata-item-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 3px;
+    }
+
+    .biodata-item-value {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .exp-summary {
+      font-size: 13.3px;
+      font-weight: 400;
+      color: #374151;
+      line-height: 19px;
+      margin-top: 6px;
     }
 
     /* Edit Profil Dropdown Button */
@@ -828,7 +1222,12 @@ $languages = [
               alt="<?php echo htmlspecialchars($profile['name'], ENT_QUOTES, 'UTF-8'); ?>"
               class="avatar-img"
             />
-            <button type="button" class="camera-btn" aria-label="Ubah foto profil"></button>
+            <button type="button" class="camera-btn" aria-label="Ubah foto profil" onclick="window.location.href='<?php echo htmlspecialchars($editProfilHref, ENT_QUOTES, 'UTF-8'); ?>'">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </button>
           </div>
 
           <div class="edit-profil-wrapper" id="editProfilWrap">
@@ -839,9 +1238,9 @@ $languages = [
               </svg>
             </button>
             <div class="edit-dropdown" id="editDropdown">
-              <a href="#ubah-profil">Ubah Data Profil</a>
-              <a href="#unduh-cv">Unduh CV</a>
-              <a href="#bagikan-profil">Bagikan Profil</a>
+              <a href="<?php echo htmlspecialchars($editProfilHref, ENT_QUOTES, 'UTF-8'); ?>">Ubah Data Profil</a>
+              <a href="<?php echo htmlspecialchars($gigProfileHref, ENT_QUOTES, 'UTF-8'); ?>">Lihat Profil Gig Worker</a>
+              <a href="#unduh-cv" onclick="window.print(); return false;">Unduh CV</a>
             </div>
           </div>
         </div>
@@ -854,12 +1253,42 @@ $languages = [
            data-full="<?php echo htmlspecialchars($profile['bio_full'], ENT_QUOTES, 'UTF-8'); ?>">
           <?php echo htmlspecialchars($profile['bio_short'], ENT_QUOTES, 'UTF-8'); ?>
         </p>
-        <button type="button" class="btn-read-more" id="toggleBioBtn">Tampilkan Lebih Banyak</button>
+        <?php if ($profile['bio_short'] !== $profile['bio_full']): ?>
+          <button type="button" class="btn-read-more" id="toggleBioBtn">Tampilkan Lebih Banyak</button>
+        <?php endif; ?>
       </div>
 
       <!-- Lihat Informasi Biodata -->
       <div class="biodata-bar">
-        <a href="#biodata" class="biodata-link">Lihat Informasi Biodata</a>
+        <a href="#biodata" class="biodata-link" id="toggleBiodataBtn">Lihat Informasi Biodata</a>
+      </div>
+      <div class="biodata-panel" id="biodataPanel">
+        <div class="biodata-grid">
+          <div>
+            <div class="biodata-item-label">ID SIAPkerja</div>
+            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['siapkerja_id'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div>
+            <div class="biodata-item-label">NIK</div>
+            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['nik'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div>
+            <div class="biodata-item-label">Nomor Telepon / WhatsApp</div>
+            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['phone'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div>
+            <div class="biodata-item-label">Domisili</div>
+            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['location'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div>
+            <div class="biodata-item-label">Bidang Keahlian</div>
+            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['bidang'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div>
+            <div class="biodata-item-label">Status Akun</div>
+            <div class="biodata-item-value" style="color:#049769;"><?php echo htmlspecialchars($profile['status_akun'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -869,7 +1298,7 @@ $languages = [
     <section class="experience-card">
       <div class="experience-header">
         <h3 class="experience-title">Pengalaman Kerja</h3>
-        <button type="button" class="btn-add-exp" aria-label="Tambah Pengalaman Kerja">
+        <button type="button" class="btn-add-exp" aria-label="Tambah Pengalaman Kerja" onclick="window.location.href='<?php echo htmlspecialchars($editProfilHref, ENT_QUOTES, 'UTF-8'); ?>'">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -897,6 +1326,9 @@ $languages = [
               <div class="exp-company"><?php echo htmlspecialchars($exp['company'], ENT_QUOTES, 'UTF-8'); ?></div>
               <div class="exp-period"><?php echo htmlspecialchars($exp['period'], ENT_QUOTES, 'UTF-8'); ?></div>
               <div class="exp-location"><?php echo htmlspecialchars($exp['location'], ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php if (!empty($exp['summary'])): ?>
+                <div class="exp-summary"><?php echo htmlspecialchars($exp['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php endif; ?>
             </div>
           </li>
         <?php endforeach; ?>
@@ -999,7 +1431,7 @@ $languages = [
     <div class="section-spacer"></div>
 
     <!-- Sertifikasi Card -->
-    <section class="certification-card">
+    <section class="<?php echo empty($certifications) ? 'certification-card' : 'section-card'; ?>">
       <div class="experience-header">
         <h3 class="experience-title">Sertifikasi</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Sertifikasi">
@@ -1016,13 +1448,42 @@ $languages = [
           <h4 class="empty-state-title">Tidak ada sertifikasi</h4>
           <p class="empty-state-sub">Silahkan lengkapi data sertifikasi kamu, data sertifikasi ini akan menjadi kelengkapan profilmu.</p>
         </div>
+      <?php else: ?>
+        <ul class="experience-list">
+          <?php foreach ($certifications as $cert): ?>
+            <li class="section-item">
+              <div class="exp-icon-box" aria-hidden="true">
+                <img src="assets/profile-pelatihan-icon.png" alt="" />
+              </div>
+              <div class="exp-content">
+                <div class="exp-role-row">
+                  <span class="exp-role"><?php echo htmlspecialchars($cert['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <?php if (!empty($cert['verified'])): ?>
+                    <span class="verified-badge" title="Terverifikasi">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  <?php endif; ?>
+                </div>
+                <div class="training-category"><?php echo htmlspecialchars($cert['issuer'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="training-provider"><?php echo htmlspecialchars($cert['credential_id'] ?? '', ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="training-period"><?php echo htmlspecialchars($cert['period'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <a href="#sertifikat-kompetensi" class="attachment-box">
+                  <img src="assets/profile-doc-icon.png" alt="" />
+                  <span><?php echo htmlspecialchars($cert['certificate_label'] ?? 'Sertifikat Kompetensi', ENT_QUOTES, 'UTF-8'); ?></span>
+                </a>
+              </div>
+            </li>
+          <?php endforeach; ?>
+        </ul>
       <?php endif; ?>
     </section>
 
     <div class="section-spacer"></div>
 
     <!-- Pencapaian Card -->
-    <section class="certification-card">
+    <section class="<?php echo empty($achievements) ? 'certification-card' : 'section-card'; ?>">
       <div class="experience-header">
         <h3 class="experience-title">Pencapaian</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Pencapaian">
@@ -1039,6 +1500,31 @@ $languages = [
           <h4 class="empty-state-title">Tidak ada data pencapaian</h4>
           <p class="empty-state-sub">Silahkan lengkapi data pencapaian kamu, data pencapaian ini akan menjadi kelengkapan profilmu.</p>
         </div>
+      <?php else: ?>
+        <ul class="experience-list">
+          <?php foreach ($achievements as $ach): ?>
+            <li class="section-item">
+              <div class="exp-icon-box" aria-hidden="true">
+                <img src="assets/profile-briefcase-icon.png" alt="" />
+              </div>
+              <div class="exp-content">
+                <div class="exp-role-row">
+                  <span class="exp-role"><?php echo htmlspecialchars($ach['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <?php if (!empty($ach['verified'])): ?>
+                    <span class="verified-badge" title="Terverifikasi">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  <?php endif; ?>
+                </div>
+                <div class="training-category"><?php echo htmlspecialchars($ach['issuer'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="training-period">Tahun <?php echo htmlspecialchars($ach['year'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <p class="training-desc" style="margin-bottom:0;"><?php echo htmlspecialchars($ach['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+              </div>
+            </li>
+          <?php endforeach; ?>
+        </ul>
       <?php endif; ?>
     </section>
 
@@ -1127,6 +1613,18 @@ $languages = [
             editDropdown.classList.remove('open');
             editBtn.setAttribute('aria-expanded', 'false');
           }
+        });
+      }
+
+      var biodataBtn = document.getElementById('toggleBiodataBtn');
+      var biodataPanel = document.getElementById('biodataPanel');
+      if (biodataBtn && biodataPanel) {
+        biodataBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var isOpen = biodataPanel.classList.toggle('open');
+          biodataBtn.textContent = isOpen
+            ? 'Sembunyikan Informasi Biodata'
+            : 'Lihat Informasi Biodata';
         });
       }
     })();

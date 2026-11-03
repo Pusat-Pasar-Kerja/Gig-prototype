@@ -194,6 +194,7 @@ $testimonials = [
       top: calc(100% + 14px);
       right: 0;
       width: min(320px, calc(100vw - 32px));
+      max-height: min(440px, calc(100vh - 96px));
       background: #fff;
       border-radius: 14px;
       border: 1px solid #e2e8f0;
@@ -201,13 +202,18 @@ $testimonials = [
       z-index: 110;
       overflow: hidden;
     }
-    .profile-panel.open { display: block; }
+    .profile-panel.open {
+      display: flex;
+      flex-direction: column;
+    }
     .profile-panel-head {
       display: flex;
       gap: 12px;
       align-items: center;
       padding: 16px;
       border-bottom: 1px solid #f1f5f9;
+      flex-shrink: 0;
+      background: #fff;
     }
     .profile-panel-head img {
       width: 48px;
@@ -227,7 +233,29 @@ $testimonials = [
       margin-top: 2px;
       word-break: break-word;
     }
-    .profile-menu { list-style: none; padding: 6px 0; margin: 0; }
+    .profile-menu {
+      list-style: none;
+      padding: 6px 0;
+      margin: 0;
+      overflow-y: auto;
+      max-height: min(350px, calc(100vh - 180px));
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+    .profile-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    .profile-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .profile-menu::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 999px;
+    }
+    .profile-menu::-webkit-scrollbar-thumb:hover {
+      background-color: #94a3b8;
+    }
     .profile-menu li { border-bottom: 1px solid #f1f5f9; }
     .profile-menu li:last-child { border-bottom: none; }
     .profile-menu a, .profile-menu span {
@@ -255,6 +283,9 @@ $testimonials = [
       top: calc(100% + 14px);
       right: 0;
       width: min(400px, calc(100vw - 32px));
+      max-height: calc(100vh - 96px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
       background: #fff;
       border-radius: 16px;
       border: 1px solid #e2e8f0;
@@ -602,6 +633,7 @@ $testimonials = [
                 <?php else: ?>
                   <li><span><span class="menu-ico">👤</span> Profil</span></li>
                 <?php endif; ?>
+                <li><a href="profil.php" style="color: inherit; text-decoration: none; display: flex; align-items: center; width: 100%;"><span class="menu-ico">👤</span> Profil SIAPKerja</a></li>
                 <li><span><span class="menu-ico">⚙</span> Pengaturan</span></li>
                 <li><span><span class="menu-ico">?</span> Bantuan</span></li>
                 <li><a class="logout" href="karirhub-logout.php"><span class="menu-ico">⎋</span> Keluar</a></li>
