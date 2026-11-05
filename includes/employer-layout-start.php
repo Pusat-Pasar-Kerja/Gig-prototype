@@ -17,7 +17,6 @@ $navItems = [
     'aktif' => ['href' => 'employer-proyek-aktif.php', 'title' => 'Proyek Aktif', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'],
     'riwayat' => ['href' => 'employer-riwayat-proyek.php', 'title' => 'Riwayat Proyek', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'],
     'cari-mitra' => ['href' => 'employer-cari-mitra.php', 'title' => 'Cari Mitra Gig', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'],
-    'katalog' => ['href' => 'katalog-jasa.php', 'title' => 'Bursa Katalog Jasa', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>'],
     'profil' => ['href' => 'employer-profile.php', 'title' => 'Profil Perusahaan', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'],
 ];
 ?>
@@ -77,12 +76,6 @@ $empNotifs = gig_get_employer_notifications();
 $unreadNotifCount = count(array_filter($empNotifs, fn($n) => empty($n['is_read'])));
 ?>
       <div class="navbar-right" style="display:flex;align-items:center;gap:12px;">
-        <!-- DIRECT NAV BUTTON TO KATALOG JASA -->
-        <a href="katalog-jasa.php" title="Lihat Bursa Katalog Jasa Freelance" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;color:#0284c7;font-size:0.82rem;font-weight:700;text-decoration:none;transition:all 0.2s;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          <span>Bursa Jasa</span>
-        </a>
-
         <!-- NOTIFICATION BELL DROPDOWN -->
         <div class="profile-menu" style="position:relative;">
           <button type="button" onclick="document.getElementById('notifDropdown').classList.toggle('open')" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;">

@@ -1093,7 +1093,7 @@ function gig_worker_search_metadata(array $worker): array
         }
     }
 
-    // Construct flat text corpus for fast matching
+    // Construct flat text corpus for fast matching (excluding private contact details per FSD-GW-BR-05)
     $textParts = [
         $wId,
         (string)($worker['name'] ?? $reg['display_name'] ?? ($siap['nama'] ?? '')),
@@ -1105,8 +1105,6 @@ function gig_worker_search_metadata(array $worker): array
         $appliedProject,
         $bid,
         $eta,
-        $contactWa,
-        $contactEmail,
         $videoUrl,
         implode(' ', $socList),
         implode(' ', $siapStrings),
@@ -1138,7 +1136,6 @@ function gig_worker_search_metadata(array $worker): array
             'portfolios' => $portFacets,
             'reviews' => $revFacets,
             'social' => $socList,
-            'contact' => trim($contactWa . ' ' . $contactEmail),
         ]
     ];
 }

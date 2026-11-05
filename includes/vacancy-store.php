@@ -31,11 +31,13 @@ function gig_vacancy_budget_range(string $rawBudget): string
 function gig_vacancy_status_labels(): array
 {
     return [
-        'draft'    => 'Draft',
-        'review'   => 'Menunggu Verifikasi',
-        'revision' => 'Perlu Revisi',
-        'rejected' => 'Ditolak',
-        'active'   => 'Tayang Aktif',
+        'draft'     => 'Draft',
+        'review'    => 'Menunggu Verifikasi',
+        'revision'  => 'Perlu Revisi',
+        'rejected'  => 'Ditolak',
+        'active'    => 'Tayang',
+        'filled'    => 'Terisi',
+        'cancelled' => 'Dibatalkan',
     ];
 }
 
@@ -550,7 +552,7 @@ function gig_vacancy_set_status(string $vacancyId, string $status, string $admin
 {
     gig_vacancy_ensure_schema();
     $db = gig_db();
-    $allowed = ['draft', 'review', 'revision', 'rejected', 'active'];
+    $allowed = ['draft', 'review', 'revision', 'rejected', 'active', 'filled', 'cancelled'];
     if (!in_array($status, $allowed, true)) {
         return false;
     }

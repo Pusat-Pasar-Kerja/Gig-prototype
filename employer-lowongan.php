@@ -135,7 +135,7 @@ $colors = ['#2563eb', '#0891b2', '#7c3aed', '#059669', '#ea580c', '#db2777'];
             <td><?php echo (int)$job['acceptedCount'] > 0 ? 'Sudah terisi' : 'Belum terisi'; ?></td>
             <td>
               <?php if ($job['status'] === 'active' && (int)$job['applicantsCount'] > 0): ?>
-                <a href="employer-cari-mitra.php" style="color:var(--primary-blue);font-weight:700;text-decoration:none;">
+                <a href="employer-detail-lowongan.php?id=<?php echo urlencode($job['id']); ?>" style="color:var(--primary-blue);font-weight:700;text-decoration:none;">
                   <?php echo (int)$job['applicantsCount']; ?> kandidat
                 </a>
               <?php elseif ($job['status'] === 'active'): ?>

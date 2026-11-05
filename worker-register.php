@@ -8,9 +8,17 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/admin-store.php';
 
+$projectId = trim((string)($_GET['project_id'] ?? $_POST['project_id'] ?? ''));
+if ($projectId !== '') {
+    $_SESSION['target_project_id'] = $projectId;
+} elseif (!empty($_SESSION['target_project_id'])) {
+    $projectId = (string)$_SESSION['target_project_id'];
+}
+
 // Require user to be logged in with SIAPkerja account first
 if (!isset($_SESSION['siapkerja_email']) && !isset($_SESSION['username'])) {
-    header("Location: siapkerja-login.php?redirect=worker-register");
+    $redir = 'worker-register.php' . ($projectId !== '' ? '?project_id=' . urlencode($projectId) : '');
+    header("Location: siapkerja-login.php?redirect=" . urlencode($redir));
     exit;
 }
 
@@ -367,7 +375,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
         $_SESSION['role'] = 'worker';
         $_SESSION['worker_registered'] = true;
         $profileId = strtolower(preg_replace('/[^a-z0-9]+/i', '', explode(' ', $username)[0] ?? $username));
-        header("Location: worker-verification-pending.php");
+        if (!empty($_SESSION['target_project_id'])) {
+            $targetProj = (string)$_SESSION['target_project_id'];
+            unset($_SESSION['target_project_id']);
+            header("Location: worker-verification-pending.php?project_id=" . urlencode($targetProj));
+        } else {
+            header("Location: worker-verification-pending.php");
+        }
         exit;
         }
     }

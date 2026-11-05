@@ -36,12 +36,38 @@ $profileAvatarUrl = $isLoggedIn
         : gig_resolve_user_avatar(null, 'employer'))
     : 'https://api.dicebear.com/9.x/notionists/svg?seed=Guest&backgroundColor=dbeafe';
 
+require_once __DIR__ . '/includes/project-vacancies.php';
+
+$activeProjectVacancies = function_exists('gig_project_vacancies') ? gig_project_vacancies() : [];
+$gigTrendingJobs = [];
+foreach ($activeProjectVacancies as $pv) {
+    if (($pv['status'] ?? '') === 'active') {
+        $detailTarget = ($role === 'worker')
+            ? ('worker-project-detail.php?id=' . urlencode((string)$pv['id']))
+            : ('worker-register.php?project_id=' . urlencode((string)$pv['id']));
+
+        $gigTrendingJobs[] = [
+            'title' => (string)$pv['title'],
+            'company' => (string)($pv['employer'] ?? ($pv['client'] ?? 'Perusahaan Mitra')),
+            'loc' => (string)($pv['location'] ?? 'Jakarta Selatan'),
+            'pay' => 'Nilai: ' . (string)($pv['budget'] ?? 'Rp 5.000.000'),
+            'logo' => strtoupper(substr((string)($pv['employer'] ?? ($pv['client'] ?? 'PR')), 0, 2)),
+            'is_gig' => true,
+            'url' => $detailTarget,
+        ];
+    }
+}
+
 $trendingJobs = [
     ['title' => 'Accountant', 'company' => 'PT. Surya Indah', 'loc' => 'Jakarta', 'pay' => 'Rp 8–12 jt', 'logo' => 'SI'],
     ['title' => 'Graphic Designer', 'company' => 'CV. Kreatif Digital', 'loc' => 'Bandung', 'pay' => 'Rp 6–9 jt', 'logo' => 'KD'],
     ['title' => 'Software Engineer', 'company' => 'PT. Nusantara Tech', 'loc' => 'Surabaya', 'pay' => 'Rp 12–18 jt', 'logo' => 'NT'],
     ['title' => 'HR Specialist', 'company' => 'PT. Talenta Prima', 'loc' => 'Jakarta', 'pay' => 'Rp 7–10 jt', 'logo' => 'TP'],
 ];
+
+if (!empty($gigTrendingJobs)) {
+    $trendingJobs = array_merge($gigTrendingJobs, $trendingJobs);
+}
 
 $categories = [
     ['name' => 'Pengadaan', 'count' => '344', 'icon' => '📦'],
@@ -677,12 +703,25 @@ $testimonials = [
       </div>
       <div class="job-scroll">
         <?php foreach ($trendingJobs as $job): ?>
-          <article class="job-card">
-            <div class="job-logo"><?php echo htmlspecialchars($job['logo'], ENT_QUOTES, 'UTF-8'); ?></div>
-            <h3><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
+          <?php
+            $cardUrl = !empty($job['url']) ? $job['url'] : '#lowongan';
+          ?>
+          <article class="job-card" onclick="window.location.href='<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>'" style="cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div class="job-logo"><?php echo htmlspecialchars($job['logo'], ENT_QUOTES, 'UTF-8'); ?></div>
+              <?php if (!empty($job['is_gig'])): ?>
+                <span style="font-size:0.68rem;font-weight:800;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;padding:2px 8px;border-radius:10px;">Proyek / Gig</span>
+              <?php endif; ?>
+            </div>
+            <h3 style="margin-top:8px;"><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
             <div class="meta"><?php echo htmlspecialchars($job['company'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($job['loc'], ENT_QUOTES, 'UTF-8'); ?></div>
+<<<<<<< HEAD
             <div class="pay"><?php echo htmlspecialchars($job['pay'], ENT_QUOTES, 'UTF-8'); ?></div>
             <a class="detail" href="info_lowongan.php?q=<?php echo urlencode($job['title']); ?>">Lihat Detail</a>
+=======
+            <div class="pay" style="<?php echo !empty($job['is_gig']) ? 'color:#059669;font-weight:800;' : ''; ?>"><?php echo htmlspecialchars($job['pay'], ENT_QUOTES, 'UTF-8'); ?></div>
+            <a href="<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="detail" style="text-decoration:none;display:inline-block;">Lihat Detail &rarr;</a>
+>>>>>>> 1c2c78e788d9e9e2045d52ea8a8b84422cac12ec
           </article>
         <?php endforeach; ?>
       </div>

@@ -221,7 +221,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
                 <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>" style="font-size:0.88rem;font-weight:800;color:#0f172a;text-decoration:none;display:block;">
                   <?php echo htmlspecialchars($recent['name'], ENT_QUOTES, 'UTF-8'); ?>
                 </a>
-                <div style="font-size:0.74rem;color:var(--text-muted);"><?php echo htmlspecialchars($recent['title'], ENT_QUOTES, 'UTF-8'); ?> · ★ <?php echo (int)$recent['rating']; ?></div>
+                <div style="font-size:0.74rem;color:var(--text-muted);"><?php echo !empty($recent['location']) ? htmlspecialchars($recent['location'], ENT_QUOTES, 'UTF-8') . ' · ' : ''; ?>★ <?php echo (int)($recent['rating'] ?? 5); ?></div>
                 <div style="margin-top:3px;">
                   <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>" style="font-size:0.78rem;color:#2563eb;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;" title="Buka Detail Lowongan Proyek">
                     📋 Melamar: <?php echo htmlspecialchars($appliedTitle, ENT_QUOTES, 'UTF-8'); ?>

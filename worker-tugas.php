@@ -88,6 +88,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 : ($errMsg !== '' ? $errMsg : 'Gagal membatalkan pengajuan perpanjangan.');
             $flashErr = empty($res['ok']);
         }
+    } elseif ($action === 'cancel_project') {
+        $contractId = trim((string)($_POST['contract_id'] ?? ''));
+        $reasonCode = trim((string)($_POST['cancel_reason_code'] ?? ''));
+        $reasonNote = trim((string)($_POST['cancel_reason_note'] ?? ''));
+        $res = gig_cancel_active_project($contractId, 'worker', $username, $reasonCode, $reasonNote);
+        $flashMsg = !empty($res['ok'])
+            ? 'Proyek telah resmi dibatalkan dan dialihkan ke Riwayat Proyek.'
+            : (string)($res['error'] ?? 'Gagal membatalkan proyek.');
+        $flashErr = empty($res['ok']);
     }
 }
 
@@ -245,6 +254,9 @@ $activeProjects = gig_worker_ongoing_active_projects($username, $workerEmail);
             <?php endif; ?>
           >
             Ajukan Perpanjangan
+          </button>
+          <button class="btn-outline-red" type="button" onclick="openCancelModal('<?php echo htmlspecialchars((string)($proj['contract_id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>', '<?php echo htmlspecialchars(addslashes((string)$proj['title']), ENT_QUOTES, 'UTF-8'); ?>')" style="padding:7px 14px;font-size:0.82rem;font-weight:600;border-radius:8px;border:1px solid #fecaca;color:#dc2626;background:#fff;cursor:pointer;">
+            Batalkan Proyek
           </button>
           <?php if (empty($confirmState['worker_confirmed'])): ?>
             <form method="post" action="" style="margin:0;">
@@ -455,5 +467,70 @@ function closeContactModal() {
     </div>
   </div>
 </div>
+
+<!-- CANCEL PROJECT MODAL -->
+<div id="cancelProjectModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;max-width:480px;width:100%;box-shadow:0 12px 36px rgba(0,0,0,0.2);overflow:hidden;">
+    <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;font-size:1.05rem;font-weight:800;color:#991b1b;">⚠️ Batalkan Penugasan Proyek</h3>
+      <button type="button" onclick="closeCancelModal()" style="background:none;border:none;font-size:1.4rem;color:#94a3b8;cursor:pointer;">&times;</button>
+    </div>
+    <form method="post" action="" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+      <input type="hidden" name="ext_action" value="cancel_project" />
+      <input type="hidden" name="contract_id" id="cancelModalContractId" value="" />
+      
+      <p style="margin:0;font-size:0.86rem;color:#475569;line-height:1.5;">
+        Anda akan membatalkan pengerjaan proyek <strong id="cancelModalProjectTitle" style="color:#0f172a;"></strong>. Status proyek akan dialihkan ke Riwayat dengan status <em>Tidak Selesai</em>.
+      </p>
+
+      <div>
+        <label style="display:block;font-size:0.8rem;font-weight:700;color:#334155;margin-bottom:6px;">Alasan Pembatalan <span style="color:#ef4444;">*</span></label>
+        <select name="cancel_reason_code" id="cancelReasonCode" required onchange="toggleCancelNoteRequired()" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.86rem;">
+          <option value="">-- Pilih Kode Alasan --</option>
+          <option value="SCOPE_MISMATCH">Ketidaksesuaian lingkup kerja proyek</option>
+          <option value="SCHEDULE_CONFLICT">Kendala atau konflik jadwal pengerjaan</option>
+          <option value="COMMUNICATION_FAILURE">Hambatan komunikasi / tidak ada respon</option>
+          <option value="MUTUAL_AGREEMENT">Kesepakatan bersama pembatalan kerja</option>
+          <option value="FORCE_MAJEURE">Keadaan kahar (Force Majeure)</option>
+          <option value="OTHER">Alasan Lainnya (wajib catatan)</option>
+        </select>
+      </div>
+
+      <div id="cancelNoteWrap">
+        <label style="display:block;font-size:0.8rem;font-weight:700;color:#334155;margin-bottom:6px;">Catatan Keterangan <span id="cancelNoteReqStar" style="display:none;color:#ef4444;">*</span></label>
+        <textarea name="cancel_reason_note" id="cancelReasonNote" rows="3" placeholder="Tuliskan keterangan detail pembatalan..." style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.86rem;resize:vertical;"></textarea>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;">
+        <button type="button" onclick="closeCancelModal()" style="padding:8px 16px;border:1px solid #cbd5e1;background:#f8fafc;color:#475569;border-radius:8px;font-weight:600;cursor:pointer;">Tutup</button>
+        <button type="submit" style="padding:8px 18px;border:none;background:#dc2626;color:#fff;border-radius:8px;font-weight:700;cursor:pointer;">Ya, Batalkan Proyek</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openCancelModal(contractId, projectTitle) {
+    document.getElementById('cancelModalContractId').value = contractId;
+    document.getElementById('cancelModalProjectTitle').innerText = projectTitle;
+    document.getElementById('cancelReasonCode').value = '';
+    document.getElementById('cancelReasonNote').value = '';
+    toggleCancelNoteRequired();
+    const modal = document.getElementById('cancelProjectModal');
+    if (modal) modal.style.display = 'flex';
+  }
+  function closeCancelModal() {
+    const modal = document.getElementById('cancelProjectModal');
+    if (modal) modal.style.display = 'none';
+  }
+  function toggleCancelNoteRequired() {
+    const code = document.getElementById('cancelReasonCode').value;
+    const isOther = (code === 'OTHER');
+    const noteEl = document.getElementById('cancelReasonNote');
+    const star = document.getElementById('cancelNoteReqStar');
+    if (noteEl) noteEl.required = isOther;
+    if (star) star.style.display = isOther ? 'inline' : 'none';
+  }
+</script>
 
 <?php require __DIR__ . '/includes/worker-layout-end.php'; ?>

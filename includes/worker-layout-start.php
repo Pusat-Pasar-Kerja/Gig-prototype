@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/worker-profiles.php';
 require_once __DIR__ . '/user-avatars.php';
+require_once __DIR__ . '/project-applications.php';
 
 $pageTitle = $pageTitle ?? 'Cari Proyek';
 $pageKey = $pageKey ?? 'bursa';
@@ -19,7 +20,6 @@ $profileUrl = 'worker-profile.php?id=tessa';
 
 $navItems = [
     'bursa' => ['href' => 'worker-bursa.php', 'title' => 'Cari Proyek', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>'],
-    'katalog' => ['href' => 'worker-katalog-saya.php', 'title' => 'Katalog Jasa Saya', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>'],
     'lamaran' => ['href' => 'worker-lamaran.php', 'title' => 'Lamaran Saya', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>'],
     'penawaran' => ['href' => 'worker-penawaran.php', 'title' => 'Penawaran Proyek', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'],
     'tugas' => ['href' => 'worker-tugas.php', 'title' => 'Proyek Aktif', 'icon' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'],
@@ -85,22 +85,6 @@ $workerNotifs = gig_get_worker_notifications($username);
 $unreadWorkerNotifs = count(array_filter($workerNotifs, fn($n) => empty($n['is_read'])));
 ?>
       <div class="navbar-right" style="display:flex;align-items:center;gap:10px;">
-        <!-- DIRECT NAV BUTTONS TO KATALOG JASA -->
-        <a href="katalog-jasa.php" title="Bursa Katalog Jasa Freelance (Fastwork style)" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;color:#0284c7;font-size:0.82rem;font-weight:700;text-decoration:none;transition:all 0.2s;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          <span>Bursa Jasa</span>
-        </a>
-
-        <a href="worker-katalog-saya.php" title="Kelola Katalog Jasa Saya" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1d4ed8;font-size:0.82rem;font-weight:700;text-decoration:none;transition:all 0.2s;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-          <span>Katalog Saya</span>
-        </a>
-
-        <a href="worker-katalog-tambah.php" title="Upload Penawaran Jasa Baru" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#0284c7;border:1px solid #0284c7;border-radius:8px;color:#ffffff;font-size:0.82rem;font-weight:800;text-decoration:none;box-shadow:0 2px 6px rgba(2,132,199,0.25);transition:all 0.2s;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          <span>+ Upload Jasa</span>
-        </a>
-
         <!-- WORKER NOTIFICATION BELL DROPDOWN -->
         <div class="profile-menu" style="position:relative;">
           <button type="button" onclick="document.getElementById('workerNotifDropdown').classList.toggle('open')" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;">
@@ -143,9 +127,6 @@ $unreadWorkerNotifs = count(array_filter($workerNotifs, fn($n) => empty($n['is_r
           </div>
           <div class="profile-dropdown" id="profileDropdown">
             <a href="<?php echo htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8'); ?>">Profil saya</a>
-            <a href="worker-katalog-saya.php">Katalog Jasa Saya</a>
-            <a href="katalog-jasa.php">Bursa Katalog Jasa</a>
-            <a href="worker-katalog-tambah.php">+ Upload Jasa Baru</a>
             <a href="worker-pengaturan.php">Pengaturan akun</a>
             <a href="karirhub-logout.php">Keluar</a>
           </div>

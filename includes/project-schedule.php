@@ -253,6 +253,115 @@ function gig_format_extension_label(int $amount, string $unit): string
     return $amount . ' hari';
 }
 
+function gig_cancellation_reason_labels(): array
+{
+    return [
+        'SCOPE_MISMATCH' => 'Ketidaksesuaian lingkup kerja proyek',
+        'SCHEDULE_CONFLICT' => 'Kendala atau konflik jadwal pengerjaan',
+        'COMMUNICATION_FAILURE' => 'Hambatan komunikasi / tidak ada respon',
+        'MUTUAL_AGREEMENT' => 'Kesepakatan bersama pembatalan kerja',
+        'FORCE_MAJEURE' => 'Keadaan kahar (Force Majeure)',
+        'OTHER' => 'Alasan Lainnya (memerlukan catatan detail)',
+    ];
+}
+
+function gig_cancel_active_project(string $contractId, string $actorRole, string $actorName, string $reasonCode, string $reasonNote = ''): array
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    $allowedReasons = array_keys(gig_cancellation_reason_labels());
+    if (!in_array($reasonCode, $allowedReasons, true)) {
+        return ['ok' => false, 'error' => 'Pilih alasan pembatalan yang valid.'];
+    }
+    if ($reasonCode === 'OTHER' && trim($reasonNote) === '') {
+        return ['ok' => false, 'error' => 'Untuk alasan Lainnya, catatan keterangan pembatalan wajib diisi.'];
+    }
+
+    $allActive = gig_active_projects_list();
+    $targetProj = null;
+    foreach ($allActive as $p) {
+        if (strcasecmp((string)($p['contract_id'] ?? ''), $contractId) === 0) {
+            $targetProj = $p;
+            break;
+        }
+    }
+
+    if (!$targetProj) {
+        return ['ok' => false, 'error' => 'Kontrak proyek aktif tidak ditemukan.'];
+    }
+
+    if (!isset($_SESSION['cancelled_contracts'])) {
+        $_SESSION['cancelled_contracts'] = [];
+    }
+
+    $reasonLabels = gig_cancellation_reason_labels();
+    $reasonText = $reasonLabels[$reasonCode] ?? $reasonCode;
+    $summary = 'Dibatalkan oleh ' . ($actorRole === 'employer' ? 'Pemberi Kerja' : 'Gig Worker') . ' (' . $actorName . '). Alasan: ' . $reasonText;
+    if (trim($reasonNote) !== '') {
+        $summary .= ' · Catatan: ' . trim($reasonNote);
+    }
+
+    $_SESSION['cancelled_contracts'][$contractId] = [
+        'contract_id' => $contractId,
+        'cancelled_by_role' => $actorRole,
+        'cancelled_by_name' => $actorName,
+        'reason_code' => $reasonCode,
+        'reason_text' => $reasonText,
+        'reason_note' => trim($reasonNote),
+        'cancelled_at' => date('Y-m-d H:i:s'),
+        'summary' => $summary,
+    ];
+
+    if (!empty($targetProj['id'])) {
+        if (function_exists('gig_vacancy_set_status')) {
+            gig_vacancy_set_status((string)$targetProj['id'], 'cancelled');
+        }
+    }
+
+    if (function_exists('gig_upsert_project_history')) {
+        gig_upsert_project_history([
+            'contract_id' => $contractId,
+            'worker_id' => $targetProj['worker_id'] ?? 'tessa',
+            'worker_name' => $targetProj['worker_name'] ?? 'Gig Worker',
+            'worker_role' => $targetProj['worker_role'] ?? 'Gig Worker',
+            'employer_username' => $targetProj['employer_name'] ?? 'Pemberi Kerja',
+            'project_title' => $targetProj['title'] ?? 'Proyek',
+            'status' => 'cancelled',
+            'budget' => $targetProj['budget'] ?? '',
+            'duration' => $targetProj['duration'] ?? '',
+            'start_date' => $targetProj['hired_label'] ?? '',
+            'end_date' => date('d M Y'),
+            'summary' => $summary,
+        ]);
+    }
+
+    $empName = $targetProj['employer_name'] ?? 'Pemberi Kerja';
+    $wId = $targetProj['worker_id'] ?? 'tessa';
+    $projTitle = $targetProj['title'] ?? 'Proyek';
+
+    if (function_exists('gig_add_employer_notification')) {
+        gig_add_employer_notification(
+            $empName,
+            'project_cancelled',
+            'Proyek Dibatalkan',
+            'Proyek "' . $projTitle . '" telah dibatalkan. Alasan: ' . $reasonText . '.',
+            (string)($targetProj['id'] ?? '')
+        );
+    }
+    if (function_exists('gig_add_worker_notification')) {
+        gig_add_worker_notification(
+            $wId,
+            'project_cancelled',
+            'Proyek Dibatalkan',
+            'Proyek "' . $projTitle . '" telah dibatalkan. Alasan: ' . $reasonText . '.',
+            (string)($targetProj['id'] ?? '')
+        );
+    }
+
+    return ['ok' => true, 'contract_id' => $contractId];
+}
+
 function gig_completion_confirmation_ensure_table(?PDO $pdo): void
 {
     if (!$pdo) {
@@ -639,7 +748,11 @@ function gig_demo_active_projects(): array
 
     static $recursionLock = false;
     if ($recursionLock) {
-        return $projects;
+        if (!empty($_SESSION['cancelled_contracts'])) {
+        $projects = array_values(array_filter($projects, static fn($p) => empty($_SESSION['cancelled_contracts'][(string)($p['contract_id'] ?? '')])));
+    }
+
+    return $projects;
     }
     $recursionLock = true;
 
@@ -755,6 +868,10 @@ function gig_demo_active_projects(): array
     unset($proj);
     } finally {
         $recursionLock = false;
+    }
+
+    if (!empty($_SESSION['cancelled_contracts'])) {
+        $projects = array_values(array_filter($projects, static fn($p) => empty($_SESSION['cancelled_contracts'][(string)($p['contract_id'] ?? '')])));
     }
 
     return $projects;

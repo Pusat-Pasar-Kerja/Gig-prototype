@@ -601,7 +601,7 @@ if ($isEmployer) {
       <div class="gallery-main-wrap">
         <div class="gallery-badge-overlay">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Terverifikasi KarirHub Escrow
+          Mitra Terverifikasi KarirHub
         </div>
         <img src="<?php echo htmlspecialchars($gallery[0], ENT_QUOTES, 'UTF-8'); ?>" id="mainGalleryImg" class="gallery-main-img" alt="Foto Karya Portofolio" />
       </div>
@@ -618,7 +618,6 @@ if ($isEmployer) {
     <!-- Section Navigation Anchor Tabs -->
     <nav class="content-nav-tabs">
       <a href="#deskripsi" class="content-tab-btn active">Deskripsi Layanan</a>
-      <a href="#lingkup" class="content-tab-btn">Cakupan Deliverables</a>
       <?php if (!empty($relatedExp)): ?>
         <a href="#pengalaman" class="content-tab-btn">Pengalaman Terkait (<?php echo count($relatedExp); ?>)</a>
       <?php endif; ?>
@@ -631,34 +630,6 @@ if ($isEmployer) {
       <h2 class="card-heading">Deskripsi Layanan & Alur Kerja</h2>
       <div style="font-size:0.92rem;color:#334155;white-space:pre-line;line-height:1.7;">
         <?php echo htmlspecialchars($service['description'] ?? 'Layanan profesional dengan jaminan kepuasan.', ENT_QUOTES, 'UTF-8'); ?>
-      </div>
-    </section>
-
-    <!-- SECTION 2: Cakupan & Output Layanan -->
-    <section class="detail-card" id="lingkup">
-      <h2 class="card-heading">Cakupan & Output Layanan</h2>
-      <p style="font-size:0.86rem;color:var(--text-muted);margin-bottom:16px;">Berikut rincian hasil kerja dan format berkas deliverables yang akan diserahkan kepada perusahaan pemberi kerja:</p>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div style="border:1.5px solid var(--border-subtle);border-radius:12px;padding:18px;background:#f8fafc;">
-          <div style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin-bottom:10px;">📦 Berkas & Hasil Akhir (Deliverables)</div>
-          <ul class="pkg-features-list">
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Konsep desain original sesuai identitas merek perusahaan</span></li>
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>File master vektor skala penuh (AI, EPS, SVG, PDF)</span></li>
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Gambar resolusi tinggi siap cetak (300 DPI) & PNG transparan</span></li>
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Mockup visual realistis untuk presentasi internal</span></li>
-          </ul>
-        </div>
-
-        <div style="border:1.5px solid var(--border-subtle);border-radius:12px;padding:18px;background:#f8fafc;">
-          <div style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin-bottom:10px;">🤝 Standar Kerjasama Proyek Perusahaan</div>
-          <ul class="pkg-features-list">
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Penugasan proyek resmi melalui fitur Tawarkan Proyek KarirHub</span></li>
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Hak cipta komersial penuh langsung menjadi aset perusahaan</span></li>
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Revisi terakomodasi sesuai kesepakatan brief kerja penugasan</span></li>
-            <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Pelaporan berkas dan serah terima resmi di dashboard KarirHub</span></li>
-          </ul>
-        </div>
       </div>
     </section>
 

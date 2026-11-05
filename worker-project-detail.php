@@ -45,14 +45,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && $fromOffers && isset($_POST
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POST['do_apply'])) {
-    $note = trim((string)($_POST['apply_note'] ?? ''));
-    $workerName = ucfirst($username);
-    $res = gig_apply_for_project($username, $workerName, (string)$job['id'], $note);
-    if (!empty($res['ok'])) {
-        $flashMsg = 'Lamaran proyek berhasil dikirim. Status Anda saat ini: kandidat/pelamar. Anda akan resmi direkrut setelah pemberi kerja menerima lamaran.';
-    } else {
-        $flashMsg = $res['error'] ?? 'Gagal mengirimkan lamaran.';
+    if (empty($_POST['consent_agreed'])) {
+        $flashMsg = 'Anda wajib menyetujui pernyataan dan ketentuan data profil sebelum mengirimkan lamaran.';
         $flashError = true;
+    } else {
+        $note = trim((string)($_POST['apply_note'] ?? ''));
+        $workerName = ucfirst($username);
+        $res = gig_apply_for_project($username, $workerName, (string)$job['id'], $note);
+        if (!empty($res['ok'])) {
+            $flashMsg = 'Lamaran proyek berhasil dikirim. Status Anda saat ini: kandidat/pelamar. Anda akan resmi direkrut setelah pemberi kerja menerima lamaran.';
+        } else {
+            $flashMsg = $res['error'] ?? 'Gagal mengirimkan lamaran.';
+            $flashError = true;
+        }
     }
 }
 
@@ -497,19 +502,19 @@ require __DIR__ . '/includes/worker-layout-start.php';
   <div class="modal-backdrop" id="applyModal" onclick="if(event.target.id==='applyModal') closeApplyModal();">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 style="font-size: 1rem; font-weight: 800; color:#ffffff;">Persetujuan Risiko Pembayaran</h3>
+        <h3 style="font-size: 1rem; font-weight: 800; color:#ffffff;">Persetujuan Syarat & Ketentuan Lamaran Proyek</h3>
         <button type="button" onclick="closeApplyModal()" style="background:none; border:none; color:#fff; font-size:1.4rem; cursor:pointer;">&times;</button>
       </div>
       <form method="post" action="" class="modal-body">
         <input type="hidden" name="do_apply" value="1" />
 
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:16px;">
-          <div style="font-size:0.78rem;color:#334155;line-height:1.5;margin-bottom:10px;">
-            Saya memahami bahwa Karirhub tidak menahan dana pembayaran. Segala risiko terkait penipuan atau gagal bayar oleh Pemberi Kerja berada di luar tanggung jawab Karirhub. Pastikan Anda telah menyepakati metode pembayaran sebelum mulai bekerja.
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:0.82rem;color:#334155;line-height:1.6;margin-bottom:12px;">
+            Saya telah membaca detail proyek, memahami bahwa komunikasi, negosiasi, pelaksanaan pekerjaan, dan transaksi/pembayaran dilakukan di luar Karirhub, serta menyetujui data profil Gig Worker yang diizinkan digunakan dan ditampilkan kepada Pemberi Kerja untuk proses seleksi proyek ini.
           </div>
-          <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.8rem;color:#0f172a;font-weight:600;cursor:pointer;">
-            <input type="checkbox" id="applyConsentCheckbox" style="margin-top:2px;accent-color:#2563eb;" />
-            <span>Saya menyetujui pernyataan di atas.</span>
+          <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;color:#0f172a;font-weight:600;cursor:pointer;">
+            <input type="checkbox" name="consent_agreed" value="1" id="applyConsentCheckbox" onchange="syncApplyConsentState()" style="margin-top:2px;accent-color:#2563eb;" />
+            <span>Saya menyetujui syarat & ketentuan dan persetujuan data profil di atas.</span>
           </label>
         </div>
 
