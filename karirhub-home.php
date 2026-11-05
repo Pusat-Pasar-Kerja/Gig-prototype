@@ -24,6 +24,7 @@ $isWorkerAccount = $isLoggedIn && !$isAdminAccount && !$isEmployerAccount && (
     ($_SESSION['role'] ?? '') === 'worker'
     || in_array($siapkerjaEmail, ['theressaz@pasker.id', 'tessa'], true)
 );
+$role = (string)($_SESSION['role'] ?? ($isWorkerAccount ? 'worker' : ($isEmployerAccount ? 'employer' : ($isAdminAccount ? 'admin' : ''))));
 $showDasborPengelola = $isEmployerAccount || $isAdminAccount;
 $profileEmail = (string)($_SESSION['siapkerja_email'] ?? '');
 if ($profileEmail === '' && $isLoggedIn) {
@@ -42,7 +43,7 @@ $activeProjectVacancies = function_exists('gig_project_vacancies') ? gig_project
 $gigTrendingJobs = [];
 foreach ($activeProjectVacancies as $pv) {
     if (($pv['status'] ?? '') === 'active') {
-        $detailTarget = ($role === 'worker')
+        $detailTarget = ($role === 'worker' || $isWorkerAccount)
             ? ('worker-project-detail.php?id=' . urlencode((string)$pv['id']))
             : ('worker-register.php?project_id=' . urlencode((string)$pv['id']));
 
@@ -704,7 +705,7 @@ $testimonials = [
       <div class="job-scroll">
         <?php foreach ($trendingJobs as $job): ?>
           <?php
-            $cardUrl = !empty($job['url']) ? $job['url'] : '#lowongan';
+            $cardUrl = !empty($job['url']) ? $job['url'] : ('info_lowongan.php?q=' . urlencode((string)$job['title']));
           ?>
           <article class="job-card" onclick="window.location.href='<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>'" style="cursor:pointer;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -715,13 +716,8 @@ $testimonials = [
             </div>
             <h3 style="margin-top:8px;"><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
             <div class="meta"><?php echo htmlspecialchars($job['company'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($job['loc'], ENT_QUOTES, 'UTF-8'); ?></div>
-<<<<<<< HEAD
-            <div class="pay"><?php echo htmlspecialchars($job['pay'], ENT_QUOTES, 'UTF-8'); ?></div>
-            <a class="detail" href="info_lowongan.php?q=<?php echo urlencode($job['title']); ?>">Lihat Detail</a>
-=======
             <div class="pay" style="<?php echo !empty($job['is_gig']) ? 'color:#059669;font-weight:800;' : ''; ?>"><?php echo htmlspecialchars($job['pay'], ENT_QUOTES, 'UTF-8'); ?></div>
-            <a href="<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="detail" style="text-decoration:none;display:inline-block;">Lihat Detail &rarr;</a>
->>>>>>> 1c2c78e788d9e9e2045d52ea8a8b84422cac12ec
+            <a href="<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="detail" style="text-decoration:none;display:inline-block;">Lihat Detail</a>
           </article>
         <?php endforeach; ?>
       </div>
