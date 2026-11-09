@@ -14,7 +14,13 @@ $sessionEmail = trim((string)($_SESSION['siapkerja_email'] ?? ''));
 $sessionRole = trim((string)($_SESSION['role'] ?? ''));
 
 $requestedUser = trim((string)($_GET['id'] ?? $_GET['user'] ?? ''));
-$lookupKey = $requestedUser !== '' ? $requestedUser : ($sessionEmail !== '' ? $sessionEmail : $sessionName);
+if ($requestedUser === '' && ($sessionRole === 'admin' || strtolower($sessionEmail) === 'admin@kemnaker.go.id')) {
+    $lookupKey = 'theressaz@pasker.id';
+    $sessionName = 'Theressa Zaratrusha';
+    $sessionEmail = 'theressaz@pasker.id';
+} else {
+    $lookupKey = $requestedUser !== '' ? $requestedUser : ($sessionEmail !== '' ? $sessionEmail : $sessionName);
+}
 
 if ($lookupKey === '' && !$isLoggedIn) {
     $lookupKey = 'theressaz@pasker.id';
@@ -421,6 +427,196 @@ $certifications = $activeDetails['certifications'];
 $achievements   = $activeDetails['achievements'];
 $languages      = $activeDetails['languages'];
 
+$profile['birth_place_date'] = 'Jakarta, 14 Mei 1998';
+$profile['gender']           = $isTessa ? 'Perempuan' : 'Laki-laki';
+$profile['marital_status']   = 'Belum Kawin';
+$profile['address_ktp']      = 'Senayan, Kebayoran Baru, KOTA ADM. JAKARTA SELATAN, DKI JAKARTA - 12190';
+$profile['linkedin_url']     = '';
+$profile['expected_salary']  = '';
+$profile['work_preference']  = '';
+
+// Sinkronkan seluruh bagian profil dengan tabel `users` (Progressive Profiling)
+require_once __DIR__ . '/includes/progressive-profiling.php';
+$ppPdo = gig_db();
+if ($ppPdo !== null) {
+    $ppUserId = gig_profiling_resolve_user_id($ppPdo);
+    $stmtPpUser = $ppPdo->prepare('SELECT * FROM `users` WHERE `id` = :id LIMIT 1');
+    $stmtPpUser->execute([':id' => $ppUserId]);
+    $ppUserRow = $stmtPpUser->fetch(PDO::FETCH_ASSOC);
+
+    if ($ppUserRow) {
+        // 1. Biodata: NIK, TTL, Jenis Kelamin, Status, Nomor Telepon, Alamat KTP, Domisili, LinkedIn, Gaji, Preferensi Kerja, Bio
+        $profile['nik']              = trim((string)($ppUserRow['nik'] ?? ''));
+        $profile['birth_place_date'] = trim((string)($ppUserRow['birth_place_date'] ?? ''));
+        $profile['gender']           = trim((string)($ppUserRow['gender'] ?? ''));
+        $profile['marital_status']   = trim((string)($ppUserRow['marital_status'] ?? ''));
+        $profile['phone']            = trim((string)($ppUserRow['phone'] ?? ''));
+        $profile['address_ktp']      = trim((string)($ppUserRow['address_ktp'] ?? ''));
+        $profile['location']         = trim((string)($ppUserRow['domicile'] ?? ''));
+        $profile['linkedin_url']     = trim((string)($ppUserRow['linkedin_url'] ?? ''));
+        $profile['expected_salary']  = trim((string)($ppUserRow['expected_salary'] ?? ''));
+        $profile['work_preference']  = trim((string)($ppUserRow['work_preference'] ?? ''));
+
+        $dbBio = trim((string)($ppUserRow['bio'] ?? ''));
+        if ($dbBio !== '') {
+            $profile['bio_full']  = $dbBio;
+            $profile['bio_short'] = mb_strlen($dbBio) > 175 ? (rtrim(mb_substr($dbBio, 0, 172)) . '...') : $dbBio;
+        } else {
+            $profile['bio_full']  = '';
+            $profile['bio_short'] = 'Belum ada ringkasan profil. Silakan lengkapi melalui pop-up Progressive Profiling.';
+        }
+
+        // 2. Pengalaman Kerja (`work_experience`)
+        $dbExp = trim((string)($ppUserRow['work_experience'] ?? ''));
+        if ($dbExp === '') {
+            $experiences = [];
+        } else {
+            $expParts = array_map('trim', explode('-', $dbExp, 2));
+            $expRole  = $expParts[0] !== '' ? $expParts[0] : $dbExp;
+            $expComp  = $expParts[1] ?? ($experiences[0]['company'] ?? 'Mitra SIAPKerja Kemnaker');
+            if (!empty($experiences)) {
+                $experiences[0]['title']    = $expRole;
+                $experiences[0]['company']  = $expComp;
+                $experiences[0]['location'] = $profile['location'] !== '' ? $profile['location'] : $experiences[0]['location'];
+            } else {
+                $experiences = [[
+                    'title'    => $expRole,
+                    'verified' => true,
+                    'company'  => $expComp,
+                    'period'   => '2025 - Sekarang',
+                    'location' => $profile['location'] !== '' ? $profile['location'] : 'Indonesia',
+                    'summary'  => 'Pengalaman kerja terverifikasi pada profil SIAPKerja.',
+                ]];
+            }
+        }
+
+        // 3. Pelatihan (`training_name`)
+        $dbTraining = trim((string)($ppUserRow['training_name'] ?? ''));
+        if ($dbTraining === '') {
+            $trainings = [];
+        } else {
+            $trParts    = array_map('trim', explode('-', $dbTraining, 2));
+            $trTitle    = $trParts[0] !== '' ? $trParts[0] : $dbTraining;
+            $trProvider = $trParts[1] ?? ($trainings[0]['provider'] ?? 'Balai Pelatihan Vokasi dan Produktivitas (BPVP) Kemnaker RI');
+            if (!empty($trainings)) {
+                $trainings[0]['title']    = $trTitle;
+                $trainings[0]['provider'] = $trProvider;
+            } else {
+                $trainings = [[
+                    'title'             => $trTitle,
+                    'verified'          => true,
+                    'category'          => 'PENGEMBANGAN KOMPETENSI KERJA (SIAPKERJA)',
+                    'provider'          => $trProvider,
+                    'period'            => '2025',
+                    'description'       => 'Program pelatihan peningkatan kompetensi teknis terverifikasi SIAPKerja.',
+                    'certificate_label' => 'Sertifikat Pelatihan',
+                ]];
+            }
+        }
+
+        // 4. Pendidikan (`highest_education`)
+        $dbEdu = trim((string)($ppUserRow['highest_education'] ?? ''));
+        if ($dbEdu === '') {
+            $educations = [];
+        } else {
+            $eduParts = array_map('trim', explode('-', $dbEdu));
+            if (count($eduParts) >= 3) {
+                $eduDegree = $eduParts[0] . ' - ' . $eduParts[1];
+                $eduSchool = $eduParts[2];
+            } elseif (count($eduParts) === 2) {
+                if (preg_match('/^(SMA|SMK|D1|D2|D3|D4|S1|S2|S3)\b/i', $eduParts[0])) {
+                    $eduDegree = $eduParts[0];
+                    $eduSchool = $eduParts[1];
+                } else {
+                    $eduSchool = $eduParts[0];
+                    $eduDegree = $eduParts[1];
+                }
+            } else {
+                $eduSchool = $dbEdu;
+                $eduDegree = $educations[0]['degree'] ?? 'Sarjana / Diploma';
+            }
+
+            if (!empty($educations)) {
+                $educations[0]['school'] = $eduSchool;
+                $educations[0]['degree'] = $eduDegree;
+            } else {
+                $educations = [[
+                    'school'            => $eduSchool,
+                    'verified'          => true,
+                    'degree'            => $eduDegree,
+                    'gpa'               => '3.75',
+                    'period'            => '2018 - 2022',
+                    'location'          => $profile['location'] !== '' ? $profile['location'] : 'Indonesia',
+                    'certificate_label' => 'Ijasah Pendidikan',
+                ]];
+            }
+        }
+
+        // 5. Sertifikasi (`certification_name`)
+        $dbCert = trim((string)($ppUserRow['certification_name'] ?? ''));
+        if ($dbCert === '') {
+            $certifications = [];
+        } else {
+            $certParts  = array_map('trim', explode('-', $dbCert, 2));
+            $certTitle  = $certParts[0] !== '' ? $certParts[0] : $dbCert;
+            $certIssuer = $certParts[1] ?? 'Badan Nasional Sertifikasi Profesi (BNSP) / Lembaga Resmi';
+            $certifications = [[
+                'title'             => $certTitle,
+                'verified'          => true,
+                'issuer'            => $certIssuer,
+                'period'            => 'Berlaku: 2025 - 2028',
+                'credential_id'     => 'Terverifikasi via Progressive Profiling SIAPKerja',
+                'certificate_label' => 'Sertifikat Kompetensi',
+            ]];
+        }
+
+        // 6. Pencapaian (`achievement_name`)
+        $dbAch = trim((string)($ppUserRow['achievement_name'] ?? ''));
+        if ($dbAch === '') {
+            $achievements = [];
+        } else {
+            $achParts  = array_map('trim', explode('-', $dbAch, 2));
+            $achTitle  = $achParts[0] !== '' ? $achParts[0] : $dbAch;
+            $achIssuer = $achParts[1] ?? 'Kementerian Ketenagakerjaan RI / Mitra Industri';
+            $achievements = [[
+                'title'       => $achTitle,
+                'verified'    => true,
+                'issuer'      => $achIssuer,
+                'year'        => date('Y'),
+                'description' => 'Penghargaan dan pencapaian profesional yang tercatat pada profil SIAPKerja.',
+            ]];
+        }
+
+        // 7. Keahlian (`skills_text`)
+        $dbSkills = trim((string)($ppUserRow['skills_text'] ?? ''));
+        if ($dbSkills === '') {
+            $skills = [];
+        } else {
+            $parsedSkills = array_values(array_filter(array_map('trim', explode(',', $dbSkills)), static fn($s) => $s !== ''));
+            $skills = $parsedSkills;
+        }
+
+        // 8. Bahasa (`english_level` & `mandarin_level`)
+        $languages = [
+            ['name' => 'Bahasa Indonesia', 'level' => 'Tingkat Fasih atau Bahasa Ahli'],
+        ];
+        $dbEng = trim((string)($ppUserRow['english_level'] ?? ''));
+        if ($dbEng !== '') {
+            $languages[] = [
+                'name'  => 'English (Bahasa Inggris)',
+                'level' => $dbEng,
+            ];
+        }
+        $dbMan = trim((string)($ppUserRow['mandarin_level'] ?? ''));
+        if ($dbMan !== '') {
+            $languages[] = [
+                'name'  => 'Mandarin (Bahasa Mandarin)',
+                'level' => $dbMan,
+            ];
+        }
+    }
+}
+
 $editProfilHref = ($resolvedRole === 'employer')
     ? 'employer-profile.php'
     : ($isTessa || $workerData !== null ? 'worker-edit-profile.php' : 'worker-register.php');
@@ -588,37 +784,103 @@ $gigProfileHref = ($resolvedRole === 'employer')
       background: #f9fafb;
     }
 
-    .biodata-panel {
-      display: none;
-      border-top: 1px solid #f3f4f6;
-      padding: 16px 23px 20px 23px;
-      background-color: #f8fafc;
+    .biodata-modal-backdrop {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 702px;
+      background-color: rgba(0, 0, 0, 0.45);
+      z-index: 1005;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
     }
 
-    .biodata-panel.open {
-      display: block;
+    .biodata-modal-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
     }
 
-    .biodata-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px 20px;
+    .biodata-sheet {
+      position: relative;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      background-color: #ffffff;
+      border-radius: 16px 16px 0 0;
+      padding: 20px 24px 32px 24px;
+      box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.16);
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .biodata-item-label {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-bottom: 3px;
+    .biodata-modal-backdrop.open .biodata-sheet {
+      transform: translateY(0);
     }
 
-    .biodata-item-value {
-      font-size: 13.5px;
-      font-weight: 600;
+    .biodata-sheet-close {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
       color: #111827;
-      line-height: 1.4;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .biodata-sheet-close:hover {
+      background-color: #f3f4f6;
+    }
+
+    .biodata-sheet-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 22px;
+      margin-top: 22px;
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+
+    .biodata-sheet-list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .biodata-sheet-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .biodata-sheet-label {
+      font-size: 13.8px;
+      font-weight: 400;
+      color: #6b7280;
+      line-height: 19px;
+    }
+
+    .biodata-sheet-value {
+      font-size: 14.5px;
+      font-weight: 400;
+      color: #111827;
+      line-height: 21px;
       word-break: break-word;
     }
 
@@ -1248,45 +1510,84 @@ $gigProfileHref = ($resolvedRole === 'employer')
         <h2 class="profile-name"><?php echo htmlspecialchars($profile['name'], ENT_QUOTES, 'UTF-8'); ?></h2>
         <div class="profile-email"><?php echo htmlspecialchars($profile['email'], ENT_QUOTES, 'UTF-8'); ?></div>
 
-        <p class="profile-bio" id="profileBioText"
-           data-short="<?php echo htmlspecialchars($profile['bio_short'], ENT_QUOTES, 'UTF-8'); ?>"
-           data-full="<?php echo htmlspecialchars($profile['bio_full'], ENT_QUOTES, 'UTF-8'); ?>">
-          <?php echo htmlspecialchars($profile['bio_short'], ENT_QUOTES, 'UTF-8'); ?>
-        </p>
-        <?php if ($profile['bio_short'] !== $profile['bio_full']): ?>
-          <button type="button" class="btn-read-more" id="toggleBioBtn">Tampilkan Lebih Banyak</button>
-        <?php endif; ?>
+        <div data-profile-field="bio">
+          <p class="profile-bio" id="profileBioText"
+             data-short="<?php echo htmlspecialchars($profile['bio_short'], ENT_QUOTES, 'UTF-8'); ?>"
+             data-full="<?php echo htmlspecialchars($profile['bio_full'], ENT_QUOTES, 'UTF-8'); ?>">
+            <?php echo htmlspecialchars($profile['bio_short'], ENT_QUOTES, 'UTF-8'); ?>
+          </p>
+          <?php if ($profile['bio_short'] !== $profile['bio_full'] && $profile['bio_full'] !== ''): ?>
+            <button type="button" class="btn-read-more" id="toggleBioBtn">Tampilkan Lebih Banyak</button>
+          <?php endif; ?>
+        </div>
       </div>
 
       <!-- Lihat Informasi Biodata -->
       <div class="biodata-bar">
         <a href="#biodata" class="biodata-link" id="toggleBiodataBtn">Lihat Informasi Biodata</a>
       </div>
-      <div class="biodata-panel" id="biodataPanel">
-        <div class="biodata-grid">
-          <div>
-            <div class="biodata-item-label">ID SIAPkerja</div>
-            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['siapkerja_id'], ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-          <div>
-            <div class="biodata-item-label">NIK</div>
-            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['nik'], ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-          <div>
-            <div class="biodata-item-label">Nomor Telepon / WhatsApp</div>
-            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['phone'], ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-          <div>
-            <div class="biodata-item-label">Domisili</div>
-            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['location'], ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-          <div>
-            <div class="biodata-item-label">Bidang Keahlian</div>
-            <div class="biodata-item-value"><?php echo htmlspecialchars($profile['bidang'], ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-          <div>
-            <div class="biodata-item-label">Status Akun</div>
-            <div class="biodata-item-value" style="color:#049769;"><?php echo htmlspecialchars($profile['status_akun'], ENT_QUOTES, 'UTF-8'); ?></div>
+
+      <!-- Pop-up Bottom Sheet: Biodata Pengguna -->
+      <div class="biodata-modal-backdrop" id="biodataModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="biodataModalTitle">
+        <div class="biodata-sheet" id="biodataSheet">
+          <button type="button" class="biodata-sheet-close" id="closeBiodataBtn" aria-label="Tutup">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <h3 class="biodata-sheet-title" id="biodataModalTitle">Biodata pengguna</h3>
+
+          <div class="biodata-sheet-list">
+            <div class="biodata-sheet-item" data-profile-field="nik">
+              <div class="biodata-sheet-label">Nomor Induk Kependudukan</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['nik'] !== '' ? $profile['nik'] : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <div class="biodata-sheet-item" data-profile-field="birth_place_date">
+              <div class="biodata-sheet-label">Tempat, tanggal lahir</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['birth_place_date'] !== '' ? $profile['birth_place_date'] : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <div class="biodata-sheet-item" data-profile-field="gender">
+              <div class="biodata-sheet-label">Jenis kelamin</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['gender'] !== '' ? $profile['gender'] : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <div class="biodata-sheet-item" data-profile-field="marital_status">
+              <div class="biodata-sheet-label">Status</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['marital_status'] !== '' ? $profile['marital_status'] : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <div class="biodata-sheet-item" data-profile-field="phone">
+              <div class="biodata-sheet-label">Nomor telepon</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars(str_replace('-', '', $profile['phone']) !== '' ? str_replace('-', '', $profile['phone']) : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <div class="biodata-sheet-item" data-profile-field="address_ktp">
+              <div class="biodata-sheet-label">Alamat sesuai KTP</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['address_ktp'] !== '' ? $profile['address_ktp'] : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <div class="biodata-sheet-item" data-profile-field="domicile">
+              <div class="biodata-sheet-label">Alamat domisili</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['location'] !== '' ? $profile['location'] : 'Belum diisi', ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+
+            <?php if ($profile['expected_salary'] !== ''): ?>
+            <div class="biodata-sheet-item" data-profile-field="expected_salary">
+              <div class="biodata-sheet-label">Ekspektasi gaji</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['expected_salary'], ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($profile['work_preference'] !== ''): ?>
+            <div class="biodata-sheet-item" data-profile-field="work_preference">
+              <div class="biodata-sheet-label">Preferensi sistem kerja</div>
+              <div class="biodata-sheet-value"><?php echo htmlspecialchars($profile['work_preference'], ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -1295,7 +1596,7 @@ $gigProfileHref = ($resolvedRole === 'employer')
     <div class="section-spacer"></div>
 
     <!-- Pengalaman Kerja Card -->
-    <section class="experience-card">
+    <section class="<?php echo empty($experiences) ? 'certification-card' : 'experience-card'; ?>" data-profile-field="work_experience">
       <div class="experience-header">
         <h3 class="experience-title">Pengalaman Kerja</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Pengalaman Kerja" onclick="window.location.href='<?php echo htmlspecialchars($editProfilHref, ENT_QUOTES, 'UTF-8'); ?>'">
@@ -1306,39 +1607,47 @@ $gigProfileHref = ($resolvedRole === 'employer')
         </button>
       </div>
 
-      <ul class="experience-list">
-        <?php foreach ($experiences as $exp): ?>
-          <li class="experience-item">
-            <div class="exp-icon-box" aria-hidden="true">
-              <img src="assets/profile-briefcase-icon.png" alt="" />
-            </div>
-            <div class="exp-content">
-              <div class="exp-role-row">
-                <span class="exp-role"><?php echo htmlspecialchars($exp['title'], ENT_QUOTES, 'UTF-8'); ?></span>
-                <?php if (!empty($exp['verified'])): ?>
-                  <span class="verified-badge" title="Terverifikasi">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
+      <?php if (empty($experiences)): ?>
+        <div class="empty-state">
+          <img src="assets/profile-empty-sertifikasi.png" alt="Tidak ada pengalaman kerja" class="empty-state-img" />
+          <h4 class="empty-state-title">Tidak ada pengalaman kerja</h4>
+          <p class="empty-state-sub">Silahkan lengkapi data pengalaman kerja kamu melalui pop-up Progressive Profiling.</p>
+        </div>
+      <?php else: ?>
+        <ul class="experience-list">
+          <?php foreach ($experiences as $exp): ?>
+            <li class="experience-item">
+              <div class="exp-icon-box" aria-hidden="true">
+                <img src="assets/profile-briefcase-icon.png" alt="" />
+              </div>
+              <div class="exp-content">
+                <div class="exp-role-row">
+                  <span class="exp-role"><?php echo htmlspecialchars($exp['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <?php if (!empty($exp['verified'])): ?>
+                    <span class="verified-badge" title="Terverifikasi">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  <?php endif; ?>
+                </div>
+                <div class="exp-company"><?php echo htmlspecialchars($exp['company'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="exp-period"><?php echo htmlspecialchars($exp['period'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="exp-location"><?php echo htmlspecialchars($exp['location'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php if (!empty($exp['summary'])): ?>
+                  <div class="exp-summary"><?php echo htmlspecialchars($exp['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
                 <?php endif; ?>
               </div>
-              <div class="exp-company"><?php echo htmlspecialchars($exp['company'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="exp-period"><?php echo htmlspecialchars($exp['period'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="exp-location"><?php echo htmlspecialchars($exp['location'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <?php if (!empty($exp['summary'])): ?>
-                <div class="exp-summary"><?php echo htmlspecialchars($exp['summary'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <?php endif; ?>
-            </div>
-          </li>
-        <?php endforeach; ?>
-      </ul>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </section>
 
     <div class="section-spacer"></div>
 
     <!-- Pelatihan Card -->
-    <section class="section-card">
+    <section class="<?php echo empty($trainings) ? 'certification-card' : 'section-card'; ?>" data-profile-field="training_name">
       <div class="experience-header">
         <h3 class="experience-title">Pelatihan</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Pelatihan">
@@ -1349,41 +1658,49 @@ $gigProfileHref = ($resolvedRole === 'employer')
         </button>
       </div>
 
-      <ul class="experience-list">
-        <?php foreach ($trainings as $tr): ?>
-          <li class="section-item">
-            <div class="exp-icon-box" aria-hidden="true">
-              <img src="assets/profile-pelatihan-icon.png" alt="" />
-            </div>
-            <div class="exp-content">
-              <div class="exp-role-row">
-                <span class="exp-role"><?php echo htmlspecialchars($tr['title'], ENT_QUOTES, 'UTF-8'); ?></span>
-                <?php if (!empty($tr['verified'])): ?>
-                  <span class="verified-badge" title="Terverifikasi">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
-                <?php endif; ?>
+      <?php if (empty($trainings)): ?>
+        <div class="empty-state">
+          <img src="assets/profile-empty-sertifikasi.png" alt="Tidak ada pelatihan" class="empty-state-img" />
+          <h4 class="empty-state-title">Tidak ada data pelatihan</h4>
+          <p class="empty-state-sub">Silahkan lengkapi data pelatihan kamu, data pelatihan ini akan menjadi kelengkapan profilmu.</p>
+        </div>
+      <?php else: ?>
+        <ul class="experience-list">
+          <?php foreach ($trainings as $tr): ?>
+            <li class="section-item">
+              <div class="exp-icon-box" aria-hidden="true">
+                <img src="assets/profile-pelatihan-icon.png" alt="" />
               </div>
-              <div class="training-category"><?php echo htmlspecialchars($tr['category'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="training-provider"><?php echo htmlspecialchars($tr['provider'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="training-period"><?php echo htmlspecialchars($tr['period'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <p class="training-desc"><?php echo htmlspecialchars($tr['description'], ENT_QUOTES, 'UTF-8'); ?></p>
-              <a href="#sertifikat-pelatihan" class="attachment-box">
-                <img src="assets/profile-doc-icon.png" alt="" />
-                <span><?php echo htmlspecialchars($tr['certificate_label'], ENT_QUOTES, 'UTF-8'); ?></span>
-              </a>
-            </div>
-          </li>
-        <?php endforeach; ?>
-      </ul>
+              <div class="exp-content">
+                <div class="exp-role-row">
+                  <span class="exp-role"><?php echo htmlspecialchars($tr['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <?php if (!empty($tr['verified'])): ?>
+                    <span class="verified-badge" title="Terverifikasi">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  <?php endif; ?>
+                </div>
+                <div class="training-category"><?php echo htmlspecialchars($tr['category'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="training-provider"><?php echo htmlspecialchars($tr['provider'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="training-period"><?php echo htmlspecialchars($tr['period'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <p class="training-desc"><?php echo htmlspecialchars($tr['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                <a href="#sertifikat-pelatihan" class="attachment-box">
+                  <img src="assets/profile-doc-icon.png" alt="" />
+                  <span><?php echo htmlspecialchars($tr['certificate_label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                </a>
+              </div>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </section>
 
     <div class="section-spacer"></div>
 
     <!-- Pendidikan Card -->
-    <section class="section-card">
+    <section class="<?php echo empty($educations) ? 'certification-card' : 'section-card'; ?>" data-profile-field="highest_education">
       <div class="experience-header">
         <h3 class="experience-title">Pendidikan</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Pendidikan">
@@ -1394,44 +1711,52 @@ $gigProfileHref = ($resolvedRole === 'employer')
         </button>
       </div>
 
-      <ul class="experience-list">
-        <?php foreach ($educations as $edu): ?>
-          <li class="section-item">
-            <div class="exp-icon-box" aria-hidden="true">
-              <img src="assets/profile-pendidikan-icon.png" alt="" />
-            </div>
-            <div class="exp-content">
-              <div class="exp-role-row">
-                <span class="exp-role"><?php echo htmlspecialchars($edu['school'], ENT_QUOTES, 'UTF-8'); ?></span>
-                <?php if (!empty($edu['verified'])): ?>
-                  <span class="verified-badge" title="Terverifikasi">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </span>
-                <?php endif; ?>
+      <?php if (empty($educations)): ?>
+        <div class="empty-state">
+          <img src="assets/profile-empty-sertifikasi.png" alt="Tidak ada pendidikan" class="empty-state-img" />
+          <h4 class="empty-state-title">Tidak ada data pendidikan</h4>
+          <p class="empty-state-sub">Silahkan lengkapi data pendidikan terakhir kamu untuk melengkapi profilmu.</p>
+        </div>
+      <?php else: ?>
+        <ul class="experience-list">
+          <?php foreach ($educations as $edu): ?>
+            <li class="section-item">
+              <div class="exp-icon-box" aria-hidden="true">
+                <img src="assets/profile-pendidikan-icon.png" alt="" />
               </div>
-              <div class="edu-degree">
-                <span><?php echo htmlspecialchars($edu['degree'], ENT_QUOTES, 'UTF-8'); ?></span>
-                <span class="edu-bullet">•</span>
-                <span><?php echo htmlspecialchars($edu['gpa'], ENT_QUOTES, 'UTF-8'); ?></span>
+              <div class="exp-content">
+                <div class="exp-role-row">
+                  <span class="exp-role"><?php echo htmlspecialchars($edu['school'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <?php if (!empty($edu['verified'])): ?>
+                    <span class="verified-badge" title="Terverifikasi">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </span>
+                  <?php endif; ?>
+                </div>
+                <div class="edu-degree">
+                  <span><?php echo htmlspecialchars($edu['degree'], ENT_QUOTES, 'UTF-8'); ?></span>
+                  <span class="edu-bullet">•</span>
+                  <span><?php echo htmlspecialchars($edu['gpa'], ENT_QUOTES, 'UTF-8'); ?></span>
+                </div>
+                <div class="edu-period"><?php echo htmlspecialchars($edu['period'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <div class="edu-location"><?php echo htmlspecialchars($edu['location'], ENT_QUOTES, 'UTF-8'); ?></div>
+                <a href="#ijasah-pendidikan" class="attachment-box">
+                  <img src="assets/profile-doc-icon.png" alt="" />
+                  <span><?php echo htmlspecialchars($edu['certificate_label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                </a>
               </div>
-              <div class="edu-period"><?php echo htmlspecialchars($edu['period'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <div class="edu-location"><?php echo htmlspecialchars($edu['location'], ENT_QUOTES, 'UTF-8'); ?></div>
-              <a href="#ijasah-pendidikan" class="attachment-box">
-                <img src="assets/profile-doc-icon.png" alt="" />
-                <span><?php echo htmlspecialchars($edu['certificate_label'], ENT_QUOTES, 'UTF-8'); ?></span>
-              </a>
-            </div>
-          </li>
-        <?php endforeach; ?>
-      </ul>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
     </section>
 
     <div class="section-spacer"></div>
 
     <!-- Sertifikasi Card -->
-    <section class="<?php echo empty($certifications) ? 'certification-card' : 'section-card'; ?>">
+    <section class="<?php echo empty($certifications) ? 'certification-card' : 'section-card'; ?>" data-profile-field="certification_name">
       <div class="experience-header">
         <h3 class="experience-title">Sertifikasi</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Sertifikasi">
@@ -1483,7 +1808,7 @@ $gigProfileHref = ($resolvedRole === 'employer')
     <div class="section-spacer"></div>
 
     <!-- Pencapaian Card -->
-    <section class="<?php echo empty($achievements) ? 'certification-card' : 'section-card'; ?>">
+    <section class="<?php echo empty($achievements) ? 'certification-card' : 'section-card'; ?>" data-profile-field="achievement_name">
       <div class="experience-header">
         <h3 class="experience-title">Pencapaian</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Pencapaian">
@@ -1531,7 +1856,7 @@ $gigProfileHref = ($resolvedRole === 'employer')
     <div class="section-spacer"></div>
 
     <!-- Keahlian Card -->
-    <section class="skills-card">
+    <section class="<?php echo empty($skills) ? 'certification-card' : 'skills-card'; ?>" data-profile-field="skills_text">
       <div class="experience-header">
         <h3 class="experience-title">Keahlian</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Keahlian">
@@ -1542,17 +1867,25 @@ $gigProfileHref = ($resolvedRole === 'employer')
         </button>
       </div>
 
-      <div class="skills-list">
-        <?php foreach ($skills as $skill): ?>
-          <span class="skill-pill"><?php echo htmlspecialchars($skill, ENT_QUOTES, 'UTF-8'); ?></span>
-        <?php endforeach; ?>
-      </div>
+      <?php if (empty($skills)): ?>
+        <div class="empty-state">
+          <img src="assets/profile-empty-sertifikasi.png" alt="Tidak ada keahlian" class="empty-state-img" />
+          <h4 class="empty-state-title">Tidak ada data keahlian</h4>
+          <p class="empty-state-sub">Silahkan lengkapi daftar keahlian kamu untuk menjadi kelengkapan profilmu.</p>
+        </div>
+      <?php else: ?>
+        <div class="skills-list">
+          <?php foreach ($skills as $skill): ?>
+            <span class="skill-pill"><?php echo htmlspecialchars($skill, ENT_QUOTES, 'UTF-8'); ?></span>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
     </section>
 
     <div class="section-spacer"></div>
 
     <!-- Bahasa Card -->
-    <section class="language-card">
+    <section class="language-card" data-profile-field="english_level mandarin_level">
       <div class="experience-header">
         <h3 class="experience-title">Bahasa</h3>
         <button type="button" class="btn-add-exp" aria-label="Tambah Bahasa">
@@ -1580,13 +1913,13 @@ $gigProfileHref = ($resolvedRole === 'employer')
   </div>
 
   <script>
-    (function () {
+    window.initProfileInteractions = function () {
       var bioEl = document.getElementById('profileBioText');
       var toggleBtn = document.getElementById('toggleBioBtn');
       var expanded = false;
 
       if (bioEl && toggleBtn) {
-        toggleBtn.addEventListener('click', function () {
+        toggleBtn.onclick = function () {
           expanded = !expanded;
           bioEl.textContent = expanded
             ? bioEl.getAttribute('data-full')
@@ -1594,7 +1927,7 @@ $gigProfileHref = ($resolvedRole === 'employer')
           toggleBtn.textContent = expanded
             ? 'Tampilkan Lebih Sedikit'
             : 'Tampilkan Lebih Banyak';
-        });
+        };
       }
 
       var editWrap = document.getElementById('editProfilWrap');
@@ -1602,32 +1935,51 @@ $gigProfileHref = ($resolvedRole === 'employer')
       var editDropdown = document.getElementById('editDropdown');
 
       if (editWrap && editBtn && editDropdown) {
-        editBtn.addEventListener('click', function (e) {
+        editBtn.onclick = function (e) {
           e.stopPropagation();
           var isOpen = editDropdown.classList.toggle('open');
           editBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
-
-        document.addEventListener('click', function (e) {
-          if (!editWrap.contains(e.target)) {
-            editDropdown.classList.remove('open');
-            editBtn.setAttribute('aria-expanded', 'false');
-          }
-        });
+        };
       }
 
       var biodataBtn = document.getElementById('toggleBiodataBtn');
-      var biodataPanel = document.getElementById('biodataPanel');
-      if (biodataBtn && biodataPanel) {
-        biodataBtn.addEventListener('click', function (e) {
+      var biodataBackdrop = document.getElementById('biodataModalBackdrop');
+      var closeBiodataBtn = document.getElementById('closeBiodataBtn');
+
+      if (biodataBtn && biodataBackdrop) {
+        biodataBtn.onclick = function (e) {
           e.preventDefault();
-          var isOpen = biodataPanel.classList.toggle('open');
-          biodataBtn.textContent = isOpen
-            ? 'Sembunyikan Informasi Biodata'
-            : 'Lihat Informasi Biodata';
-        });
+          biodataBackdrop.classList.add('open');
+        };
       }
-    })();
+
+      if (closeBiodataBtn && biodataBackdrop) {
+        closeBiodataBtn.onclick = function () {
+          biodataBackdrop.classList.remove('open');
+        };
+      }
+
+      if (biodataBackdrop) {
+        biodataBackdrop.onclick = function (e) {
+          if (e.target === biodataBackdrop) {
+            biodataBackdrop.classList.remove('open');
+          }
+        };
+      }
+    };
+
+    document.addEventListener('click', function (e) {
+      var editWrap = document.getElementById('editProfilWrap');
+      var editBtn = document.getElementById('editProfilBtn');
+      var editDropdown = document.getElementById('editDropdown');
+      if (editWrap && editBtn && editDropdown && !editWrap.contains(e.target)) {
+        editDropdown.classList.remove('open');
+        editBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    window.initProfileInteractions();
   </script>
+  <?php require __DIR__ . '/includes/nudge-widget.php'; ?>
 </body>
 </html>
