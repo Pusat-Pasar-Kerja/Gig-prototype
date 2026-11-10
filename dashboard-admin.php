@@ -1181,7 +1181,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
                 SELECT q.*, c.`name` AS `category_name`
                 FROM `profiling_questions` q
                 INNER JOIN `profiling_categories` c ON c.`id` = q.`category_id`
-                ORDER BY q.`id` DESC
+                ORDER BY q.`id` ASC
               ")->fetchAll(PDO::FETCH_ASSOC)
             : [];
         if ($searchQ !== '') {
