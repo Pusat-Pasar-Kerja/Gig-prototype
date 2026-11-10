@@ -1313,6 +1313,23 @@ require __DIR__ . '/includes/admin-layout-start.php';
           color: #dc2626;
           border-color: #fecaca;
         }
+        .pp-questions-table {
+          width: 100%;
+          table-layout: auto !important;
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+        .pp-questions-table th {
+          white-space: nowrap !important;
+          line-height: 1.4;
+          vertical-align: middle;
+          padding: 13px 14px;
+        }
+        .pp-questions-table td {
+          vertical-align: top;
+          padding: 13px 14px;
+          line-height: 1.45;
+        }
         @media (max-width: 980px) {
           .pp-admin-grid, .pp-form-row { grid-template-columns: 1fr; }
         }
@@ -1570,17 +1587,17 @@ require __DIR__ . '/includes/admin-layout-start.php';
         </div>
 
         <div class="verify-table-wrap">
-          <table class="verify-table is-scrollable">
+          <table class="verify-table pp-questions-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Kategori</th>
-                <th>Target Kolom (<code class="pp-code">users</code>)</th>
-                <th>Pertanyaan Data Kosong (<code class="pp-code">question_new</code>)</th>
-                <th>Pertanyaan Verifikasi (<code class="pp-code">question_verify</code>)</th>
-                <th>Tipe Input</th>
-                <th>Status</th>
-                <th>Aksi</th>
+                <th style="width:50px;">ID</th>
+                <th style="width:120px;">Kategori</th>
+                <th style="width:135px;">Target Kolom</th>
+                <th style="width:26%;min-width:210px;">Pertanyaan Baru</th>
+                <th style="width:26%;min-width:210px;">Pertanyaan Verifikasi</th>
+                <th style="width:95px;">Tipe Input</th>
+                <th style="width:80px;">Status</th>
+                <th style="width:155px;">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -1592,8 +1609,8 @@ require __DIR__ . '/includes/admin-layout-start.php';
                   <td>#<?php echo (int)$q['id']; ?></td>
                   <td><span class="pp-chip pp-chip-cat"><?php echo htmlspecialchars((string)$q['category_name'], ENT_QUOTES, 'UTF-8'); ?></span></td>
                   <td><code class="pp-code"><?php echo htmlspecialchars((string)$q['target_column'], ENT_QUOTES, 'UTF-8'); ?></code></td>
-                  <td style="max-width:260px;font-size:0.83rem;"><?php echo htmlspecialchars((string)$q['question_new'], ENT_QUOTES, 'UTF-8'); ?></td>
-                  <td style="max-width:260px;font-size:0.83rem;"><?php echo htmlspecialchars((string)$q['question_verify'], ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td style="font-size:0.83rem;"><?php echo htmlspecialchars((string)$q['question_new'], ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td style="font-size:0.83rem;"><?php echo htmlspecialchars((string)$q['question_verify'], ENT_QUOTES, 'UTF-8'); ?></td>
                   <td><code class="pp-code"><?php echo htmlspecialchars((string)$q['input_type'], ENT_QUOTES, 'UTF-8'); ?></code></td>
                   <td>
                     <?php if (!empty($q['is_active'])): ?>
