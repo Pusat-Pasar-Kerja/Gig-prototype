@@ -106,6 +106,9 @@ require __DIR__ . '/includes/employer-layout-start.php';
           $appData = $appMapByWorker[$wKey] ?? null;
           $status = $appData['status'] ?? 'applied';
           $appId = $appData['id'] ?? ('APP-' . $applicant['id']);
+          $vacId = (string)($appData['vacancy_id'] ?? '');
+          $appliedAt = (string)($appData['created_at'] ?? '');
+          $appliedTimeText = $appliedAt !== '' ? gig_relative_time($appliedAt) : '';
           $searchMeta = gig_worker_search_metadata($applicant);
         ?>
         <article class="applicant-card" 
@@ -120,7 +123,15 @@ require __DIR__ . '/includes/employer-layout-start.php';
                 <a class="applicant-name" href="worker-profile.php?id=<?php echo urlencode($applicant['id']); ?>"><?php echo htmlspecialchars($applicant['name'], ENT_QUOTES, 'UTF-8'); ?></a>
                 <span class="fl-rating-badge">★ <?php echo number_format((float)$applicant['rating'], 1); ?> (<?php echo (int)$applicant['reviews_count']; ?> ulasan)</span>
               </div>
-              <div class="applicant-applied-role">Proyek yang dilamar: <strong><?php echo htmlspecialchars($applicant['applied_project'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+              <div class="applicant-applied-role" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span>Proyek yang dilamar: <strong><?php echo htmlspecialchars($applicant['applied_project'], ENT_QUOTES, 'UTF-8'); ?></strong></span>
+                <?php if ($appliedTimeText !== ''): ?>
+                  <span style="color:#64748b;font-size:0.75rem;display:inline-flex;align-items:center;gap:3px;">
+                    • <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <?php echo htmlspecialchars($appliedTimeText, ENT_QUOTES, 'UTF-8'); ?>
+                  </span>
+                <?php endif; ?>
+              </div>
               <div class="project-skill-tags">
                 <?php foreach (array_slice(gig_normalize_skills($applicant['skills'] ?? []), 0, 3) as $skillTag): ?>
                   <?php
@@ -145,7 +156,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
             <span class="bid-time"><?php echo htmlspecialchars($applicant['eta'], ENT_QUOTES, 'UTF-8'); ?></span>
           </div>
           <div class="applicant-right-actions" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
-            <a class="btn-outline-blue" href="worker-profile.php?id=<?php echo urlencode($applicant['id']); ?>" style="padding:4px 12px;font-size:0.8rem;">Lihat Profil</a>
+            <a class="btn-outline-blue" href="<?php echo $vacId !== '' ? 'employer-detail-lowongan.php?id=' . urlencode($vacId) . '&candidate=' . urlencode($wKey) : 'worker-profile.php?id=' . urlencode($applicant['id']); ?>" style="padding:4px 12px;font-size:0.8rem;text-decoration:none;">Lihat Kandidat</a>
             
             <?php if ($status === 'declined_by_worker'): ?>
               <span style="padding:6px 14px;border-radius:9999px;background:#fef2f2;color:#b91c1c;font-weight:700;font-size:0.8rem;border:1px solid #fecaca;">✕ Ditolak oleh Worker</span>

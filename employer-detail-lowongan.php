@@ -5,34 +5,39 @@ require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/project-vacancies.php';
 require_once __DIR__ . '/includes/project-applications.php';
 
-function gig_relative_time(string $datetime): string
-{
-    $timestamp = strtotime($datetime);
-    if (!$timestamp) {
-        return '-';
+if (!function_exists('gig_relative_time')) {
+    function gig_relative_time(string $datetime): string
+    {
+        $timestamp = strtotime($datetime);
+        if (!$timestamp) {
+            return '-';
+        }
+        $diff = time() - $timestamp;
+        if ($diff < 0) {
+            return 'Melamar baru saja';
+        }
+        if ($diff < 60) {
+            return 'Melamar baru saja';
+        }
+        if ($diff < 3600) {
+            $mins = max(1, (int)floor($diff / 60));
+            return 'Melamar ' . $mins . ' menit yang lalu';
+        }
+        if ($diff < 86400) {
+            $hours = (int)floor($diff / 3600);
+            return 'Melamar ' . $hours . ' jam yang lalu';
+        }
+        $days = (int)floor($diff / 86400);
+        if ($days < 30) {
+            return 'Melamar ' . $days . ' hari yang lalu';
+        }
+        $months = (int)floor($days / 30);
+        if ($months < 12) {
+            return 'Melamar ' . $months . ' bulan yang lalu';
+        }
+        $years = (int)floor($months / 12);
+        return 'Melamar ' . $years . ' tahun yang lalu';
     }
-    $diff = time() - $timestamp;
-    if ($diff < 60) {
-        return 'Melamar baru saja';
-    }
-    if ($diff < 3600) {
-        $mins = max(1, (int)floor($diff / 60));
-        return 'Melamar ' . $mins . ' menit yang lalu';
-    }
-    if ($diff < 86400) {
-        $hours = (int)floor($diff / 3600);
-        return 'Melamar ' . $hours . ' jam yang lalu';
-    }
-    $days = (int)floor($diff / 86400);
-    if ($days < 30) {
-        return 'Melamar ' . $days . ' hari yang lalu';
-    }
-    $months = (int)floor($days / 30);
-    if ($months < 12) {
-        return 'Melamar ' . $months . ' bulan yang lalu';
-    }
-    $years = (int)floor($months / 12);
-    return 'Melamar ' . $years . ' tahun yang lalu';
 }
 
 function gig_get_stage_rank(string $status): int
@@ -1818,6 +1823,23 @@ require __DIR__ . '/includes/employer-layout-start.php';
         tabBtns[key].addEventListener('click', function() { setDrawerTab(key); });
       }
     });
+
+    // Auto-focus and open candidate drawer if requested via URL
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetWorker = (urlParams.get('candidate') || urlParams.get('app') || '').toLowerCase();
+      if (targetWorker) {
+        const targetCard = document.querySelector('.candidate-card[data-worker-id="' + targetWorker + '"], .candidate-card[data-app-id="' + targetWorker + '"]');
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetCard.style.outline = '2px solid #0284c7';
+          targetCard.style.boxShadow = '0 0 12px rgba(2, 132, 199, 0.35)';
+          setTimeout(function() {
+            openCandidateDrawer(targetCard);
+          }, 350);
+        }
+      }
+    } catch (e) {}
   })();
 </script>
 

@@ -20,6 +20,41 @@ function gig_is_hired_status(string $status): bool
     return in_array($status, ['confirmed_by_worker', 'accepted_by_employer'], true);
 }
 
+if (!function_exists('gig_relative_time')) {
+    function gig_relative_time(string $datetime): string
+    {
+        $timestamp = strtotime($datetime);
+        if (!$timestamp) {
+            return '-';
+        }
+        $diff = time() - $timestamp;
+        if ($diff < 0) {
+            return 'Melamar baru saja';
+        }
+        if ($diff < 60) {
+            return 'Melamar baru saja';
+        }
+        if ($diff < 3600) {
+            $mins = max(1, (int)floor($diff / 60));
+            return 'Melamar ' . $mins . ' menit yang lalu';
+        }
+        if ($diff < 86400) {
+            $hours = (int)floor($diff / 3600);
+            return 'Melamar ' . $hours . ' jam yang lalu';
+        }
+        $days = (int)floor($diff / 86400);
+        if ($days < 30) {
+            return 'Melamar ' . $days . ' hari yang lalu';
+        }
+        $months = (int)floor($days / 30);
+        if ($months < 12) {
+            return 'Melamar ' . $months . ' bulan yang lalu';
+        }
+        $years = (int)floor($months / 12);
+        return 'Melamar ' . $years . ' tahun yang lalu';
+    }
+}
+
 function gig_vacancy_hired_application(string $vacancyId, string $excludeAppId = ''): ?array
 {
     $vacancyKey = strtolower(trim($vacancyId));

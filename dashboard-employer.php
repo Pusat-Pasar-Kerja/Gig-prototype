@@ -7,10 +7,15 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/project-schedule.php';
 
 $allApps = gig_get_all_applications();
+usort($allApps, static function($a, $b) {
+    return strtotime((string)($b['created_at'] ?? '')) <=> strtotime((string)($a['created_at'] ?? ''));
+});
 $appMapByWorker = [];
 foreach ($allApps as $ap) {
     $wKey = strtolower(trim((string)$ap['worker_id']));
-    $appMapByWorker[$wKey] = $ap;
+    if (!isset($appMapByWorker[$wKey])) {
+        $appMapByWorker[$wKey] = $ap;
+    }
 }
 
 $rawWorkerProfiles = gig_worker_profiles();
@@ -19,6 +24,15 @@ $workerProfiles = array_filter($rawWorkerProfiles, function($w) use ($appMapByWo
     $appData = $appMapByWorker[$wKey] ?? null;
     $status = $appData['status'] ?? 'applied';
     return !gig_is_hired_status($status);
+});
+
+// Sort applicants so the latest application appears first
+usort($workerProfiles, function($a, $b) use ($appMapByWorker) {
+    $wKeyA = strtolower(trim((string)($a['id'] ?? '')));
+    $wKeyB = strtolower(trim((string)($b['id'] ?? '')));
+    $timeA = strtotime((string)($appMapByWorker[$wKeyA]['created_at'] ?? '1970-01-01'));
+    $timeB = strtotime((string)($appMapByWorker[$wKeyB]['created_at'] ?? '1970-01-01'));
+    return $timeB <=> $timeA;
 });
 
 $vacancies = gig_project_vacancies();
@@ -209,27 +223,38 @@ require __DIR__ . '/includes/employer-layout-start.php';
                 $vacId = 'GIG-2026-09-001';
             }
             $appliedTitle = $vacancyTitleMap[$vacId] ?? 'Redesign UI/UX Dashboard Prototype KarirHub';
+            $appliedAt = (string)($appData['created_at'] ?? '');
+            $appliedTimeText = $appliedAt !== '' ? gig_relative_time($appliedAt) : '';
           ?>
           <div class="recent-applicant-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;gap:12px;">
             <div class="recent-applicant-left" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
-              <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>" style="text-decoration:none;">
+              <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>&candidate=<?php echo urlencode($wKey); ?>" style="text-decoration:none;">
                 <div class="recent-avatar" style="background:<?php echo htmlspecialchars($recent['color'], ENT_QUOTES, 'UTF-8'); ?>;display:flex;align-items:center;justify-content:center;color:#ffffff;font-weight:800;font-size:1.05rem;border-radius:50%;width:40px;height:40px;flex-shrink:0;">
                   <?php echo htmlspecialchars(strtoupper(substr((string)$recent['name'], 0, 1)), ENT_QUOTES, 'UTF-8'); ?>
                 </div>
               </a>
               <div style="min-width:0;flex:1;">
-                <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>" style="font-size:0.88rem;font-weight:800;color:#0f172a;text-decoration:none;display:block;">
+                <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>&candidate=<?php echo urlencode($wKey); ?>" style="font-size:0.88rem;font-weight:800;color:#0f172a;text-decoration:none;display:block;">
                   <?php echo htmlspecialchars($recent['name'], ENT_QUOTES, 'UTF-8'); ?>
                 </a>
-                <div style="font-size:0.74rem;color:var(--text-muted);"><?php echo !empty($recent['location']) ? htmlspecialchars($recent['location'], ENT_QUOTES, 'UTF-8') . ' · ' : ''; ?>★ <?php echo (int)($recent['rating'] ?? 5); ?></div>
+                <div style="font-size:0.74rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span><?php echo !empty($recent['location']) ? htmlspecialchars($recent['location'], ENT_QUOTES, 'UTF-8') . ' · ' : ''; ?>★ <?php echo (int)($recent['rating'] ?? 5); ?></span>
+                  <?php if ($appliedTimeText !== ''): ?>
+                    <span style="color:#cbd5e1;">·</span>
+                    <span style="color:#64748b;display:inline-flex;align-items:center;gap:3px;font-weight:500;">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <?php echo htmlspecialchars($appliedTimeText, ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                  <?php endif; ?>
+                </div>
                 <div style="margin-top:3px;">
-                  <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>" style="font-size:0.78rem;color:#2563eb;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;" title="Buka Detail Lowongan Proyek">
+                  <a href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>&candidate=<?php echo urlencode($wKey); ?>" style="font-size:0.78rem;color:#2563eb;font-weight:700;text-decoration:underline;display:inline-flex;align-items:center;gap:4px;" title="Buka Detail Lowongan Proyek">
                     📋 Melamar: <?php echo htmlspecialchars($appliedTitle, ENT_QUOTES, 'UTF-8'); ?>
                   </a>
                 </div>
               </div>
             </div>
-            <a class="btn-action-sm" href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>" style="text-decoration:none;white-space:nowrap;flex-shrink:0;">Lihat Profil</a>
+            <a class="btn-action-sm" href="employer-detail-lowongan.php?id=<?php echo urlencode($vacId); ?>&candidate=<?php echo urlencode($wKey); ?>" style="text-decoration:none;white-space:nowrap;flex-shrink:0;">Lihat Kandidat</a>
           </div>
           <?php endforeach; ?>
         </div>
