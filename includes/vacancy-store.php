@@ -41,6 +41,64 @@ function gig_vacancy_status_labels(): array
     ];
 }
 
+/**
+ * Supported special qualification requirement types that an employer can request
+ * when posting a project vacancy, mapping each type to the worker input mode.
+ */
+function gig_special_requirement_types(): array
+{
+    return [
+        'certificate' => [
+            'label'       => 'Sertifikat / Sertifikasi Keahlian',
+            'input_mode'  => 'file',
+            'accept'      => '.pdf,.jpg,.jpeg,.png',
+            'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
+            'placeholder' => 'Contoh: Sertifikat AWS Cloud Practitioner / BNSP',
+            'worker_hint' => 'Unggah bukti sertifikat dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+        ],
+        'license' => [
+            'label'       => 'Lisensi / Surat Izin Praktik / SKK',
+            'input_mode'  => 'file',
+            'accept'      => '.pdf,.jpg,.jpeg,.png',
+            'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
+            'placeholder' => 'Contoh: SKK Konstruksi / Surat Izin Praktik Aktif',
+            'worker_hint' => 'Unggah dokumen lisensi atau izin resmi dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+        ],
+        'social_media' => [
+            'label'       => 'Username / Akun Media Sosial',
+            'input_mode'  => 'text',
+            'accept'      => '',
+            'format_hint' => 'Teks Bebas (Username / Handle Media Sosial)',
+            'placeholder' => 'Contoh: Username Instagram atau TikTok aktif',
+            'worker_hint' => 'Masukkan username atau tautan profil media sosial yang diminta.',
+        ],
+        'portfolio_link' => [
+            'label'       => 'Tautan Portofolio / Repositori Online',
+            'input_mode'  => 'url',
+            'accept'      => '',
+            'format_hint' => 'Tautan URL (GitHub, Figma, Behance, Google Drive)',
+            'placeholder' => 'Contoh: Link repositori GitHub atau file Figma',
+            'worker_hint' => 'Masukkan URL valid menuju portofolio atau repositori Anda.',
+        ],
+        'assessment_text' => [
+            'label'       => 'Jawaban Pertanyaan / Studi Kasus Singkat',
+            'input_mode'  => 'textarea',
+            'accept'      => '',
+            'format_hint' => 'Teks Panjang (Jawaban / Penjelasan Singkat)',
+            'placeholder' => 'Contoh: Jelaskan pengalaman Anda menangani proyek serupa',
+            'worker_hint' => 'Tuliskan jawaban atau penjelasan singkat sesuai permintaan pemberi kerja.',
+        ],
+        'other_file' => [
+            'label'       => 'Dokumen Pendukung Lainnya (CV, Surat Referensi)',
+            'input_mode'  => 'file',
+            'accept'      => '.pdf,.jpg,.jpeg,.png',
+            'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
+            'placeholder' => 'Contoh: Surat Referensi Kerja / CV Lengkap',
+            'worker_hint' => 'Unggah dokumen pendukung dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+        ],
+    ];
+}
+
 function gig_vacancy_add_business_days(DateTimeImmutable $start, int $days): DateTimeImmutable
 {
     $cursor = $start;
@@ -510,6 +568,7 @@ function gig_vacancy_save_submission(string $employerUsername, array $vacancy): 
         'adminNote' => '',
         'employer' => $employerUsername,
         'deliverables' => (string)($vacancy['deliverables'] ?? ''),
+        'special_requirement' => $vacancy['special_requirement'] ?? null,
     ];
 
     if ($db === null) {

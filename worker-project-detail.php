@@ -49,14 +49,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
         $flashMsg = 'Anda wajib menyetujui pernyataan dan ketentuan data profil sebelum mengirimkan lamaran.';
         $flashError = true;
     } else {
-        $note = trim((string)($_POST['apply_note'] ?? ''));
-        $workerName = ucfirst($username);
-        $res = gig_apply_for_project($username, $workerName, (string)$job['id'], $note);
-        if (!empty($res['ok'])) {
-            $flashMsg = 'Lamaran proyek berhasil dikirim. Status Anda saat ini: kandidat/pelamar. Anda akan resmi direkrut setelah pemberi kerja menerima lamaran.';
-        } else {
-            $flashMsg = $res['error'] ?? 'Gagal mengirimkan lamaran.';
+        $specialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
+        $specialReqResponse = '';
+        $validationError = '';
+
+        if ($specialReq !== null && !empty($specialReq['input_mode'])) {
+            $mode = (string)$specialReq['input_mode'];
+            $reqLabel = (string)($specialReq['label'] ?? 'Kualifikasi Khusus');
+            if ($mode === 'file') {
+                if (empty($_FILES['special_req_file']) || ($_FILES['special_req_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                    $validationError = 'Anda wajib mengunggah file untuk "' . $reqLabel . '" (format PDF atau gambar JPG/PNG).';
+                } else {
+                    $origName = (string)($_FILES['special_req_file']['name'] ?? 'file');
+                    $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+                    $size = (int)($_FILES['special_req_file']['size'] ?? 0);
+                    if (!in_array($ext, ['pdf', 'jpg', 'jpeg', 'png'], true)) {
+                        $validationError = 'Format file tidak didukung. Harap unggah PDF, JPG, atau PNG.';
+                    } elseif ($size > 5 * 1024 * 1024) {
+                        $validationError = 'Ukuran file maksimal 5 MB.';
+                    } else {
+                        $uploadDir = __DIR__ . '/uploads/applications';
+                        if (!is_dir($uploadDir)) {
+                            @mkdir($uploadDir, 0775, true);
+                        }
+                        $safeName = 'app_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                        $destPath = $uploadDir . '/' . $safeName;
+                        if (@move_uploaded_file((string)$_FILES['special_req_file']['tmp_name'], $destPath)) {
+                            $specialReqResponse = json_encode([
+                                'type'       => (string)($specialReq['type'] ?? ''),
+                                'type_label' => (string)($specialReq['type_label'] ?? ''),
+                                'label'      => $reqLabel,
+                                'input_mode' => 'file',
+                                'file_name'  => $origName,
+                                'file_path'  => 'uploads/applications/' . $safeName,
+                            ], JSON_UNESCAPED_UNICODE) ?: '';
+                        } else {
+                            $validationError = 'Gagal menyimpan file yang diunggah. Silakan coba lagi.';
+                        }
+                    }
+                }
+            } else {
+                $val = trim((string)($_POST['special_req_value'] ?? ''));
+                if ($val === '') {
+                    $validationError = 'Anda wajib mengisi kolom "' . $reqLabel . '".';
+                } elseif ($mode === 'url' && !filter_var($val, FILTER_VALIDATE_URL)) {
+                    $validationError = 'Harap masukkan tautan URL yang valid (contoh: https://...).';
+                } else {
+                    $specialReqResponse = json_encode([
+                        'type'       => (string)($specialReq['type'] ?? ''),
+                        'type_label' => (string)($specialReq['type_label'] ?? ''),
+                        'label'      => $reqLabel,
+                        'input_mode' => $mode,
+                        'value'      => $val,
+                    ], JSON_UNESCAPED_UNICODE) ?: '';
+                }
+            }
+        }
+
+        if ($validationError !== '') {
+            $flashMsg = $validationError;
             $flashError = true;
+        } else {
+            $note = trim((string)($_POST['apply_note'] ?? ''));
+            $workerName = ucfirst($username);
+            $res = gig_apply_for_project($username, $workerName, (string)$job['id'], $note, $specialReqResponse);
+            if (!empty($res['ok'])) {
+                $flashMsg = 'Lamaran proyek berhasil dikirim. Status Anda saat ini: kandidat/pelamar. Anda akan resmi direkrut setelah pemberi kerja menerima lamaran.';
+            } else {
+                $flashMsg = $res['error'] ?? 'Gagal mengirimkan lamaran.';
+                $flashError = true;
+            }
         }
     }
 }
@@ -505,8 +567,39 @@ require __DIR__ . '/includes/worker-layout-start.php';
         <h3 style="font-size: 1rem; font-weight: 800; color:#ffffff;">Persetujuan Syarat & Ketentuan Lamaran Proyek</h3>
         <button type="button" onclick="closeApplyModal()" style="background:none; border:none; color:#fff; font-size:1.4rem; cursor:pointer;">&times;</button>
       </div>
-      <form method="post" action="" class="modal-body">
+      <form method="post" action="" enctype="multipart/form-data" class="modal-body">
         <input type="hidden" name="do_apply" value="1" />
+
+        <?php
+          $specialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
+          if ($specialReq !== null && !empty($specialReq['input_mode'])):
+            $reqMode = (string)$specialReq['input_mode'];
+            $reqLabel = (string)($specialReq['label'] ?? 'Kualifikasi Khusus');
+            $reqTypeLabel = (string)($specialReq['type_label'] ?? '');
+            $reqHint = (string)($specialReq['worker_hint'] ?? '');
+            $reqAccept = (string)($specialReq['accept'] ?? '.pdf,.jpg,.jpeg,.png');
+        ?>
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:16px;">
+            <div style="font-size:0.74rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">
+              Persyaratan Kualifikasi Khusus<?php echo $reqTypeLabel !== '' ? ' · ' . htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8') : ''; ?>
+            </div>
+            <label for="specialReqInput" style="display:block;font-size:0.86rem;font-weight:800;color:#0f172a;margin-bottom:6px;">
+              <?php echo htmlspecialchars($reqLabel, ENT_QUOTES, 'UTF-8'); ?> <span style="color:#dc2626;">*</span>
+            </label>
+            <?php if ($reqMode === 'file'): ?>
+              <input type="file" id="specialReqInput" name="special_req_file" accept="<?php echo htmlspecialchars($reqAccept, ENT_QUOTES, 'UTF-8'); ?>" required style="width:100%;padding:8px 10px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.84rem;" />
+            <?php elseif ($reqMode === 'textarea'): ?>
+              <textarea id="specialReqInput" name="special_req_value" rows="3" required placeholder="Tuliskan jawaban atau penjelasan Anda..." style="width:100%;padding:9px 11px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.84rem;resize:vertical;"></textarea>
+            <?php elseif ($reqMode === 'url'): ?>
+              <input type="url" id="specialReqInput" name="special_req_value" required placeholder="https://..." style="width:100%;padding:9px 11px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.84rem;" />
+            <?php else: ?>
+              <input type="text" id="specialReqInput" name="special_req_value" required placeholder="Contoh: @username atau tautan profil" style="width:100%;padding:9px 11px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.84rem;" />
+            <?php endif; ?>
+            <?php if ($reqHint !== ''): ?>
+              <div style="font-size:0.75rem;color:#475569;margin-top:6px;"><?php echo htmlspecialchars($reqHint, ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
 
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
           <div style="font-size:0.82rem;color:#334155;line-height:1.6;margin-bottom:12px;">

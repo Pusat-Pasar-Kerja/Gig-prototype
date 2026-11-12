@@ -52,6 +52,25 @@ if ($locType === 'remote' && !str_contains(strtolower($location), 'remote')) {
     $location .= ' (Remote)';
 }
 
+$specialReq = null;
+$rawSpecial = $payload['special_requirement'] ?? null;
+if (is_array($rawSpecial)) {
+    $reqTypes = gig_special_requirement_types();
+    $reqTypeKey = trim((string)($rawSpecial['type'] ?? ''));
+    $reqLabel = trim((string)($rawSpecial['label'] ?? ''));
+    if ($reqTypeKey !== '' && isset($reqTypes[$reqTypeKey]) && $reqLabel !== '') {
+        $meta = $reqTypes[$reqTypeKey];
+        $specialReq = [
+            'type'        => $reqTypeKey,
+            'type_label'  => $meta['label'],
+            'label'       => $reqLabel,
+            'input_mode'  => $meta['input_mode'],
+            'accept'      => $meta['accept'],
+            'worker_hint' => $meta['worker_hint'],
+        ];
+    }
+}
+
 $vacancy = [
     'title' => $title,
     'category' => (string)($payload['category'] ?? ''),
@@ -73,6 +92,7 @@ $vacancy = [
     'location_province' => $locProvince,
     'budget' => $budget,
     'skills' => array_filter(array_map('trim', explode(',', (string)($payload['skills'] ?? '')))),
+    'special_requirement' => $specialReq,
 ];
 
 $id = gig_vacancy_save_submission($employer, $vacancy);

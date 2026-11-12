@@ -136,6 +136,7 @@ function gig_apps_ensure_tables(?PDO $pdo): void
         try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `rejection_reason` VARCHAR(150) NOT NULL DEFAULT '' AFTER `note`"); } catch (Throwable) {}
         try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `consent_version` VARCHAR(20) NOT NULL DEFAULT 'v1.0' AFTER `rejection_reason`"); } catch (Throwable) {}
         try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `consent_at` DATETIME NULL AFTER `consent_version`"); } catch (Throwable) {}
+        try { $pdo->exec("ALTER TABLE `project_applications` ADD COLUMN `special_req_response` TEXT NULL AFTER `note`"); } catch (Throwable) {}
 
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS `worker_notifications` (
@@ -822,7 +823,7 @@ function gig_worker_has_active_project_capacity(string $workerId): bool
     return gig_worker_active_project_count($workerId, $workerId) < gig_worker_active_project_limit();
 }
 
-function gig_apply_for_project(string $workerId, string $workerName, string $vacancyId, string $note = ''): array
+function gig_apply_for_project(string $workerId, string $workerName, string $vacancyId, string $note = '', string $specialReqResponse = ''): array
 {
     gig_apps_session_start();
     $vacancy = gig_find_vacancy($vacancyId);
@@ -850,6 +851,7 @@ function gig_apply_for_project(string $workerId, string $workerName, string $vac
         'bid_amount'         => $vacancy['budget'] ?? 'Rp 5.000.000',
         'status'             => 'applied',
         'note'               => $note,
+        'special_req_response' => $specialReqResponse,
         'consent_version'    => 'v1.0',
         'consent_at'         => date('Y-m-d H:i:s'),
         'created_at'         => date('Y-m-d H:i:s'),
@@ -862,9 +864,9 @@ function gig_apply_for_project(string $workerId, string $workerName, string $vac
             gig_apps_ensure_tables($pdo);
             $stmt = $pdo->prepare("
                 INSERT INTO `project_applications`
-                    (`id`, `vacancy_id`, `worker_id`, `worker_name`, `employer_username`, `bid_amount`, `status`, `note`, `consent_version`, `consent_at`, `created_at`, `updated_at`)
+                    (`id`, `vacancy_id`, `worker_id`, `worker_name`, `employer_username`, `bid_amount`, `status`, `note`, `special_req_response`, `consent_version`, `consent_at`, `created_at`, `updated_at`)
                 VALUES
-                    (:id, :vac, :wid, :wname, :emp, :bid, 'applied', :note, :cver, NOW(), NOW(), NOW())
+                    (:id, :vac, :wid, :wname, :emp, :bid, 'applied', :note, :sreq, :cver, NOW(), NOW(), NOW())
             ");
             $stmt->execute([
                 ':id'    => $appData['id'],
@@ -874,6 +876,7 @@ function gig_apply_for_project(string $workerId, string $workerName, string $vac
                 ':emp'   => $appData['employer_username'],
                 ':bid'   => $appData['bid_amount'],
                 ':note'  => $appData['note'],
+                ':sreq'  => $appData['special_req_response'],
                 ':cver'  => $appData['consent_version'],
             ]);
         } catch (Throwable $ignored) {}

@@ -316,6 +316,7 @@ foreach ($jobApplications as $app) {
         'contact_unlocked' => $contactUnlocked ? '1' : '0',
         'lane_rank' => gig_get_stage_rank($status),
         'is_final' => (gig_get_stage_rank($status) >= 4) ? '1' : '0',
+        'special_req_response' => (string)($app['special_req_response'] ?? ''),
         'profile' => $profile,
     ];
 }
@@ -774,6 +775,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
                   data-contact-unlocked="<?php echo $isUnlocked ? '1' : '0'; ?>"
                   data-contact-wa="<?php echo $isUnlocked ? htmlspecialchars($waNum, ENT_QUOTES, 'UTF-8') : ''; ?>"
                   data-contact-email="<?php echo $isUnlocked ? htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8') : ''; ?>"
+                  data-special-req="<?php echo htmlspecialchars((string)($c['special_req_response'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                   data-profile-json="<?php echo htmlspecialchars(json_encode($c['profile'], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
                 >
                   <div class="cand-card-top">
@@ -987,6 +989,11 @@ require __DIR__ . '/includes/employer-layout-start.php';
             <button type="button" id="candCopyFullBtn" style="padding:6px 12px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">📋 Salin Kontak Lengkap</button>
           </div>
         </div>
+      </div>
+
+      <div id="candSpecialReqRow" class="cand-row" style="display:none;margin-top:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;">
+        <div class="cand-label" id="candSpecialReqTitle" style="color:#1d4ed8;">📎 Kualifikasi Khusus Pelamar</div>
+        <div class="cand-value" id="candSpecialReqValue" style="font-weight:600;color:#0f172a;margin-top:4px;word-break:break-word;"></div>
       </div>
     </div>
 
@@ -1596,6 +1603,30 @@ require __DIR__ . '/includes/employer-layout-start.php';
       if (fields.location) fields.location.textContent = profile.location || 'Lokasi belum diisi';
       if (fields.bidang) fields.bidang.textContent = bidangMap[profile.category] || profile.title || 'Gig Worker Professional';
       if (fields.about) fields.about.textContent = profile.proposal || 'Gig Worker belum menambahkan deskripsi diri.';
+
+      const specialReqRow = document.getElementById('candSpecialReqRow');
+      const specialReqTitle = document.getElementById('candSpecialReqTitle');
+      const specialReqValue = document.getElementById('candSpecialReqValue');
+      if (specialReqRow && specialReqTitle && specialReqValue) {
+        const rawSpecialReq = card.getAttribute('data-special-req') || '';
+        let parsedReq = null;
+        if (rawSpecialReq) {
+          try { parsedReq = JSON.parse(rawSpecialReq); } catch (e) { parsedReq = null; }
+        }
+        if (parsedReq && typeof parsedReq === 'object') {
+          specialReqTitle.textContent = '📎 ' + (parsedReq.label || parsedReq.type_label || 'Kualifikasi Khusus Pelamar');
+          if (parsedReq.input_mode === 'file' && parsedReq.file_path) {
+            specialReqValue.innerHTML = '<a href="' + escapeHtml(parsedReq.file_path) + '" target="_blank" style="color:#1d4ed8;text-decoration:underline;font-weight:700;">📄 ' + escapeHtml(parsedReq.file_name || 'Lihat Dokumen') + ' ↗</a>';
+          } else if (parsedReq.input_mode === 'url' && parsedReq.value) {
+            specialReqValue.innerHTML = '<a href="' + escapeHtml(parsedReq.value) + '" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;text-decoration:underline;font-weight:700;">' + escapeHtml(parsedReq.value) + ' ↗</a>';
+          } else {
+            specialReqValue.textContent = parsedReq.value || '-';
+          }
+          specialReqRow.style.display = 'block';
+        } else {
+          specialReqRow.style.display = 'none';
+        }
+      }
 
       if (fullProfileBtn) {
         fullProfileBtn.setAttribute('href', 'worker-profile.php?id=' + encodeURIComponent(workerId) + '&from=kandidat');

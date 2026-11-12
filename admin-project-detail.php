@@ -260,6 +260,44 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <div class="req-section-title">Persyaratan Khusus</div>
       <p class="req-paragraph"><?php echo nl2br(htmlspecialchars((string)($vacancy['qualifications'] ?? '-'), ENT_QUOTES, 'UTF-8')); ?></p>
 
+      <?php
+        $specialReq = is_array($vacancy['special_requirement'] ?? null) ? $vacancy['special_requirement'] : null;
+        $reqTypesCatalog = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
+      ?>
+      <div class="req-section-title">Permintaan Kualifikasi Khusus dari Pelamar (Untuk Verifikasi Admin)</div>
+      <?php if ($specialReq !== null && !empty($specialReq['label'])): ?>
+        <?php
+          $reqTypeKey = (string)($specialReq['type'] ?? '');
+          $reqTypeLabel = (string)($specialReq['type_label'] ?? ($reqTypesCatalog[$reqTypeKey]['label'] ?? $reqTypeKey));
+          $reqFormatHint = (string)($reqTypesCatalog[$reqTypeKey]['format_hint'] ?? (
+              ($specialReq['input_mode'] ?? '') === 'file' ? 'Upload File (PDF atau Gambar JPG/PNG)' :
+              (($specialReq['input_mode'] ?? '') === 'url' ? 'Tautan URL' :
+              (($specialReq['input_mode'] ?? '') === 'textarea' ? 'Teks Panjang' : 'Teks Bebas'))
+          ));
+        ?>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+          <div class="req-detail-grid" style="margin-top:0;">
+            <div>
+              <div class="req-label">Jenis Kualifikasi</div>
+              <div class="req-value" style="color:#1e40af;"><?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+            <div>
+              <div class="req-label">Format Input Pelamar</div>
+              <div class="req-value"><?php echo htmlspecialchars($reqFormatHint, ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+          </div>
+          <div style="margin-top:8px;">
+            <div class="req-label">Detail / Nama Kualifikasi yang Diminta</div>
+            <div class="req-value" style="font-weight:700;color:#0f172a;"><?php echo htmlspecialchars((string)$specialReq['label'], ENT_QUOTES, 'UTF-8'); ?></div>
+          </div>
+          <div style="margin-top:8px;font-size:0.74rem;color:#1e40af;">
+            &#9432; Pastikan permintaan kualifikasi khusus ini relevan dengan pekerjaan dan tidak melanggar aturan anti-diskriminasi sebelum menyetujui lowongan.
+          </div>
+        </div>
+      <?php else: ?>
+        <p class="req-paragraph">Tidak ada permintaan kualifikasi khusus tambahan.</p>
+      <?php endif; ?>
+
       <div class="req-section-title">Detail Lowongan</div>
       <div class="req-detail-grid">
         <div><div class="req-label">Bidang</div><div class="req-value"><?php echo htmlspecialchars((string)($vacancy['category'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></div></div>

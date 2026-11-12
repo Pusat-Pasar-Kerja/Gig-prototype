@@ -504,6 +504,37 @@ declare(strict_types=1);
                   </select>
                 </div>
 
+                <?php
+                  require_once __DIR__ . '/vacancy-store.php';
+                  $specialReqTypes = gig_special_requirement_types();
+                ?>
+                <div class="form-row" style="margin-top: 4px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+                  <label for="proj_special_req_type">Permintaan Kualifikasi Khusus dari Pelamar (Opsional)</label>
+                  <select id="proj_special_req_type" onchange="syncSpecialReqUI()">
+                    <option value="">Tidak ada (hanya lamaran standar)</option>
+                    <?php foreach ($specialReqTypes as $reqKey => $reqMeta): ?>
+                      <option
+                        value="<?php echo htmlspecialchars($reqKey, ENT_QUOTES, 'UTF-8'); ?>"
+                        data-format="<?php echo htmlspecialchars($reqMeta['format_hint'], ENT_QUOTES, 'UTF-8'); ?>"
+                        data-placeholder="<?php echo htmlspecialchars($reqMeta['placeholder'], ENT_QUOTES, 'UTF-8'); ?>"
+                        data-input-mode="<?php echo htmlspecialchars($reqMeta['input_mode'], ENT_QUOTES, 'UTF-8'); ?>"
+                      ><?php echo htmlspecialchars($reqMeta['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                  <div class="gig-note">Pilih jika Anda mewajibkan Gig Worker melampirkan dokumen/informasi khusus (mis. sertifikat atau akun media sosial) saat melamar.</div>
+                </div>
+
+                <div id="projSpecialReqDetails" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;">
+                  <div class="form-row" style="margin-bottom: 8px;">
+                    <label for="proj_special_req_label">Detail / Nama Kualifikasi yang Diminta *</label>
+                    <input type="text" id="proj_special_req_label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
+                  </div>
+                  <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
+                    <span>&#128206;</span>
+                    <span>Format input untuk Gig Worker: <strong id="projSpecialReqFormatPreview">-</strong></span>
+                  </div>
+                </div>
+
                 <div class="gig-note" style="margin-top: 10px;">Setiap lowongan secara otomatis hanya dapat merekrut <strong>1 Gig Worker</strong>.</div>
               </section>
 
@@ -627,8 +658,35 @@ declare(strict_types=1);
         showToast('Skill wajib harus diisi terlebih dahulu.');
         return false;
       }
+    } else if (step === 3) {
+      var reqTypeSelect = document.getElementById('proj_special_req_type');
+      var reqLabelInput = document.getElementById('proj_special_req_label');
+      if (reqTypeSelect && reqTypeSelect.value !== '' && reqLabelInput && !reqLabelInput.value.trim()) {
+        reqLabelInput.focus();
+        showToast('Tuliskan detail / nama kualifikasi khusus yang diminta.');
+        return false;
+      }
     }
     return true;
+  }
+
+  function syncSpecialReqUI() {
+    var sel = document.getElementById('proj_special_req_type');
+    var box = document.getElementById('projSpecialReqDetails');
+    var labelInput = document.getElementById('proj_special_req_label');
+    var preview = document.getElementById('projSpecialReqFormatPreview');
+    if (!sel || !box) return;
+    if (sel.value === '') {
+      box.style.display = 'none';
+      if (labelInput) labelInput.value = '';
+      return;
+    }
+    var opt = sel.options[sel.selectedIndex];
+    var formatHint = opt ? (opt.getAttribute('data-format') || '-') : '-';
+    var placeholder = opt ? (opt.getAttribute('data-placeholder') || '') : '';
+    if (preview) preview.textContent = formatHint;
+    if (labelInput && placeholder) labelInput.placeholder = placeholder;
+    box.style.display = 'block';
   }
 
   function nextProjectStep() {
@@ -661,6 +719,7 @@ declare(strict_types=1);
 
   function openPostProjectModal() {
     setProjectStep(1);
+    syncSpecialReqUI();
     document.getElementById('postProjectModal').classList.add('open');
   }
   function closePostProjectModal() {
@@ -694,6 +753,16 @@ declare(strict_types=1);
     const salaryRaw = document.getElementById('proj_salary').value || '';
     const salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
 
+    var reqTypeEl = document.getElementById('proj_special_req_type');
+    var reqLabelEl = document.getElementById('proj_special_req_label');
+    var specialRequirement = null;
+    if (reqTypeEl && reqTypeEl.value !== '' && reqLabelEl && reqLabelEl.value.trim() !== '') {
+      specialRequirement = {
+        type: reqTypeEl.value,
+        label: reqLabelEl.value.trim()
+      };
+    }
+
     const payload = {
       title: title,
       category: document.getElementById('proj_category').value,
@@ -712,7 +781,8 @@ declare(strict_types=1);
       location_type: locRadio ? locRadio.value : 'luring',
       location_detail: city + ', ' + province,
       location_city: city,
-      location_province: province
+      location_province: province,
+      special_requirement: specialRequirement
     };
     fetch('vacancy-submit.php', {
       method: 'POST',
@@ -721,6 +791,7 @@ declare(strict_types=1);
     }).then(function (r) { return r.json(); }).then(function (data) {
       closePostProjectModal();
       document.getElementById('newProjectForm').reset();
+      syncSpecialReqUI();
       setProjectStep(1);
       if (data && data.ok) {
         showToast('Lowongan "' + title + '" berhasil diajukan. Menunggu verifikasi Admin KarirHub.');
