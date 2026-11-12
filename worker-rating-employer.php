@@ -102,8 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review'])) {
         $errorMessage = 'Ulasan belum bisa dikirim. Kedua pihak harus mengonfirmasi bahwa proyek selesai terlebih dahulu.';
     } elseif ($comment === '') {
         $errorMessage = 'Mohon tuliskan ulasan atau testimoni singkat untuk pemberi kerja.';
-    } elseif (mb_strlen($comment) < 100) {
-        $errorMessage = 'Ulasan wajib diisi minimal 100 karakter sesuai standar evaluasi KarirHub (saat ini ' . mb_strlen($comment) . ' karakter).';
     } else {
         $badgesJson = implode('||', $selectedBadges);
         $todayDate  = date('Y-m-d');
@@ -194,9 +192,19 @@ require __DIR__ . '/includes/worker-layout-start.php';
       Berikan penilaian dan masukan profesional terhadap pengalaman bekerja sama dengan Pemberi Kerja.
     </p>
   </div>
-  <a href="worker-tugas.php" class="btn-create-post" style="text-decoration:none;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:8px 14px;border-radius:8px;font-weight:700;">
-    ← Kembali ke Proyek Aktif
-  </a>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a class="btn-action-sm" href="worker-tugas.php" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12" 19 5 12 12 5"/></svg>
+      Kembali ke Proyek Aktif
+    </a>
+    <?php if ($alreadyRated && !$submitted): ?>
+      <a class="btn-action-sm" href="<?php echo htmlspecialchars($undoLink, ENT_QUOTES, 'UTF-8'); ?>"
+         style="background:#fef2f2;border-color:#fecdd3;color:#b91c1c;text-decoration:none;"
+         onclick="return confirm('Batalkan rating untuk proyek ini? Data penilaian akan dihapus permanen.')">
+        🗑 Batalkan Rating
+      </a>
+    <?php endif; ?>
+  </div>
 </div>
 
 <?php if ($submitted): ?>
@@ -304,18 +312,25 @@ require __DIR__ . '/includes/worker-layout-start.php';
           <label for="comment" style="display:block;font-size:0.92rem;font-weight:800;color:var(--text-main);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">
             Ulasan &amp; Testimoni <span style="color:#ef4444;">*</span>
           </label>
-          <textarea id="comment" name="comment" rows="4" required minlength="100" placeholder="Tuliskan pengalaman Anda bekerja bersama pemberi kerja ini (minimal 100 karakter)..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;line-height:1.5;outline:none;font-family:inherit;resize:vertical;"></textarea>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:0.75rem;">
-            <span style="color:#64748b;">Wajib diisi minimal 100 karakter</span>
-            <span id="comment-char-count" style="color:#ef4444;font-weight:700;">0/100 karakter</span>
-          </div>
+          <textarea id="comment" name="comment" rows="4" required placeholder="Tuliskan pengalaman Anda bekerja bersama pemberi kerja ini..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.88rem;line-height:1.5;outline:none;font-family:inherit;resize:vertical;"></textarea>
         </div>
 
-        <div style="display:flex;gap:12px;justify-content:flex-end;align-items:center;margin-top:20px;">
-          <a href="worker-tugas.php" class="filter-btn-pill" style="text-decoration:none;padding:10px 18px;font-size:0.88rem;border:1px solid #cbd5e1;border-radius:8px;color:#475569;">Batal</a>
-          <button type="submit" id="submit_review_btn" name="submit_review" value="1" class="btn-create-post" disabled aria-disabled="true" style="padding:10px 24px;font-size:0.9rem;background:#cbd5e1;border:none;color:#64748b;cursor:not-allowed;opacity:0.7;border-radius:8px;font-weight:700;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:28px;display:flex;flex-direction:column;gap:12px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.84rem;color:var(--text-dark);line-height:1.4;">
+            <input type="checkbox" required id="confirm_given_deliverables" name="confirm_given_deliverables" value="1" style="accent-color:#2563eb;margin-top:2px;" />
+            <span><strong>Konfirmasi Gig Worker Sudah Menyerahkan Deliverable <span style="color:#ef4444;">*</span>:</strong> Saya menyatakan seluruh deliverable telah saya serahkan kepada pemberi kerja.</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.84rem;color:var(--text-dark);line-height:1.4;">
+            <input type="checkbox" required id="confirm_deliverables" name="confirm_deliverables" value="1" style="accent-color:#2563eb;margin-top:2px;" />
+            <span><strong>Konfirmasi Pemberi Kerja Sudah Menerima Deliverable <span style="color:#ef4444;">*</span>:</strong> Saya menyatakan pemberi kerja telah menerima deliverable dengan baik.</span>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;align-items:center;">
+          <a href="worker-tugas.php" class="filter-btn-pill" style="text-decoration:none;padding:10px 18px;font-size:0.88rem;">Batal</a>
+          <button type="submit" id="submit_review_btn" name="submit_review" value="1" class="btn-create-post" disabled aria-disabled="true" style="padding:10px 24px;font-size:0.9rem;background:#9ca3af;border:none;color:#ffffff;cursor:not-allowed;opacity:0.9;border-radius:8px;font-weight:700;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Kirim Ulasan
+            Kirim Ulasan Pemberi Kerja
           </button>
         </div>
       </form>
@@ -398,37 +413,31 @@ require __DIR__ . '/includes/worker-layout-start.php';
         updateStars(hiddenInput.value);
       }
 
-      const commentInput = document.getElementById('comment');
-      const submitBtn    = document.getElementById('submit_review_btn');
+      if (confirmDeliverables && confirmGivenDeliverables && submitBtn) {
+        const enabledStyles = {
+          background: 'linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)',
+          cursor: 'pointer',
+          opacity: '1',
+        };
 
-      function validateForm() {
-        if (!commentInput || !submitBtn) return;
-        const len = commentInput.value.trim().length;
-        const countEl = document.getElementById('comment-char-count');
-        if (countEl) {
-          countEl.innerText = len + '/100 karakter';
-          countEl.style.color = len >= 100 ? '#10b981' : '#ef4444';
-        }
-        const isValid = len >= 100;
-        submitBtn.disabled = !isValid;
-        submitBtn.setAttribute('aria-disabled', isValid ? 'false' : 'true');
-        if (isValid) {
-          submitBtn.style.background = 'linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)';
-          submitBtn.style.color = '#ffffff';
-          submitBtn.style.cursor = 'pointer';
-          submitBtn.style.opacity = '1';
-        } else {
-          submitBtn.style.background = '#cbd5e1';
-          submitBtn.style.color = '#64748b';
+        function syncSubmitState() {
+          const isChecked = !!confirmDeliverables.checked && !!confirmGivenDeliverables.checked;
+          submitBtn.disabled = !isChecked;
+          submitBtn.setAttribute('aria-disabled', isChecked ? 'false' : 'true');
+          if (isChecked) {
+            submitBtn.style.background = enabledStyles.background;
+            submitBtn.style.cursor = enabledStyles.cursor;
+            submitBtn.style.opacity = enabledStyles.opacity;
+            return;
+          }
+          submitBtn.style.background = '#9ca3af';
           submitBtn.style.cursor = 'not-allowed';
-          submitBtn.style.opacity = '0.7';
+          submitBtn.style.opacity = '0.9';
         }
-      }
 
-      if (commentInput) {
-        commentInput.addEventListener('input', validateForm);
-        commentInput.addEventListener('change', validateForm);
-        validateForm();
+        confirmDeliverables.addEventListener('change', syncSubmitState);
+        confirmGivenDeliverables.addEventListener('change', syncSubmitState);
+        syncSubmitState();
       }
     })();
   </script>

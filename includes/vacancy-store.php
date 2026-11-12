@@ -231,6 +231,58 @@ function gig_vacancy_ensure_schema(?PDO $pdo = null): void
     gig_vacancy_seed_catalog_if_empty($pdo);
     gig_vacancy_migrate_legacy_tables($pdo);
     gig_vacancy_cleanup_removed_entries($pdo);
+    gig_vacancy_seed_special_requirement_demo($pdo);
+}
+
+function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
+{
+    $demoId = 'GIG-2026-11-001';
+    try {
+        $exists = $pdo->prepare("SELECT 1 FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
+        $exists->execute([':id' => $demoId]);
+        if ($exists->fetchColumn()) {
+            return;
+        }
+    } catch (Throwable $e) {
+        return;
+    }
+
+    $demoVacancy = [
+        'id' => $demoId,
+        'title' => 'Implementasi Dashboard Analitik Proyek (Demo Kualifikasi Khusus)',
+        'category' => 'IT & Pemrograman',
+        'status' => 'active',
+        'statusLabel' => 'Tayang Aktif',
+        'budget' => 'Rp 9.500.000',
+        'duration' => '3 Minggu',
+        'applicantsCount' => 0,
+        'acceptedCount' => 0,
+        'quota' => 1,
+        'location' => 'Jakarta Selatan',
+        'work_type' => 'Remote',
+        'workType' => 'Remote',
+        'is_remote' => true,
+        'posted' => date('d M Y'),
+        'skills' => ['PHP', 'MySQL', 'Chart.js', 'Data Visualization'],
+        'desc' => 'Membangun dashboard analitik proyek lengkap dengan metrik progres, status milestone, dan ringkasan performa tim.',
+        'deliverables' => 'Dashboard analitik interaktif, dokumentasi penggunaan, dan handover teknis.',
+        'qualifications' => 'Pengalaman min. 2 tahun dengan dashboard data dan visualisasi.',
+        'deadline' => '30 Nov 2026',
+        'adminNote' => 'Demo lowongan dengan field kualifikasi khusus untuk uji tampilan Admin dan Gig Worker.',
+        'employer' => 'PT ABC',
+        'vacancy_type' => 'project',
+        'entity_type' => 'perusahaan',
+        'special_requirement' => [
+            'type' => 'portfolio_link',
+            'type_label' => 'Tautan Portofolio / Repositori Online',
+            'label' => 'Lampirkan tautan dashboard analitik (GitHub/Figma/Live Demo)',
+            'input_mode' => 'url',
+            'accept' => '',
+            'worker_hint' => 'Masukkan URL valid menuju contoh dashboard analitik yang pernah Anda buat.',
+        ],
+    ];
+
+    gig_vacancy_upsert_row($pdo, $demoVacancy, 'seed', false);
 }
 
 function gig_vacancy_cleanup_removed_entries(PDO $pdo): void
