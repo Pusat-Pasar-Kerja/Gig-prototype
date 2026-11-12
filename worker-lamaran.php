@@ -138,6 +138,27 @@ require __DIR__ . '/includes/worker-layout-start.php';
           </div>
         </div>
 
+        <?php
+          $appSpecialRaw = trim((string)($app['special_req_response'] ?? ''));
+          $appSpecial = $appSpecialRaw !== '' ? json_decode($appSpecialRaw, true) : null;
+          if (is_array($appSpecial)):
+        ?>
+          <div style="margin-top:10px;padding:8px 12px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;font-size:0.8rem;color:#1e3a8a;">
+            <strong>📎 <?php echo htmlspecialchars((string)($appSpecial['label'] ?? $appSpecial['type_label'] ?? 'Kualifikasi Khusus'), ENT_QUOTES, 'UTF-8'); ?>:</strong>
+            <?php if (($appSpecial['input_mode'] ?? '') === 'file' && !empty($appSpecial['file_path'])): ?>
+              <a href="<?php echo htmlspecialchars((string)$appSpecial['file_path'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" style="color:#1d4ed8;font-weight:700;text-decoration:underline;margin-left:4px;">
+                <?php echo htmlspecialchars((string)($appSpecial['file_name'] ?? 'Lihat File'), ENT_QUOTES, 'UTF-8'); ?> ↗
+              </a>
+            <?php elseif (($appSpecial['input_mode'] ?? '') === 'url' && !empty($appSpecial['value'])): ?>
+              <a href="<?php echo htmlspecialchars((string)$appSpecial['value'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;font-weight:700;text-decoration:underline;margin-left:4px;">
+                <?php echo htmlspecialchars((string)$appSpecial['value'], ENT_QUOTES, 'UTF-8'); ?> ↗
+              </a>
+            <?php else: ?>
+              <span style="margin-left:4px;color:#0f172a;"><?php echo htmlspecialchars((string)($appSpecial['value'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+
         <?php if ($status === 'declined_by_worker' && !empty($app['rejection_reason'])): ?>
           <div style="margin-top:12px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fee2e2;font-size:0.8rem;color:#991b1b;">
             <strong>Alasan Penolakan:</strong> &ldquo;<?php echo htmlspecialchars((string)$app['rejection_reason'], ENT_QUOTES, 'UTF-8'); ?>&rdquo;

@@ -526,6 +526,24 @@ require __DIR__ . '/includes/worker-layout-start.php';
           <li>Memiliki portofolio dan rekam jejak pengerjaan proyek di bidang <?php echo htmlspecialchars($job['category'], ENT_QUOTES, 'UTF-8'); ?>.</li>
           <li>Mampu berkomunikasi dengan baik serta menyelesaikan target sesuai estimasi waktu <?php echo htmlspecialchars($job['duration'], ENT_QUOTES, 'UTF-8'); ?>.</li>
         </ul>
+        <?php
+          $detailSpecialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
+          if ($detailSpecialReq !== null && !empty($detailSpecialReq['label'])):
+            $dReqMode = (string)($detailSpecialReq['input_mode'] ?? 'text');
+            $dReqFormat = $dReqMode === 'file' ? 'Upload File (PDF / Gambar JPG, PNG)' : ($dReqMode === 'url' ? 'Tautan URL' : ($dReqMode === 'textarea' ? 'Teks / Jawaban Singkat' : 'Teks / Username'));
+        ?>
+          <div style="margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 14px;">
+            <div style="font-size: 0.74rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+              📎 Kualifikasi Khusus Wajib Saat Melamar
+            </div>
+            <div style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">
+              <?php echo htmlspecialchars((string)$detailSpecialReq['label'], ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+            <div style="font-size: 0.78rem; color: #475569; margin-top: 4px;">
+              Jenis: <strong><?php echo htmlspecialchars((string)($detailSpecialReq['type_label'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></strong> · Format input: <strong><?php echo htmlspecialchars($dReqFormat, ENT_QUOTES, 'UTF-8'); ?></strong>
+            </div>
+          </div>
+        <?php endif; ?>
       </section>
     </div>
 

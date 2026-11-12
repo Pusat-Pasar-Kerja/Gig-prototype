@@ -89,11 +89,11 @@ function gig_special_requirement_types(): array
             'worker_hint' => 'Tuliskan jawaban atau penjelasan singkat sesuai permintaan pemberi kerja.',
         ],
         'other_file' => [
-            'label'       => 'Dokumen Pendukung Lainnya (CV, Surat Referensi)',
+            'label'       => 'Dokumen Pendukung Lainnya (Surat Referensi, Portofolio PDF)',
             'input_mode'  => 'file',
             'accept'      => '.pdf,.jpg,.jpeg,.png',
             'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
-            'placeholder' => 'Contoh: Surat Referensi Kerja / CV Lengkap',
+            'placeholder' => 'Contoh: Surat Referensi Kerja / Dokumen Portofolio PDF',
             'worker_hint' => 'Unggah dokumen pendukung dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
         ],
     ];
