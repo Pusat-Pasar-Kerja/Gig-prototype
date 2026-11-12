@@ -6,27 +6,40 @@ declare(strict_types=1);
       <style>
         .gig-post-modal {
           max-width: 860px !important;
+          max-height: 90vh;
           border-radius: 18px;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
           box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
         }
+        .gig-post-modal form {
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: hidden;
+        }
         .gig-post-modal .modal-header {
+          flex-shrink: 0;
           border-bottom: 1px solid #e2e8f0;
           padding: 18px 22px 14px;
           background: #ffffff;
         }
         .gig-post-modal .modal-body {
-          max-height: 72vh;
+          flex: 1 1 auto;
+          min-height: 0;
+          max-height: none;
           overflow-y: auto;
-          padding: 16px 18px;
+          padding: 16px 18px 20px;
           background: #f8fafc;
         }
         .gig-post-modal .modal-footer {
+          flex-shrink: 0;
           padding: 14px 18px;
           border-top: 1px solid #e2e8f0;
           background: #ffffff;
-          position: sticky;
-          bottom: 0;
+          position: static;
           z-index: 4;
         }
         .gig-post-modal .modal-close-btn {
@@ -471,13 +484,13 @@ declare(strict_types=1);
                   <div class="form-row">
                     <label for="proj_visibility">Visibilitas Lowongan</label>
                     <select id="proj_visibility">
-                      <option value="public" selected>Publik (terlihat di Bursa Gig Worker)</option>
+                      <option value="public" selected>Publik</option>
                       <option value="limited">Terbatas (hanya kandidat tertentu)</option>
                     </select>
                   </div>
                 </div>
 
-                <div class="gig-note">Setiap lowongan secara otomatis hanya dapat merekrut <strong>1 Gig Worker</strong>.</div>
+                <div class="gig-note" style="margin-top: 10px;">Setiap lowongan secara otomatis hanya dapat merekrut <strong>1 Gig Worker</strong>.</div>
               </section>
 
             </div>
