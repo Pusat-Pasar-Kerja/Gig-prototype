@@ -365,15 +365,11 @@ declare(strict_types=1);
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_desc">Deskripsi Proyek *</label>
-                  <textarea id="proj_desc" rows="4" required placeholder="Jelaskan masalah, ruang lingkup, dan hasil yang diharapkan dari Gig Worker..."></textarea>
+                  <label for="proj_kbji">Jabatan Sesuai KBJI *</label>
+                  <input type="text" id="proj_kbji" required placeholder="Contoh: 2512 - Pengembang Perangkat Lunak" />
                 </div>
 
                 <div class="gig-grid-2">
-                  <div class="form-row">
-                    <label for="proj_kbji">Jabatan Sesuai KBJI *</label>
-                    <input type="text" id="proj_kbji" required placeholder="Contoh: 2512 - Pengembang Perangkat Lunak" />
-                  </div>
                   <div class="form-row">
                     <label for="proj_category">Bidang *</label>
                     <select id="proj_category" required>
@@ -387,21 +383,6 @@ declare(strict_types=1);
                       <option value="Lainnya">Lainnya</option>
                     </select>
                   </div>
-                </div>
-
-                <?php
-                  $idMonths = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
-                  $deadlineOptions = [];
-                  foreach ([1, 2, 3] as $m) {
-                      $ts = strtotime('+' . $m . ' month');
-                      $labelDate = date('j', $ts) . ' ' . ($idMonths[(int)date('n', $ts)] ?? date('M', $ts)) . ' ' . date('Y', $ts);
-                      $deadlineOptions[] = [
-                          'value' => date('Y-m-d', $ts),
-                          'label' => $m . ' Bulan (' . $labelDate . ')',
-                      ];
-                  }
-                ?>
-                <div class="gig-grid-2">
                   <div class="form-row">
                     <label for="proj_duration">Durasi Proyek *</label>
                     <div class="gig-duration-split">
@@ -413,14 +394,16 @@ declare(strict_types=1);
                       </select>
                     </div>
                   </div>
+                </div>
+
+                <div class="gig-grid-2">
                   <div class="form-row">
-                    <label for="proj_deadline">Batas Waktu Lamaran *</label>
-                    <select id="proj_deadline" required>
-                      <option value="">Pilih batas waktu lamaran</option>
-                      <?php foreach ($deadlineOptions as $idx => $opt): ?>
-                        <option value="<?php echo htmlspecialchars($opt['value'], ENT_QUOTES, 'UTF-8'); ?>"<?php echo $idx === 0 ? ' selected' : ''; ?>><?php echo htmlspecialchars($opt['label'], ENT_QUOTES, 'UTF-8'); ?></option>
-                      <?php endforeach; ?>
-                    </select>
+                    <label for="proj_province">Lokasi (Provinsi) *</label>
+                    <input type="text" id="proj_province" required placeholder="Contoh: DKI Jakarta" />
+                  </div>
+                  <div class="form-row">
+                    <label for="proj_city">Lokasi (Kota/Kabupaten) *</label>
+                    <input type="text" id="proj_city" required placeholder="Contoh: Jakarta Selatan" />
                   </div>
                 </div>
 
@@ -437,19 +420,35 @@ declare(strict_types=1);
                 </div>
 
                 <div class="form-row">
+                  <label for="proj_desc">Deskripsi Proyek *</label>
+                  <textarea id="proj_desc" rows="4" required placeholder="Jelaskan masalah, ruang lingkup, dan hasil yang diharapkan dari Gig Worker..."></textarea>
+                </div>
+
+                <div class="form-row">
                   <label for="proj_target">Target / Deliverable Proyek *</label>
                   <textarea id="proj_target" rows="3" required placeholder="Contoh: 12 layar high-fidelity + prototype interaktif + style guide komponen"></textarea>
                 </div>
 
-                <div class="gig-grid-2">
-                  <div class="form-row">
-                    <label for="proj_province">Lokasi (Provinsi) *</label>
-                    <input type="text" id="proj_province" required placeholder="Contoh: DKI Jakarta" />
-                  </div>
-                  <div class="form-row">
-                    <label for="proj_city">Lokasi (Kota/Kabupaten) *</label>
-                    <input type="text" id="proj_city" required placeholder="Contoh: Jakarta Selatan" />
-                  </div>
+                <?php
+                  $idMonths = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
+                  $deadlineOptions = [];
+                  foreach ([1, 2, 3] as $m) {
+                      $ts = strtotime('+' . $m . ' month');
+                      $labelDate = date('j', $ts) . ' ' . ($idMonths[(int)date('n', $ts)] ?? date('M', $ts)) . ' ' . date('Y', $ts);
+                      $deadlineOptions[] = [
+                          'value' => date('Y-m-d', $ts),
+                          'label' => $m . ' Bulan (' . $labelDate . ')',
+                      ];
+                  }
+                ?>
+                <div class="form-row">
+                  <label for="proj_deadline">Batas Waktu Lamaran *</label>
+                  <select id="proj_deadline" required>
+                    <option value="">Pilih batas waktu lamaran</option>
+                    <?php foreach ($deadlineOptions as $idx => $opt): ?>
+                      <option value="<?php echo htmlspecialchars($opt['value'], ENT_QUOTES, 'UTF-8'); ?>"<?php echo $idx === 0 ? ' selected' : ''; ?>><?php echo htmlspecialchars($opt['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                    <?php endforeach; ?>
+                  </select>
                 </div>
               </section>
 
