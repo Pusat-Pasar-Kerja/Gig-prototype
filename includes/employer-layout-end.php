@@ -355,7 +355,7 @@ declare(strict_types=1);
                   <span class="gig-section-icon">1</span>
                   <div>
                     <div class="gig-section-title">Informasi Proyek</div>
-                    <div class="gig-section-sub">Judul, deskripsi, durasi, deliverable, dan lokasi proyek.</div>
+                    <div class="gig-section-sub">Judul, deskripsi, durasi, nilai proyek, batas waktu lamaran, deliverable, dan lokasi proyek.</div>
                   </div>
                 </div>
 
@@ -389,6 +389,18 @@ declare(strict_types=1);
                   </div>
                 </div>
 
+                <?php
+                  $idMonths = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agt', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
+                  $deadlineOptions = [];
+                  foreach ([1, 2, 3] as $m) {
+                      $ts = strtotime('+' . $m . ' month');
+                      $labelDate = date('j', $ts) . ' ' . ($idMonths[(int)date('n', $ts)] ?? date('M', $ts)) . ' ' . date('Y', $ts);
+                      $deadlineOptions[] = [
+                          'value' => date('Y-m-d', $ts),
+                          'label' => $m . ' Bulan (' . $labelDate . ')',
+                      ];
+                  }
+                ?>
                 <div class="gig-grid-2">
                   <div class="form-row">
                     <label for="proj_duration">Durasi Proyek *</label>
@@ -401,6 +413,27 @@ declare(strict_types=1);
                       </select>
                     </div>
                   </div>
+                  <div class="form-row">
+                    <label for="proj_deadline">Batas Waktu Lamaran *</label>
+                    <select id="proj_deadline" required>
+                      <option value="">Pilih batas waktu lamaran</option>
+                      <?php foreach ($deadlineOptions as $idx => $opt): ?>
+                        <option value="<?php echo htmlspecialchars($opt['value'], ENT_QUOTES, 'UTF-8'); ?>"<?php echo $idx === 0 ? ' selected' : ''; ?>><?php echo htmlspecialchars($opt['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <label for="proj_salary">Nilai Proyek (Rp) *</label>
+                  <input type="text" id="proj_salary" required placeholder="Contoh: 7500000" />
+                </div>
+
+                <div class="gig-toggle-row" style="margin-bottom: 12px;">
+                  <label for="proj_show_salary" class="gig-checkbox-label">
+                    <input type="checkbox" id="proj_show_salary" checked />
+                    <span>Tampilkan nominal nilai proyek di postingan lowongan</span>
+                  </label>
                 </div>
 
                 <div class="form-row">
@@ -445,7 +478,7 @@ declare(strict_types=1);
                   <span class="gig-section-icon">3</span>
                   <div>
                     <div class="gig-section-title">Tambahan &amp; Publikasi</div>
-                    <div class="gig-section-sub">Opsi remote, nominal nilai proyek, dan periode tayang lowongan.</div>
+                    <div class="gig-section-sub">Opsi remote dan visibilitas lowongan.</div>
                   </div>
                 </div>
 
@@ -465,29 +498,11 @@ declare(strict_types=1);
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_salary">Nilai Proyek (Rp) *</label>
-                  <input type="text" id="proj_salary" required placeholder="Contoh: 7500000" />
-                </div>
-
-                <div class="gig-toggle-row">
-                  <label for="proj_show_salary" class="gig-checkbox-label">
-                    <input type="checkbox" id="proj_show_salary" checked />
-                    <span>Tampilkan nominal nilai proyek di postingan lowongan</span>
-                  </label>
-                </div>
-
-                <div class="gig-grid-2">
-                  <div class="form-row">
-                    <label for="proj_deadline">Batas Waktu Lamaran *</label>
-                    <input type="date" id="proj_deadline" required value="2026-09-30" />
-                  </div>
-                  <div class="form-row">
-                    <label for="proj_visibility">Visibilitas Lowongan</label>
-                    <select id="proj_visibility">
-                      <option value="public" selected>Publik</option>
-                      <option value="limited">Terbatas (hanya kandidat tertentu)</option>
-                    </select>
-                  </div>
+                  <label for="proj_visibility">Visibilitas Lowongan</label>
+                  <select id="proj_visibility">
+                    <option value="public" selected>Publik</option>
+                    <option value="limited">Terbatas (hanya kandidat tertentu)</option>
+                  </select>
                 </div>
 
                 <div class="gig-note" style="margin-top: 10px;">Setiap lowongan secara otomatis hanya dapat merekrut <strong>1 Gig Worker</strong>.</div>
@@ -586,6 +601,20 @@ declare(strict_types=1);
         showToast('Durasi proyek harus diisi minimal 1.');
         return false;
       }
+      var deadlineInput = document.getElementById('proj_deadline');
+      if (!deadlineInput || !deadlineInput.value) {
+        if (deadlineInput) deadlineInput.focus();
+        showToast('Pilih batas waktu lamaran terlebih dahulu.');
+        return false;
+      }
+      var salaryInput = document.getElementById('proj_salary');
+      var salaryRaw = salaryInput ? salaryInput.value : '';
+      var salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
+      if (!salaryVal || salaryVal < 10000) {
+        if (salaryInput) salaryInput.focus();
+        showToast('Nilai proyek belum valid. Masukkan nominal nilai proyek minimal Rp 10.000.');
+        return false;
+      }
       var province = (document.getElementById('proj_province').value || '').trim();
       var city = (document.getElementById('proj_city').value || '').trim();
       if (!province || !city) {
@@ -597,15 +626,6 @@ declare(strict_types=1);
       if (!skillsInput || !skillsInput.value.trim()) {
         if (skillsInput) skillsInput.focus();
         showToast('Skill wajib harus diisi terlebih dahulu.');
-        return false;
-      }
-    } else if (step === 3) {
-      var salaryInput = document.getElementById('proj_salary');
-      var salaryRaw = salaryInput ? salaryInput.value : '';
-      var salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
-      if (!salaryVal || salaryVal < 10000) {
-        if (salaryInput) salaryInput.focus();
-        showToast('Nilai proyek belum valid. Masukkan nominal nilai proyek minimal Rp 10.000.');
         return false;
       }
     }
