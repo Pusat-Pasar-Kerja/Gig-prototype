@@ -6,6 +6,13 @@ require_once __DIR__ . '/includes/worker-profiles.php';
 require_once __DIR__ . '/includes/project-vacancies.php';
 require_once __DIR__ . '/includes/vacancy-store.php';
 require_once __DIR__ . '/includes/project-offers.php';
+require_once __DIR__ . '/includes/progressive-profiling.php';
+
+$pdo = gig_db();
+if ($pdo !== null) {
+    gig_profiling_ensure_schema($pdo);
+}
+$allowedProfilingColumns = gig_profiling_allowed_columns();
 
 $flash = '';
 $flashType = 'success';
@@ -13,7 +20,7 @@ $tab = (string)($_GET['tab'] ?? 'verification');
 if ($tab === 'overview') {
     $tab = 'verification';
 }
-$allowedTabs = ['verification', 'workers', 'projects', 'offers'];
+$allowedTabs = ['verification', 'workers', 'projects', 'offers', 'profiling'];
 if (!in_array($tab, $allowedTabs, true)) {
     $tab = 'verification';
 }
@@ -122,6 +129,131 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $flashType = $ok ? 'success' : 'error';
         $redirectTab = 'projects';
+    } elseif ($action === 'create_question' && $pdo !== null) {
+        $redirectTab    = 'profiling';
+        $categoryId     = filter_input(INPUT_POST, 'category_id', FILTER_VALIDATE_INT);
+        $targetColumn   = trim((string)($_POST['target_column'] ?? ''));
+        $questionNew    = trim((string)($_POST['question_new'] ?? ''));
+        $questionVerify = trim((string)($_POST['question_verify'] ?? ''));
+        $inputType      = trim((string)($_POST['input_type'] ?? 'text'));
+        $optionsRaw     = trim((string)($_POST['options_csv'] ?? ''));
+
+        if (!$categoryId || $categoryId <= 0) {
+            $flash = 'Silakan pilih kategori pertanyaan dari dropdown.';
+            $flashType = 'error';
+        } elseif (!array_key_exists($targetColumn, $allowedProfilingColumns)) {
+            $flash = 'Target kolom pada tabel users tidak valid.';
+            $flashType = 'error';
+        } elseif ($questionNew === '' || $questionVerify === '') {
+            $flash = 'Teks Pertanyaan Baru (question_new) dan Pertanyaan Verifikasi (question_verify) wajib diisi.';
+            $flashType = 'error';
+        } elseif (!in_array($inputType, ['text', 'select', 'tel', 'url'], true)) {
+            $flash = 'Tipe input tidak valid.';
+            $flashType = 'error';
+        } else {
+            $optionsJson = null;
+            if ($inputType === 'select' && $optionsRaw !== '') {
+                $optsArray = array_values(array_filter(array_map('trim', explode(',', $optionsRaw)), static fn($v) => $v !== ''));
+                if (!empty($optsArray)) {
+                    $optionsJson = json_encode($optsArray, JSON_UNESCAPED_UNICODE);
+                }
+            }
+            try {
+                $sqlInsert = "
+                    INSERT INTO `profiling_questions`
+                        (`category_id`, `target_column`, `question_new`, `question_verify`, `input_type`, `options_json`, `is_active`)
+                    VALUES
+                        (:category_id, :target_column, :question_new, :question_verify, :input_type, :options_json, 1)
+                ";
+                $stmtInsert = $pdo->prepare($sqlInsert);
+                $stmtInsert->execute([
+                    ':category_id'     => $categoryId,
+                    ':target_column'   => $targetColumn,
+                    ':question_new'    => $questionNew,
+                    ':question_verify' => $questionVerify,
+                    ':input_type'      => $inputType,
+                    ':options_json'    => $optionsJson,
+                ]);
+                $flash = 'Pertanyaan baru berhasil disimpan ke tabel profiling_questions!';
+                $flashType = 'success';
+            } catch (PDOException $e) {
+                $flash = 'Gagal menyimpan pertanyaan: ' . $e->getMessage();
+                $flashType = 'error';
+            }
+        }
+    } elseif ($action === 'create_category' && $pdo !== null) {
+        $redirectTab = 'profiling';
+        $catName = trim((string)($_POST['category_name'] ?? ''));
+        $catDesc = trim((string)($_POST['category_desc'] ?? ''));
+
+        if ($catName === '') {
+            $flash = 'Nama kategori tidak boleh kosong.';
+            $flashType = 'error';
+        } else {
+            try {
+                $stmtCat = $pdo->prepare("
+                    INSERT INTO `profiling_categories` (`name`, `description`)
+                    VALUES (:name, :desc)
+                ");
+                $stmtCat->execute([
+                    ':name' => $catName,
+                    ':desc' => $catDesc !== '' ? $catDesc : null,
+                ]);
+                $flash = "Kategori '{$catName}' berhasil ditambahkan!";
+                $flashType = 'success';
+            } catch (PDOException $e) {
+                $flash = 'Gagal menambah kategori (mungkin nama kategori sudah ada).';
+                $flashType = 'error';
+            }
+        }
+    } elseif ($action === 'delete_question' && $pdo !== null) {
+        $redirectTab = 'profiling';
+        $qId = filter_input(INPUT_POST, 'question_id', FILTER_VALIDATE_INT);
+        if ($qId) {
+            $stmtDel = $pdo->prepare('DELETE FROM `profiling_questions` WHERE `id` = :id');
+            $stmtDel->execute([':id' => $qId]);
+            $flash = 'Pertanyaan berhasil dihapus.';
+            $flashType = 'success';
+        }
+    } elseif ($action === 'toggle_question' && $pdo !== null) {
+        $redirectTab = 'profiling';
+        $qId = filter_input(INPUT_POST, 'question_id', FILTER_VALIDATE_INT);
+        if ($qId) {
+            $stmtTog = $pdo->prepare('UPDATE `profiling_questions` SET `is_active` = IF(`is_active` = 1, 0, 1) WHERE `id` = :id');
+            $stmtTog->execute([':id' => $qId]);
+            $flash = 'Status aktif pertanyaan berhasil diperbarui.';
+            $flashType = 'success';
+        }
+    } elseif ($action === 'clear_user_column' && $pdo !== null) {
+        $redirectTab = 'profiling';
+        $uId = filter_input(INPUT_POST, 'user_id', FILTER_VALIDATE_INT);
+        $col = trim((string)($_POST['column_name'] ?? ''));
+        if ($uId && array_key_exists($col, $allowedProfilingColumns)) {
+            $stmtClear = $pdo->prepare("UPDATE `users` SET `{$col}` = NULL WHERE `id` = :id");
+            $stmtClear->execute([':id' => $uId]);
+            $flash = "Kolom '{$col}' pada User #{$uId} berhasil dikosongkan (NULL) -> Sekarang akan memicu question_new!";
+            $flashType = 'success';
+        }
+    } elseif ($action === 'save_profiling_settings' && $pdo !== null) {
+        $redirectTab = 'profiling';
+        $ok = gig_profiling_save_settings([
+            'is_enabled'             => !empty($_POST['is_enabled']) ? 1 : 0,
+            'frequency_mode'         => (string)($_POST['frequency_mode'] ?? 'once_per_day'),
+            'interval_hours'         => (int)($_POST['interval_hours'] ?? 24),
+            'max_questions_per_show' => (int)($_POST['max_questions_per_show'] ?? 1),
+            'show_fab_button'        => !empty($_POST['show_fab_button']) ? 1 : 0,
+        ], $pdo);
+        $flash = $ok
+            ? 'Pengaturan frekuensi kemunculan pop-up Progressive Profiling berhasil disimpan!'
+            : 'Gagal menyimpan pengaturan kemunculan.';
+        $flashType = $ok ? 'success' : 'error';
+    } elseif ($action === 'reset_nudge_cooldown' && $pdo !== null) {
+        $redirectTab = 'profiling';
+        $ok = gig_profiling_reset_user_cooldown(null, $pdo);
+        $flash = $ok
+            ? 'Batas kemunculan harian (cooldown) berhasil di-reset! Pop-up akan langsung muncul kembali saat user membuka halaman.'
+            : 'Gagal me-reset status kemunculan harian.';
+        $flashType = $ok ? 'success' : 'error';
     }
 
     header('Location: dashboard-admin.php?tab=' . urlencode($redirectTab) . '&msg=' . urlencode($flash) . '&type=' . urlencode($flashType));
@@ -286,6 +418,10 @@ if ($tab === 'workers') {
     $breadcrumbCurrent = 'Verifikasi Gig Worker';
 } elseif ($tab === 'projects') {
     $breadcrumbCurrent = 'Verifikasi Lowongan Proyek';
+} elseif ($tab === 'offers') {
+    $breadcrumbCurrent = 'Riwayat Tawaran Proyek';
+} elseif ($tab === 'profiling') {
+    $breadcrumbCurrent = 'Progressive Profiling (Nudge)';
 }
 require __DIR__ . '/includes/admin-layout-start.php';
 ?>
@@ -298,6 +434,8 @@ require __DIR__ . '/includes/admin-layout-start.php';
           $mainHeading = 'Verifikasi Lowongan Proyek';
       } elseif ($tab === 'offers') {
           $mainHeading = 'Riwayat Tawaran Proyek';
+      } elseif ($tab === 'profiling') {
+          $mainHeading = 'Progressive Profiling (Profile Completion Nudge)';
       }
     ?>
     <div class="admin-page-head">
@@ -313,6 +451,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <a href="?tab=workers" class="<?php echo $tab === 'workers' ? 'active' : ''; ?>">Gig Worker<?php $wQueue = (int)$metrics['workers_pending'] + (int)$metrics['worker_profile_edits_pending']; echo $wQueue > 0 ? ' (' . $wQueue . ')' : ''; ?></a>
       <a href="?tab=projects" class="<?php echo $tab === 'projects' ? 'active' : ''; ?>">Lowongan Proyek<?php echo $metrics['vacancies_review'] > 0 ? ' (' . (int)$metrics['vacancies_review'] . ')' : ''; ?></a>
       <a href="?tab=offers" class="<?php echo $tab === 'offers' ? 'active' : ''; ?>">Riwayat Tawaran Proyek</a>
+      <a href="?tab=profiling" class="<?php echo $tab === 'profiling' ? 'active' : ''; ?>">Progressive Profiling</a>
     </nav>
 
     <?php if ($tab === 'verification'): ?>
@@ -1023,6 +1162,476 @@ require __DIR__ . '/includes/admin-layout-start.php';
                     <?php else: ?>
                       <span style="color:#94a3b8;">-</span>
                     <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <?php endif; ?>
+
+    <?php if ($tab === 'profiling'): ?>
+      <?php
+        $profilingCategories = $pdo !== null
+            ? $pdo->query('SELECT * FROM `profiling_categories` ORDER BY `id` ASC')->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+        $profilingQuestions = $pdo !== null
+            ? $pdo->query("
+                SELECT q.*, c.`name` AS `category_name`
+                FROM `profiling_questions` q
+                INNER JOIN `profiling_categories` c ON c.`id` = q.`category_id`
+                ORDER BY q.`id` ASC
+              ")->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+        if ($searchQ !== '') {
+            $profilingQuestions = array_values(array_filter(
+                $profilingQuestions,
+                fn($r) => $matchesSearch($r, ['category_name', 'target_column', 'question_new', 'question_verify'])
+            ));
+        }
+
+        $simUserId = $pdo !== null ? gig_profiling_resolve_user_id($pdo) : 1;
+        $simUserRow = null;
+        if ($pdo !== null) {
+            $stmtSimUser = $pdo->prepare('SELECT * FROM `users` WHERE `id` = :id LIMIT 1');
+            $stmtSimUser->execute([':id' => $simUserId]);
+            $simUserRow = $stmtSimUser->fetch(PDO::FETCH_ASSOC);
+        }
+        $ppSettings  = gig_profiling_get_settings($pdo);
+        $ppFreqModes = gig_profiling_frequency_modes();
+        $simSchedule = $simUserRow
+            ? gig_profiling_evaluate_schedule($simUserRow, $ppSettings)
+            : ['should_auto_show' => true, 'reason' => '-', 'next_available_label' => 'Sekarang', 'shown_today' => 0, 'max_per_show' => 1];
+      ?>
+      <style>
+        .pp-admin-grid {
+          display: grid;
+          grid-template-columns: 1.35fr 0.85fr;
+          gap: 20px;
+          align-items: start;
+          margin-bottom: 24px;
+        }
+        .pp-admin-card {
+          background: #ffffff;
+          border: 1px solid var(--border-subtle, #e2e8f0);
+          border-radius: 14px;
+          padding: 22px;
+          box-shadow: var(--shadow-xs, 0 1px 3px rgba(15, 23, 42, 0.04));
+        }
+        .pp-admin-card h2 {
+          font-size: 1.05rem;
+          font-weight: 800;
+          color: #0f172a;
+          margin-bottom: 4px;
+        }
+        .pp-admin-desc {
+          font-size: 0.83rem;
+          color: #64748b;
+          margin-bottom: 16px;
+        }
+        .pp-form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+        }
+        .pp-form-group {
+          margin-bottom: 14px;
+        }
+        .pp-form-label {
+          display: block;
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 6px;
+        }
+        .pp-form-control {
+          width: 100%;
+          padding: 9px 12px;
+          border: 1px solid #cbd5e1;
+          border-radius: 10px;
+          font: inherit;
+          font-size: 0.86rem;
+          color: #0f172a;
+          background: #ffffff;
+        }
+        .pp-form-control:focus {
+          outline: none;
+          border-color: #0ea5e9;
+          box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.14);
+        }
+        .pp-form-hint {
+          font-size: 0.74rem;
+          color: #64748b;
+          margin-top: 4px;
+        }
+        .pp-btn-submit {
+          background: #1657c1;
+          color: #ffffff;
+          border: none;
+          border-radius: 10px;
+          padding: 10px 18px;
+          font: inherit;
+          font-size: 0.85rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .pp-btn-submit:hover { background: #0f3d8c; }
+        .pp-code {
+          background: #f1f5f9;
+          padding: 2px 6px;
+          border-radius: 6px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .pp-chip {
+          display: inline-block;
+          padding: 3px 10px;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-weight: 800;
+        }
+        .pp-chip-cat { background: #e0f2fe; color: #0369a1; }
+        .pp-chip-active { background: #dcfce7; color: #15803d; }
+        .pp-chip-inactive { background: #f1f5f9; color: #64748b; }
+        .pp-chip-new { background: #fef3c7; color: #b45309; }
+        .pp-chip-verify { background: #ccfbf1; color: #0f766e; }
+        .pp-btn-sm {
+          padding: 5px 10px;
+          border-radius: 6px;
+          font-size: 0.74rem;
+          font-weight: 700;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #334155;
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .pp-btn-sm.danger {
+          background: #fef2f2;
+          color: #dc2626;
+          border-color: #fecaca;
+        }
+        .pp-questions-table {
+          width: 100%;
+          table-layout: auto !important;
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+        .pp-questions-table th {
+          white-space: nowrap !important;
+          line-height: 1.4;
+          vertical-align: middle;
+          padding: 13px 14px;
+        }
+        .pp-questions-table td {
+          vertical-align: top;
+          padding: 13px 14px;
+          line-height: 1.45;
+        }
+        @media (max-width: 980px) {
+          .pp-admin-grid, .pp-form-row { grid-template-columns: 1fr; }
+        }
+      </style>
+
+      <div class="admin-toolbar-row" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="font-size:0.86rem;color:#475569;">
+          Kelola pertanyaan &amp; jadwal kemunculan <strong>Progressive Profiling (Profile Completion Nudge)</strong> di frontend.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="get_nudge.php" target="_blank" class="admin-btn-ghost">🔗 Cek JSON get_nudge.php</a>
+          <a href="profil.php" class="admin-btn-ghost">👤 Lihat Pop-up di Profil SIAPKerja</a>
+        </div>
+      </div>
+
+      <!-- PENGATURAN FREKUENSI KEMUNCULAN POP-UP (ADMIN SETTINGS) -->
+      <section class="pp-admin-card" style="margin-bottom:20px;border-left:4px solid #09b8a7;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+          <div>
+            <h2>⚙ Pengaturan Kemunculan Pop-up Pertanyaan (<code class="pp-code">profiling_settings</code>)</h2>
+            <p class="pp-admin-desc" style="margin-bottom:0;">
+              Atur seberapa sering pop-up pertanyaan muncul kepada pengguna (Default: <strong>Cukup 1x dalam sehari</strong> dengan <strong>1 pertanyaan</strong> per kemunculan).
+            </p>
+          </div>
+          <?php if ($simUserRow): ?>
+            <div style="display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #e2e8f0;padding:8px 12px;border-radius:10px;">
+              <div style="font-size:0.78rem;line-height:1.35;">
+                <span style="color:#64748b;display:block;">Status Pop-up User #<?php echo (int)$simUserRow['id']; ?> Hari Ini:</span>
+                <?php if ($simSchedule['should_auto_show']): ?>
+                  <strong style="color:#059669;">✓ Belum Mengisi Hari Ini — Pop-up Aktif (<?php echo htmlspecialchars($simSchedule['reason'], ENT_QUOTES, 'UTF-8'); ?>)</strong>
+                <?php else: ?>
+                  <strong style="color:#b45309;">⏳ Sudah Mengisi Hari Ini — Pop-up Ditutup Sampai <?php echo htmlspecialchars($simSchedule['next_available_label'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                <?php endif; ?>
+              </div>
+              <form method="POST" action="dashboard-admin.php?tab=profiling" style="margin:0;">
+                <input type="hidden" name="tab" value="profiling" />
+                <input type="hidden" name="action" value="reset_nudge_cooldown" />
+                <input type="hidden" name="user_id" value="<?php echo (int)$simUserRow['id']; ?>" />
+                <button type="submit" class="pp-btn-sm" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;" title="Reset agar pop-up bisa langsung muncul lagi saat dites">
+                  ↻ Reset Jatah Hari Ini
+                </button>
+              </form>
+            </div>
+          <?php endif; ?>
+        </div>
+
+        <form method="POST" action="dashboard-admin.php?tab=profiling">
+          <input type="hidden" name="tab" value="profiling" />
+          <input type="hidden" name="action" value="save_profiling_settings" />
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:14px;align-items:end;">
+            <div class="pp-form-group" style="margin-bottom:0;">
+              <label class="pp-form-label" for="pp_frequency_mode">Frekuensi Kemunculan Pop-up</label>
+              <select name="frequency_mode" id="pp_frequency_mode" class="pp-form-control" onchange="document.getElementById('ppIntervalHoursWrap').style.display = this.value === 'custom_interval' ? 'block' : 'none';">
+                <?php foreach ($ppFreqModes as $mKey => $mLabel): ?>
+                  <option value="<?php echo htmlspecialchars($mKey, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $ppSettings['frequency_mode'] === $mKey ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($mLabel, ENT_QUOTES, 'UTF-8'); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <div class="pp-form-group" id="ppIntervalHoursWrap" style="margin-bottom:0;display:<?php echo $ppSettings['frequency_mode'] === 'custom_interval' ? 'block' : 'none'; ?>;">
+              <label class="pp-form-label" for="pp_interval_hours">Jeda Antar Kemunculan (Jam)</label>
+              <input type="number" name="interval_hours" id="pp_interval_hours" min="1" max="720" class="pp-form-control" value="<?php echo (int)$ppSettings['interval_hours']; ?>" />
+            </div>
+
+            <div class="pp-form-group" style="margin-bottom:0;">
+              <label class="pp-form-label" for="pp_max_questions">Jumlah Pertanyaan per Muncul</label>
+              <select name="max_questions_per_show" id="pp_max_questions" class="pp-form-control">
+                <?php foreach ([1 => '1 Pertanyaan / Hari (Rekomendasi)', 2 => '2 Pertanyaan per Kemunculan', 3 => '3 Pertanyaan per Kemunculan', 5 => '5 Pertanyaan per Kemunculan'] as $qNum => $qLabel): ?>
+                  <option value="<?php echo $qNum; ?>" <?php echo (int)$ppSettings['max_questions_per_show'] === $qNum ? 'selected' : ''; ?>>
+                    <?php echo htmlspecialchars($qLabel, ENT_QUOTES, 'UTF-8'); ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <div class="pp-form-group" style="margin-bottom:0;display:flex;flex-direction:column;gap:8px;padding-bottom:4px;">
+              <label style="display:inline-flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:#1e293b;cursor:pointer;">
+                <input type="checkbox" name="is_enabled" value="1" <?php echo !empty($ppSettings['is_enabled']) ? 'checked' : ''; ?> style="width:16px;height:16px;accent-color:#09b8a7;" />
+                <span>Aktifkan Pop-up Otomatis</span>
+              </label>
+              <label style="display:inline-flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:#1e293b;cursor:pointer;">
+                <input type="checkbox" name="show_fab_button" value="1" <?php echo !empty($ppSettings['show_fab_button']) ? 'checked' : ''; ?> style="width:16px;height:16px;accent-color:#09b8a7;" />
+                <span>Tampilkan Tombol Floating "Lengkapi Profil"</span>
+              </label>
+            </div>
+
+            <div>
+              <button type="submit" class="pp-btn-submit" style="width:100%;background:#09b8a7;">Simpan Pengaturan Kemunculan</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <div class="pp-admin-grid">
+        <!-- FORM TAMBAH PERTANYAAN BARU -->
+        <section class="pp-admin-card">
+          <h2>1. Tambah Pertanyaan Profiling Baru (<code class="pp-code">profiling_questions</code>)</h2>
+          <p class="pp-admin-desc">Gunakan form ini untuk menambahkan pertanyaan baru beserta relasi kategori dan target kolom di tabel <code class="pp-code">users</code>.</p>
+
+          <form method="POST" action="dashboard-admin.php?tab=profiling">
+            <input type="hidden" name="tab" value="profiling" />
+            <input type="hidden" name="action" value="create_question" />
+
+            <div class="pp-form-row">
+              <div class="pp-form-group">
+                <label class="pp-form-label" for="category_id">Pilih Kategori Pertanyaan *</label>
+                <select name="category_id" id="category_id" class="pp-form-control" required>
+                  <option value="">-- Pilih Kategori --</option>
+                  <?php foreach ($profilingCategories as $cat): ?>
+                    <option value="<?php echo (int)$cat['id']; ?>">
+                      <?php echo htmlspecialchars((string)$cat['name'], ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+
+              <div class="pp-form-group">
+                <label class="pp-form-label" for="target_column">Target Kolom di Tabel <code class="pp-code">users</code> *</label>
+                <select name="target_column" id="target_column" class="pp-form-control" required>
+                  <option value="">-- Pilih Target Kolom --</option>
+                  <?php foreach ($allowedProfilingColumns as $colKey => $colLabel): ?>
+                    <option value="<?php echo htmlspecialchars($colKey, ENT_QUOTES, 'UTF-8'); ?>">
+                      <?php echo htmlspecialchars($colLabel, ENT_QUOTES, 'UTF-8'); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+
+            <div class="pp-form-group">
+              <label class="pp-form-label" for="question_new">Teks Pertanyaan Baru (<code class="pp-code">question_new</code>) *</label>
+              <textarea name="question_new" id="question_new" rows="2" class="pp-form-control" placeholder="Contoh: Apa tingkat kemahiran Bahasa Inggris Anda saat ini?" required></textarea>
+              <div class="pp-form-hint">Muncul apabila kolom target di tabel <code class="pp-code">users</code> masih kosong (<code class="pp-code">NULL</code> / string kosong).</div>
+            </div>
+
+            <div class="pp-form-group">
+              <label class="pp-form-label" for="question_verify">Teks Pertanyaan Verifikasi (<code class="pp-code">question_verify</code>) *</label>
+              <textarea name="question_verify" id="question_verify" rows="2" class="pp-form-control" placeholder="Contoh: Apakah tingkat kemahiran Bahasa Inggris Anda masih di level {value}?" required></textarea>
+              <div class="pp-form-hint">Muncul apabila kolom target sudah ada datanya. Gunakan placeholder <code class="pp-code">{value}</code> untuk menyisipkan nilai user saat ini.</div>
+            </div>
+
+            <div class="pp-form-row">
+              <div class="pp-form-group">
+                <label class="pp-form-label" for="input_type">Tipe Input di Pop-up</label>
+                <select name="input_type" id="input_type" class="pp-form-control" onchange="document.getElementById('ppOptionsGroup').style.display = this.value === 'select' ? 'block' : 'none';">
+                  <option value="text">Text Input</option>
+                  <option value="select">Dropdown Pilihan (Select)</option>
+                  <option value="tel">Nomor Telepon (Tel)</option>
+                  <option value="url">Tautan URL</option>
+                </select>
+              </div>
+
+              <div class="pp-form-group" id="ppOptionsGroup" style="display:none;">
+                <label class="pp-form-label" for="options_csv">Opsi Dropdown (Pisahkan dengan koma)</label>
+                <input type="text" name="options_csv" id="options_csv" class="pp-form-control" placeholder="Pemula, Menengah, Mahir" />
+              </div>
+            </div>
+
+            <button type="submit" class="pp-btn-submit">+ Simpan Pertanyaan Baru</button>
+          </form>
+        </section>
+
+        <!-- KATEGORI & SIMULASI DATA USER -->
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <section class="pp-admin-card">
+            <h2>Tambah Kategori Baru (<code class="pp-code">profiling_categories</code>)</h2>
+            <p class="pp-admin-desc">Tambahkan kategori baru untuk mengelompokkan pertanyaan profiling.</p>
+            <form method="POST" action="dashboard-admin.php?tab=profiling">
+              <input type="hidden" name="tab" value="profiling" />
+              <input type="hidden" name="action" value="create_category" />
+              <div class="pp-form-group">
+                <label class="pp-form-label" for="category_name">Nama Kategori *</label>
+                <input type="text" name="category_name" id="category_name" class="pp-form-control" placeholder="Contoh: Sertifikasi / Keahlian" required />
+              </div>
+              <div class="pp-form-group">
+                <label class="pp-form-label" for="category_desc">Deskripsi Singkat</label>
+                <input type="text" name="category_desc" id="category_desc" class="pp-form-control" placeholder="Contoh: Pertanyaan terkait sertifikat kompetensi" />
+              </div>
+              <button type="submit" class="pp-btn-submit" style="background:#09b8a7;">+ Tambah Kategori</button>
+            </form>
+          </section>
+
+          <?php if ($simUserRow): ?>
+            <section class="pp-admin-card">
+              <h2>Status Kolom Tabel <code class="pp-code">users</code> (User #<?php echo (int)$simUserRow['id']; ?>)</h2>
+              <p class="pp-admin-desc">
+                <strong><?php echo htmlspecialchars((string)$simUserRow['name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                (<?php echo htmlspecialchars((string)$simUserRow['email'], ENT_QUOTES, 'UTF-8'); ?>)
+              </p>
+              <div class="verify-table-wrap">
+                <table class="verify-table">
+                  <thead>
+                    <tr>
+                      <th>Kolom</th>
+                      <th>Nilai Saat Ini</th>
+                      <th>Mode</th>
+                      <th>Simulasi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($allowedProfilingColumns as $colKey => $colLabel): ?>
+                      <?php
+                        $val = $simUserRow[$colKey] ?? null;
+                        $isEmpty = ($val === null || trim((string)$val) === '');
+                      ?>
+                      <tr>
+                        <td><code class="pp-code"><?php echo htmlspecialchars($colKey, ENT_QUOTES, 'UTF-8'); ?></code></td>
+                        <td>
+                          <?php if ($isEmpty): ?>
+                            <span style="color:#94a3b8;font-style:italic;font-size:0.8rem;">NULL (Kosong)</span>
+                          <?php else: ?>
+                            <strong style="font-size:0.82rem;"><?php echo htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8'); ?></strong>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <?php if ($isEmpty): ?>
+                            <span class="pp-chip pp-chip-new">NEW</span>
+                          <?php else: ?>
+                            <span class="pp-chip pp-chip-verify">VERIFY</span>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <?php if (!$isEmpty): ?>
+                            <form method="POST" action="dashboard-admin.php?tab=profiling" style="display:inline;">
+                              <input type="hidden" name="tab" value="profiling" />
+                              <input type="hidden" name="action" value="clear_user_column" />
+                              <input type="hidden" name="user_id" value="<?php echo (int)$simUserRow['id']; ?>" />
+                              <input type="hidden" name="column_name" value="<?php echo htmlspecialchars($colKey, ENT_QUOTES, 'UTF-8'); ?>" />
+                              <button type="submit" class="pp-btn-sm danger" title="Kosongkan nilai untuk mengetes question_new">Set NULL</button>
+                            </form>
+                          <?php else: ?>
+                            <span style="font-size:0.74rem;color:#94a3b8;">Siap ditanyakan</span>
+                          <?php endif; ?>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- TABEL DAFTAR PERTANYAAN -->
+      <section class="verify-board">
+        <div class="verify-board-head">
+          <h2>2. Daftar Pertanyaan di Tabel <code class="pp-code">profiling_questions</code> (Total: <?php echo count($profilingQuestions); ?>)</h2>
+          <div style="font-size:0.83rem;color:#64748b;">
+            Pertanyaan aktif dipilih secara acak oleh endpoint <code class="pp-code">get_nudge.php</code>
+          </div>
+        </div>
+
+        <div class="verify-table-wrap">
+          <table class="verify-table pp-questions-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">ID</th>
+                <th style="width:120px;">Kategori</th>
+                <th style="width:135px;">Target Kolom</th>
+                <th style="width:26%;min-width:210px;">Pertanyaan Baru</th>
+                <th style="width:26%;min-width:210px;">Pertanyaan Verifikasi</th>
+                <th style="width:95px;">Tipe Input</th>
+                <th style="width:80px;">Status</th>
+                <th style="width:155px;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php if ($profilingQuestions === []): ?>
+                <tr><td colspan="8"><div class="empty-state">Belum ada pertanyaan profiling yang terdaftar.</div></td></tr>
+              <?php endif; ?>
+              <?php foreach ($profilingQuestions as $q): ?>
+                <tr>
+                  <td>#<?php echo (int)$q['id']; ?></td>
+                  <td><span class="pp-chip pp-chip-cat"><?php echo htmlspecialchars((string)$q['category_name'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                  <td><code class="pp-code"><?php echo htmlspecialchars((string)$q['target_column'], ENT_QUOTES, 'UTF-8'); ?></code></td>
+                  <td style="font-size:0.83rem;"><?php echo htmlspecialchars((string)$q['question_new'], ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td style="font-size:0.83rem;"><?php echo htmlspecialchars((string)$q['question_verify'], ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td><code class="pp-code"><?php echo htmlspecialchars((string)$q['input_type'], ENT_QUOTES, 'UTF-8'); ?></code></td>
+                  <td>
+                    <?php if (!empty($q['is_active'])): ?>
+                      <span class="pp-chip pp-chip-active">Aktif</span>
+                    <?php else: ?>
+                      <span class="pp-chip pp-chip-inactive">Nonaktif</span>
+                    <?php endif; ?>
+                  </td>
+                  <td style="white-space:nowrap;">
+                    <form method="POST" action="dashboard-admin.php?tab=profiling" style="display:inline;">
+                      <input type="hidden" name="tab" value="profiling" />
+                      <input type="hidden" name="action" value="toggle_question" />
+                      <input type="hidden" name="question_id" value="<?php echo (int)$q['id']; ?>" />
+                      <button type="submit" class="pp-btn-sm"><?php echo !empty($q['is_active']) ? 'Nonaktifkan' : 'Aktifkan'; ?></button>
+                    </form>
+                    <form method="POST" action="dashboard-admin.php?tab=profiling" style="display:inline;" onsubmit="return confirm('Hapus pertanyaan ini?');">
+                      <input type="hidden" name="tab" value="profiling" />
+                      <input type="hidden" name="action" value="delete_question" />
+                      <input type="hidden" name="question_id" value="<?php echo (int)$q['id']; ?>" />
+                      <button type="submit" class="pp-btn-sm danger">Hapus</button>
+                    </form>
                   </td>
                 </tr>
               <?php endforeach; ?>

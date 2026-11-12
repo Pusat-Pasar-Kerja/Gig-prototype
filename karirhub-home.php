@@ -24,6 +24,7 @@ $isWorkerAccount = $isLoggedIn && !$isAdminAccount && !$isEmployerAccount && (
     ($_SESSION['role'] ?? '') === 'worker'
     || in_array($siapkerjaEmail, ['theressaz@pasker.id', 'tessa'], true)
 );
+$role = (string)($_SESSION['role'] ?? ($isWorkerAccount ? 'worker' : ($isEmployerAccount ? 'employer' : ($isAdminAccount ? 'admin' : ''))));
 $showDasborPengelola = $isEmployerAccount || $isAdminAccount;
 $profileEmail = (string)($_SESSION['siapkerja_email'] ?? '');
 if ($profileEmail === '' && $isLoggedIn) {
@@ -42,7 +43,7 @@ $activeProjectVacancies = function_exists('gig_project_vacancies') ? gig_project
 $gigTrendingJobs = [];
 foreach ($activeProjectVacancies as $pv) {
     if (($pv['status'] ?? '') === 'active') {
-        $detailTarget = ($role === 'worker')
+        $detailTarget = ($role === 'worker' || $isWorkerAccount)
             ? ('worker-project-detail.php?id=' . urlencode((string)$pv['id']))
             : ('worker-register.php?project_id=' . urlencode((string)$pv['id']));
 
@@ -573,7 +574,7 @@ $testimonials = [
           </div>
         </a>
         <nav class="nav-links" aria-label="Navigasi utama">
-          <a href="#lowongan" class="nav-jobs">Lowongan Pekerjaan <svg class="nav-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></a>
+          <a href="info_lowongan.php" class="nav-jobs">Lowongan Pekerjaan <svg class="nav-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></a>
           <a href="gig-workers-go.php">Gig Workers</a>
           <a href="pilih-jenis-pemberi-kerja.php">Pemberi Kerja</a>
           <a href="#lowongan">Jobfair</a>
@@ -600,6 +601,18 @@ $testimonials = [
                       <h3>Dasbor Admin</h3>
                       <p>Verifikasi pendaftaran Gig Worker, pemberi kerja, dan pengajuan lowongan proyek.</p>
                       <a href="admin-dashboard-go.php" class="dasbor-card-btn">Akses Dasbor</a>
+                    </div>
+                  </div>
+                </article>
+                <article class="dasbor-card">
+                  <div class="dasbor-card-head">
+                    <span class="dasbor-card-icon" aria-hidden="true">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
+                    <div>
+                      <h3>Admin Progressive Profiling</h3>
+                      <p>Kelola kategori dan pertanyaan Profile Completion Nudge (New &amp; Verify).</p>
+                      <a href="dashboard-admin.php?tab=profiling" class="dasbor-card-btn">Kelola Pertanyaan</a>
                     </div>
                   </div>
                 </article>
@@ -678,7 +691,7 @@ $testimonials = [
       <span class="hero-badge">Karirhub oleh Kemnaker</span>
       <h1>Dapatkan pekerjaan dari seluruh dunia</h1>
       <div class="search-shell">
-        <form class="search-bar" action="#lowongan" method="get">
+        <form class="search-bar" action="info_lowongan.php" method="get">
           <label class="search-segment search-segment--job">
             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" name="q" placeholder="Cari pekerjaan yang kamu inginkan" />
@@ -699,12 +712,12 @@ $testimonials = [
       <div>
         <h2>Lowongan kerja yang sedang trending</h2>
         <p>Temukan peluang karier terbaru dari perusahaan terpercaya di seluruh Indonesia.</p>
-        <a class="btn-white" href="#lowongan">Lihat selengkapnya</a>
+        <a class="btn-white" href="info_lowongan.php">Lihat selengkapnya</a>
       </div>
       <div class="job-scroll">
         <?php foreach ($trendingJobs as $job): ?>
           <?php
-            $cardUrl = !empty($job['url']) ? $job['url'] : '#lowongan';
+            $cardUrl = !empty($job['url']) ? $job['url'] : ('info_lowongan.php?q=' . urlencode((string)$job['title']));
           ?>
           <article class="job-card" onclick="window.location.href='<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>'" style="cursor:pointer;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -716,7 +729,7 @@ $testimonials = [
             <h3 style="margin-top:8px;"><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
             <div class="meta"><?php echo htmlspecialchars($job['company'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($job['loc'], ENT_QUOTES, 'UTF-8'); ?></div>
             <div class="pay" style="<?php echo !empty($job['is_gig']) ? 'color:#059669;font-weight:800;' : ''; ?>"><?php echo htmlspecialchars($job['pay'], ENT_QUOTES, 'UTF-8'); ?></div>
-            <a href="<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="detail" style="text-decoration:none;display:inline-block;">Lihat Detail &rarr;</a>
+            <a href="<?php echo htmlspecialchars($cardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="detail" style="text-decoration:none;display:inline-block;">Lihat Detail</a>
           </article>
         <?php endforeach; ?>
       </div>
@@ -728,7 +741,7 @@ $testimonials = [
       <h2 class="section-title">Bidang pekerjaan terpopuler</h2>
       <div class="cat-grid">
         <?php foreach ($categories as $cat): ?>
-          <a href="#lowongan" class="cat-card">
+          <a href="info_lowongan.php?q=<?php echo urlencode($cat['name']); ?>" class="cat-card">
             <div class="ico"><?php echo $cat['icon']; ?></div>
             <div class="name"><?php echo htmlspecialchars($cat['name'], ENT_QUOTES, 'UTF-8'); ?></div>
             <div class="count"><?php echo htmlspecialchars($cat['count'], ENT_QUOTES, 'UTF-8'); ?> lowongan</div>
@@ -736,9 +749,9 @@ $testimonials = [
         <?php endforeach; ?>
       </div>
       <div class="section-links">
-        <a href="#lowongan">Lihat semua bidang pekerjaan</a>
+        <a href="info_lowongan.php">Lihat semua bidang pekerjaan</a>
         ·
-        <a href="#lowongan">Mulai pencarian</a>
+        <a href="info_lowongan.php">Mulai pencarian</a>
       </div>
     </div>
   </section>
@@ -774,11 +787,11 @@ $testimonials = [
     <div class="container loc-cards">
       <article class="loc-card">
         <h3>Temukan banyak kesempatan karir di dalam negeri</h3>
-        <a class="btn-primary" href="#lowongan">Mulai mencari</a>
+        <a class="btn-primary" href="info_lowongan.php">Mulai mencari</a>
       </article>
       <article class="loc-card">
         <h3>Jelajahi dunia dan temukan karir impianmu di luar negeri</h3>
-        <a class="btn-primary" href="#lowongan">Mulai mencari</a>
+        <a class="btn-primary" href="info_lowongan.php">Mulai mencari</a>
       </article>
     </div>
   </section>
@@ -802,7 +815,7 @@ $testimonials = [
     <div class="container">
       <div class="cta-band">
         <h2>Temukan pekerjaan yang diinginkan</h2>
-        <a class="btn-white" href="#lowongan">Cari lowongan sekarang</a>
+        <a class="btn-white" href="info_lowongan.php">Cari lowongan sekarang</a>
       </div>
     </div>
   </section>
@@ -883,5 +896,8 @@ $testimonials = [
       });
     })();
   </script>
+  <?php if ($isLoggedIn): ?>
+    <?php require __DIR__ . '/includes/nudge-widget.php'; ?>
+  <?php endif; ?>
 </body>
 </html>
