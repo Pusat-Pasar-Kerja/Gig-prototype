@@ -80,9 +80,31 @@ declare(strict_types=1);
           background: #e2e8f0;
           color: #334155;
         }
+        .gig-step-item.active {
+          color: #0284c7;
+        }
         .gig-step-item.active .gig-step-dot {
           background: #0ea5e9;
           color: #ffffff;
+        }
+        .gig-step-item.completed {
+          color: #0f172a;
+          cursor: pointer;
+        }
+        .gig-step-item.completed .gig-step-dot {
+          background: #10b981;
+          color: #ffffff;
+        }
+        .gig-step-panel {
+          display: none;
+        }
+        .gig-step-panel.active {
+          display: block;
+          animation: gigStepFadeIn .18s ease;
+        }
+        @keyframes gigStepFadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .gig-step-sep {
           width: 28px;
@@ -299,23 +321,23 @@ declare(strict_types=1);
               <div class="gig-post-head-title">Tambah Lowongan Proyek</div>
               <div class="gig-post-head-sub">Lengkapi form untuk mempublikasikan proyek dan merekrut 1 Gig Workers.</div>
               <div class="gig-stepper">
-                <span class="gig-step-item active"><span class="gig-step-dot">1</span>Informasi Proyek</span>
+                <span class="gig-step-item active" data-step="1" onclick="goToProjectStep(1)"><span class="gig-step-dot">1</span>Informasi Proyek</span>
                 <span class="gig-step-sep"></span>
-                <span class="gig-step-item"><span class="gig-step-dot">2</span>Kriteria Gig Workers</span>
+                <span class="gig-step-item" data-step="2" onclick="goToProjectStep(2)"><span class="gig-step-dot">2</span>Kriteria Gig Workers</span>
                 <span class="gig-step-sep"></span>
-                <span class="gig-step-item"><span class="gig-step-dot">3</span>Tambahan</span>
+                <span class="gig-step-item" data-step="3" onclick="goToProjectStep(3)"><span class="gig-step-dot">3</span>Tambahan</span>
               </div>
             </div>
             <button class="modal-close-btn" type="button" onclick="closePostProjectModal()">&times;</button>
           </div>
-          <form id="newProjectForm" onsubmit="handleCreateProject(event)">
-            <div class="modal-body">
+          <form id="newProjectForm" novalidate onsubmit="handleCreateProject(event)">
+            <div class="modal-body" id="postProjectModalBody">
 
               <div class="gig-form-callout">
                 &#9432; Lowongan akan diverifikasi Admin terlebih dahulu sebelum tayang ke Gig Workers.
               </div>
 
-              <section class="gig-section-card">
+              <section class="gig-section-card gig-step-panel active" data-step="1">
                 <div class="gig-section-head">
                   <span class="gig-section-icon">1</span>
                   <div>
@@ -385,7 +407,7 @@ declare(strict_types=1);
                 </div>
               </section>
 
-              <section class="gig-section-card">
+              <section class="gig-section-card gig-step-panel" data-step="2">
                 <div class="gig-section-head">
                   <span class="gig-section-icon">2</span>
                   <div>
@@ -405,7 +427,7 @@ declare(strict_types=1);
                 </div>
               </section>
 
-              <section class="gig-section-card">
+              <section class="gig-section-card gig-step-panel" data-step="3">
                 <div class="gig-section-head">
                   <span class="gig-section-icon">3</span>
                   <div>
@@ -459,9 +481,13 @@ declare(strict_types=1);
               </section>
 
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
               <button type="button" class="btn-secondary" onclick="closePostProjectModal()">Batal</button>
-              <button type="submit" class="btn-primary">Ajukan untuk Verifikasi &#8594;</button>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button type="button" class="btn-secondary" id="projPrevBtn" onclick="prevProjectStep()" style="display:none;">&#8592; Sebelumnya</button>
+                <button type="button" class="btn-primary" id="projNextBtn" onclick="nextProjectStep()">Selanjutnya &#8594;</button>
+                <button type="submit" class="btn-primary" id="projSubmitBtn" style="display:none;">Ajukan untuk Verifikasi &#8594;</button>
+              </div>
             </div>
           </form>
         </div>
@@ -480,7 +506,129 @@ declare(strict_types=1);
     }
   });
 
+  var currentProjectStep = 1;
+
+  function setProjectStep(step) {
+    currentProjectStep = step;
+    document.querySelectorAll('#newProjectForm .gig-step-panel').forEach(function (panel) {
+      var panelStep = Number(panel.getAttribute('data-step'));
+      panel.classList.toggle('active', panelStep === step);
+    });
+    document.querySelectorAll('#postProjectModal .gig-step-item').forEach(function (item) {
+      var itemStep = Number(item.getAttribute('data-step'));
+      var dot = item.querySelector('.gig-step-dot');
+      item.classList.remove('active', 'completed');
+      if (itemStep < step) {
+        item.classList.add('completed');
+        if (dot) dot.textContent = '✓';
+      } else if (itemStep === step) {
+        item.classList.add('active');
+        if (dot) dot.textContent = String(itemStep);
+      } else {
+        if (dot) dot.textContent = String(itemStep);
+      }
+    });
+    var prevBtn = document.getElementById('projPrevBtn');
+    var nextBtn = document.getElementById('projNextBtn');
+    var submitBtn = document.getElementById('projSubmitBtn');
+    if (prevBtn) prevBtn.style.display = (step > 1) ? 'inline-flex' : 'none';
+    if (nextBtn) nextBtn.style.display = (step < 3) ? 'inline-flex' : 'none';
+    if (submitBtn) submitBtn.style.display = (step === 3) ? 'inline-flex' : 'none';
+
+    var body = document.getElementById('postProjectModalBody');
+    if (body) body.scrollTop = 0;
+  }
+
+  function validateProjectStep(step) {
+    var panel = document.querySelector('#newProjectForm .gig-step-panel[data-step="' + step + '"]');
+    if (!panel) return true;
+
+    var requiredControls = panel.querySelectorAll('[required]');
+    for (var i = 0; i < requiredControls.length; i++) {
+      var ctrl = requiredControls[i];
+      ctrl.setCustomValidity('');
+      if (ctrl.type !== 'checkbox' && ctrl.type !== 'radio' && String(ctrl.value || '').trim() === '') {
+        ctrl.setCustomValidity('Bagian ini wajib diisi.');
+        ctrl.addEventListener('input', function clearValidity() {
+          this.setCustomValidity('');
+          this.removeEventListener('input', clearValidity);
+        });
+        ctrl.reportValidity();
+        ctrl.focus();
+        showToast('Lengkapi semua kolom wajib (*) pada bagian ini sebelum melanjutkan.');
+        return false;
+      }
+      if (!ctrl.checkValidity()) {
+        ctrl.reportValidity();
+        ctrl.focus();
+        return false;
+      }
+    }
+
+    if (step === 1) {
+      var durationInput = document.getElementById('proj_duration_value');
+      var durationValue = Number(durationInput ? durationInput.value : 0);
+      if (!durationValue || durationValue < 1) {
+        if (durationInput) durationInput.focus();
+        showToast('Durasi proyek harus diisi minimal 1.');
+        return false;
+      }
+      var province = (document.getElementById('proj_province').value || '').trim();
+      var city = (document.getElementById('proj_city').value || '').trim();
+      if (!province || !city) {
+        showToast('Lokasi proyek wajib diisi: provinsi dan kota/kabupaten.');
+        return false;
+      }
+    } else if (step === 2) {
+      var skillsInput = document.getElementById('proj_skills');
+      if (!skillsInput || !skillsInput.value.trim()) {
+        if (skillsInput) skillsInput.focus();
+        showToast('Skill wajib harus diisi terlebih dahulu.');
+        return false;
+      }
+    } else if (step === 3) {
+      var salaryInput = document.getElementById('proj_salary');
+      var salaryRaw = salaryInput ? salaryInput.value : '';
+      var salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
+      if (!salaryVal || salaryVal < 10000) {
+        if (salaryInput) salaryInput.focus();
+        showToast('Nilai proyek belum valid. Masukkan nominal nilai proyek minimal Rp 10.000.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function nextProjectStep() {
+    if (!validateProjectStep(currentProjectStep)) return;
+    if (currentProjectStep < 3) {
+      setProjectStep(currentProjectStep + 1);
+    }
+  }
+
+  function prevProjectStep() {
+    if (currentProjectStep > 1) {
+      setProjectStep(currentProjectStep - 1);
+    }
+  }
+
+  function goToProjectStep(targetStep) {
+    if (targetStep === currentProjectStep) return;
+    if (targetStep < currentProjectStep) {
+      setProjectStep(targetStep);
+      return;
+    }
+    for (var s = currentProjectStep; s < targetStep; s++) {
+      if (!validateProjectStep(s)) {
+        if (s !== currentProjectStep) setProjectStep(s);
+        return;
+      }
+    }
+    setProjectStep(targetStep);
+  }
+
   function openPostProjectModal() {
+    setProjectStep(1);
     document.getElementById('postProjectModal').classList.add('open');
   }
   function closePostProjectModal() {
@@ -491,27 +639,28 @@ declare(strict_types=1);
   }
   function handleCreateProject(e) {
     e.preventDefault();
+    if (currentProjectStep < 3) {
+      nextProjectStep();
+      return;
+    }
+    for (var s = 1; s <= 3; s++) {
+      if (!validateProjectStep(s)) {
+        if (s !== currentProjectStep) {
+          setProjectStep(s);
+          validateProjectStep(s);
+        }
+        return;
+      }
+    }
     const title = document.getElementById('proj_title').value;
     const locRadio = document.querySelector('input[name="proj_lokasi_type"]:checked');
     const durationValue = Number(document.getElementById('proj_duration_value').value || 0);
     const durationUnit = document.getElementById('proj_duration_unit').value || 'Minggu';
-    if (!durationValue || durationValue < 1) {
-      showToast('Durasi proyek harus diisi minimal 1.');
-      return;
-    }
     const durationLabel = String(durationValue) + ' ' + String(durationUnit);
     const province = (document.getElementById('proj_province').value || '').trim();
     const city = (document.getElementById('proj_city').value || '').trim();
-    if (!province || !city) {
-      showToast('Lokasi proyek wajib diisi: provinsi dan kota/kabupaten.');
-      return;
-    }
     const salaryRaw = document.getElementById('proj_salary').value || '';
     const salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
-    if (!salaryVal || salaryVal < 10000) {
-      showToast('Nilai proyek belum valid. Masukkan nominal nilai proyek yang sesuai.');
-      return;
-    }
 
     const payload = {
       title: title,
@@ -540,6 +689,7 @@ declare(strict_types=1);
     }).then(function (r) { return r.json(); }).then(function (data) {
       closePostProjectModal();
       document.getElementById('newProjectForm').reset();
+      setProjectStep(1);
       if (data && data.ok) {
         showToast('Lowongan "' + title + '" berhasil diajukan. Menunggu verifikasi Admin KarirHub.');
         setTimeout(function () { window.location.href = 'employer-lowongan.php'; }, 700);
