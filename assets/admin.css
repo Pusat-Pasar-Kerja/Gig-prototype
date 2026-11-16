@@ -670,6 +670,20 @@ a, a:hover, a:focus, a:active, a:visited {
   color: #047857;
 }
 
+.project-req-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 /* ==========================================================================
    ADMIN VERIFICATION DECISION MODAL (MATCHING IMAGES 2, 3, 4 DESIGN)
    ========================================================================== */
