@@ -886,6 +886,25 @@ require __DIR__ . '/includes/employer-layout-start.php';
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Status Verifikasi</span><strong><?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?></strong></div>
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Tipe Pekerjaan</span><strong><?php echo htmlspecialchars((string)($job['workType'] ?? 'Full time / Milestone-based'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
     </div>
+    <?php
+      $empSpecialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
+      if ($empSpecialReq !== null && !empty($empSpecialReq['label'])):
+        $cat = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
+        $tK = (string)($empSpecialReq['type'] ?? '');
+        $tL = (string)($empSpecialReq['type_label'] ?? ($cat[$tK]['label'] ?? $tK));
+    ?>
+    <div style="margin-top:16px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">
+      <div style="font-size:0.75rem;color:#1e40af;font-weight:700;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.04em;">
+        <span>📎</span> Kualifikasi Khusus dari Pelamar (Wajib)
+      </div>
+      <div style="margin-top:6px;font-size:0.92rem;font-weight:700;color:#0f172a;">
+        <?php echo htmlspecialchars((string)$empSpecialReq['label'], ENT_QUOTES, 'UTF-8'); ?>
+      </div>
+      <div style="margin-top:4px;font-size:0.78rem;color:#475569;">
+        Jenis: <strong><?php echo htmlspecialchars($tL, ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Format: <strong><?php echo htmlspecialchars((string)($empSpecialReq['format_hint'] ?? ($cat[$tK]['format_hint'] ?? 'Sesuai format pilihan')), ENT_QUOTES, 'UTF-8'); ?></strong>
+      </div>
+    </div>
+    <?php endif; ?>
     <?php if (!empty($job['deliverables'])): ?>
     <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
       <span style="font-size:0.74rem;color:#64748b;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">Target / Deliverables Proyek</span>

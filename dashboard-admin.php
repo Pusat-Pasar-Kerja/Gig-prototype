@@ -781,7 +781,9 @@ require __DIR__ . '/includes/admin-layout-start.php';
         // Filter vacancies matching search query first
         $vacanciesSearchFiltered = array_values(array_filter($vacancies, static function (array $v) use ($searchQ): bool {
             if ($searchQ === '') return true;
-            $haystack = strtolower(($v['title'] ?? '') . ' ' . ($v['employer'] ?? '') . ' ' . ($v['desc'] ?? ''));
+            $sReq = is_array($v['special_requirement'] ?? null) ? $v['special_requirement'] : null;
+            $sReqExtra = $sReq ? ' ' . ($sReq['label'] ?? '') . ' ' . ($sReq['type_label'] ?? '') . ' kualifikasi khusus sertifikat sertifikasi lisensi' : '';
+            $haystack = strtolower(($v['title'] ?? '') . ' ' . ($v['employer'] ?? '') . ' ' . ($v['desc'] ?? '') . $sReqExtra);
             return str_contains($haystack, strtolower($searchQ));
         }));
 
@@ -919,9 +921,13 @@ require __DIR__ . '/includes/admin-layout-start.php';
 
                   $matchEntity = ($entityFilter === 'all') || ($entityKey === $entityFilter);
 
+                  $sReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
+                  $sReqExtra = $sReq && !empty($sReq['label'])
+                      ? ' ' . ($sReq['label'] ?? '') . ' ' . ($sReq['type_label'] ?? '') . ' ' . ($sReq['type'] ?? '') . ' kualifikasi khusus sertifikat sertifikasi lisensi skk'
+                      : '';
                   $matchSearch = true;
                   if ($searchQ !== '') {
-                      $haystack = strtolower(($job['title'] ?? '') . ' ' . ($job['employer'] ?? '') . ' ' . ($job['desc'] ?? ''));
+                      $haystack = strtolower(($job['title'] ?? '') . ' ' . ($job['employer'] ?? '') . ' ' . ($job['desc'] ?? '') . $sReqExtra);
                       $matchSearch = str_contains($haystack, strtolower($searchQ));
                   }
 
@@ -932,7 +938,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
                 ?>
                 <tr data-status="<?php echo htmlspecialchars($statusKey, ENT_QUOTES, 'UTF-8'); ?>"
                     data-entity="<?php echo htmlspecialchars($entityKey, ENT_QUOTES, 'UTF-8'); ?>"
-                    data-search="<?php echo htmlspecialchars(strtolower(($job['title'] ?? '') . ' ' . ($job['employer'] ?? '') . ' ' . ($job['desc'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>"
+                    data-search="<?php echo htmlspecialchars(strtolower(($job['title'] ?? '') . ' ' . ($job['employer'] ?? '') . ' ' . ($job['desc'] ?? '') . $sReqExtra), ENT_QUOTES, 'UTF-8'); ?>"
                     style="<?php echo $isVisible ? '' : 'display:none;'; ?>">
                   <td class="project-col-title">
                     <div class="project-title-wrap">
@@ -940,6 +946,19 @@ require __DIR__ . '/includes/admin-layout-start.php';
                       <div>
                         <div class="verify-main-text"><?php echo htmlspecialchars((string)$job['title'], ENT_QUOTES, 'UTF-8'); ?></div>
                         <div class="verify-sub-text"><?php echo htmlspecialchars((string)($job['employer'] ?? 'Perusahaan'), ENT_QUOTES, 'UTF-8'); ?></div>
+                        <?php if ($sReq !== null && !empty($sReq['label'])): 
+                          $catalog = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
+                          $tKey = (string)($sReq['type'] ?? '');
+                          $tLabel = (string)($sReq['type_label'] ?? ($catalog[$tKey]['label'] ?? $tKey));
+                        ?>
+                          <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span class="badge-special-req" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;font-size:0.71rem;font-weight:600;padding:2px 8px;border-radius:6px;line-height:1.4;">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              Kualifikasi Khusus: <?php echo htmlspecialchars($tLabel, ENT_QUOTES, 'UTF-8'); ?>
+                              &bull; <span style="font-weight:400;color:#2563eb;"><?php echo htmlspecialchars((string)$sReq['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                          </div>
+                        <?php endif; ?>
                       </div>
                     </div>
                   </td>
