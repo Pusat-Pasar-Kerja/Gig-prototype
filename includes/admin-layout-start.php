@@ -27,13 +27,14 @@ $sidebarTabs = [
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/employer.css" />
-  <link rel="stylesheet" href="assets/admin.css" />
+  <link rel="stylesheet" href="assets/admin.css?v=<?php echo file_exists(__DIR__ . '/../assets/admin.css') ? filemtime(__DIR__ . '/../assets/admin.css') : '1.2'; ?>" />
   <style>
     a, a:hover, a:focus, a:active, a:visited, a * { text-decoration: none !important; }
     .flash { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 0.88rem; font-weight: 600; }
     .flash.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .flash.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     .review-card { background: #fff; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow-xs); }
+    .project-req-chip { display: inline-flex !important; align-items: center !important; gap: 4px !important; padding: 2px 8px !important; border-radius: 9999px !important; font-size: 0.70rem !important; font-weight: 700 !important; background: #eef2ff !important; color: #4338ca !important; border: 1px solid #c7d2fe !important; line-height: 1.3 !important; white-space: nowrap !important; }
     .review-card h3 { font-size: 1rem; margin-bottom: 6px; }
     .review-meta { color: var(--text-muted); font-size: 0.82rem; margin-bottom: 10px; }
     .review-detail { font-size: 0.86rem; color: var(--text-soft); margin-bottom: 12px; line-height: 1.55; }

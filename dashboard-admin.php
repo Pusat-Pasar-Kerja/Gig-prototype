@@ -945,14 +945,15 @@ require __DIR__ . '/includes/admin-layout-start.php';
                       <div class="project-title-avatar"><?php echo htmlspecialchars(strtoupper(substr((string)$job['title'], 0, 1)), ENT_QUOTES, 'UTF-8'); ?></div>
                       <div>
                         <div class="verify-main-text"><?php echo htmlspecialchars((string)$job['title'], ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div class="verify-sub-text" style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
+                        <div class="verify-sub-text" style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
                           <span><?php echo htmlspecialchars((string)($job['employer'] ?? 'Perusahaan'), ENT_QUOTES, 'UTF-8'); ?></span>
                           <?php if ($sReq !== null && !empty($sReq['label'])): 
                             $catalog = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
                             $tKey = (string)($sReq['type'] ?? '');
                             $tLabel = (string)($sReq['type_label'] ?? ($catalog[$tKey]['label'] ?? $tKey));
                           ?>
-                            <span class="project-req-chip" title="<?php echo htmlspecialchars($tLabel . ': ' . (string)$sReq['label'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <span class="project-req-chip" title="<?php echo htmlspecialchars($tLabel . ': ' . (string)$sReq['label'], ENT_QUOTES, 'UTF-8'); ?>" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:9999px;font-size:0.70rem;font-weight:700;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;line-height:1.3;white-space:nowrap;">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                               Kualifikasi Khusus
                             </span>
                           <?php endif; ?>
