@@ -57,14 +57,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
             $mode = (string)$specialReq['input_mode'];
             $reqLabel = (string)($specialReq['label'] ?? 'Kualifikasi Khusus');
             if ($mode === 'file') {
+                $formatHint = !empty($specialReq['format_hint']) ? ' (' . $specialReq['format_hint'] . ')' : '';
                 if (empty($_FILES['special_req_file']) || ($_FILES['special_req_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                    $validationError = 'Anda wajib mengunggah file untuk "' . $reqLabel . '" (format PDF atau gambar JPG/PNG).';
+                    $validationError = 'Anda wajib mengunggah file untuk "' . $reqLabel . '"' . $formatHint . '.';
                 } else {
                     $origName = (string)($_FILES['special_req_file']['name'] ?? 'file');
                     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
                     $size = (int)($_FILES['special_req_file']['size'] ?? 0);
-                    if (!in_array($ext, ['pdf', 'jpg', 'jpeg', 'png'], true)) {
-                        $validationError = 'Format file tidak didukung. Harap unggah PDF, JPG, atau PNG.';
+
+                    $allowedExts = ['pdf', 'jpg', 'jpeg', 'png'];
+                    if (!empty($specialReq['allowed_exts']) && is_array($specialReq['allowed_exts'])) {
+                        $allowedExts = array_values(array_map('strtolower', $specialReq['allowed_exts']));
+                    } elseif (!empty($specialReq['accept'])) {
+                        $parsed = array_filter(array_map(fn($x) => ltrim(trim($x), '.'), explode(',', (string)$specialReq['accept'])));
+                        if ($parsed !== []) {
+                            $allowedExts = array_values(array_map('strtolower', $parsed));
+                        }
+                    }
+
+                    if (!in_array($ext, $allowedExts, true)) {
+                        $formatDesc = (string)($specialReq['file_type_label'] ?? strtoupper(implode(', ', $allowedExts)));
+                        $validationError = 'Format file tidak didukung. Pemberi kerja mensyaratkan berkas: ' . $formatDesc . '.';
                     } elseif ($size > 5 * 1024 * 1024) {
                         $validationError = 'Ukuran file maksimal 5 MB.';
                     } else {
@@ -530,7 +543,9 @@ require __DIR__ . '/includes/worker-layout-start.php';
           $detailSpecialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
           if ($detailSpecialReq !== null && !empty($detailSpecialReq['label'])):
             $dReqMode = (string)($detailSpecialReq['input_mode'] ?? 'text');
-            $dReqFormat = $dReqMode === 'file' ? 'Upload File (PDF / Gambar JPG, PNG)' : ($dReqMode === 'url' ? 'Tautan URL' : ($dReqMode === 'textarea' ? 'Teks / Jawaban Singkat' : 'Teks / Username'));
+            $dReqFormat = !empty($detailSpecialReq['format_hint'])
+                ? (string)$detailSpecialReq['format_hint']
+                : ($dReqMode === 'file' ? 'Upload File (PDF / Gambar JPG, PNG)' : ($dReqMode === 'url' ? 'Tautan URL' : ($dReqMode === 'textarea' ? 'Teks / Jawaban Singkat' : 'Teks / Username')));
         ?>
           <div style="margin-top: 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 14px;">
             <div style="font-size: 0.74rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">

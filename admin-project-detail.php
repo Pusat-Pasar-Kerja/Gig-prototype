@@ -183,11 +183,15 @@ require __DIR__ . '/includes/admin-layout-start.php';
   $reqTypesCatalog = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
   $reqTypeKey = $specialReq !== null ? (string)($specialReq['type'] ?? '') : '';
   $reqTypeLabel = $specialReq !== null ? (string)($specialReq['type_label'] ?? ($reqTypesCatalog[$reqTypeKey]['label'] ?? $reqTypeKey)) : '';
-  $reqFormatHint = $specialReq !== null ? (string)($reqTypesCatalog[$reqTypeKey]['format_hint'] ?? (
-      ($specialReq['input_mode'] ?? '') === 'file' ? 'Upload File (PDF atau Gambar JPG/PNG)' :
-      (($specialReq['input_mode'] ?? '') === 'url' ? 'Tautan URL' :
-      (($specialReq['input_mode'] ?? '') === 'textarea' ? 'Teks Panjang' : 'Teks Bebas'))
-  )) : '';
+  $reqFormatHint = $specialReq !== null ? (string)(
+      !empty($specialReq['format_hint']) ? $specialReq['format_hint'] : (
+          $reqTypesCatalog[$reqTypeKey]['format_hint'] ?? (
+              ($specialReq['input_mode'] ?? '') === 'file' ? 'Upload File (PDF atau Gambar JPG/PNG)' :
+              (($specialReq['input_mode'] ?? '') === 'url' ? 'Tautan URL' :
+              (($specialReq['input_mode'] ?? '') === 'textarea' ? 'Teks Panjang' : 'Teks Bebas'))
+          )
+      )
+  ) : '';
 ?>
 <section class="req-page">
   <article class="req-hero">

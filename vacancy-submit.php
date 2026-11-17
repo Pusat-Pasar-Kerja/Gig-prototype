@@ -56,37 +56,73 @@ $specialReq = null;
 $rawSpecial = $payload['special_requirement'] ?? null;
 if (is_array($rawSpecial)) {
     $reqTypes = gig_special_requirement_types();
+    $fileFormats = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
     $reqTypeKey = trim((string)($rawSpecial['type'] ?? ''));
     $reqLabel = trim((string)($rawSpecial['label'] ?? ''));
     if ($reqTypeKey !== '' && isset($reqTypes[$reqTypeKey]) && $reqLabel !== '') {
         $meta = $reqTypes[$reqTypeKey];
-        $inputMode = (string)($meta['input_mode'] ?? 'text');
-        $accept = (string)($meta['accept'] ?? '');
-        $formatHint = (string)($meta['format_hint'] ?? '');
-        $workerHint = (string)($meta['worker_hint'] ?? '');
-        $fileType = null;
-        $fileTypeLabel = null;
-        $allowedExts = null;
+        $chosenInputType = trim((string)($rawSpecial['input_type'] ?? ''));
 
-        if ($inputMode === 'file') {
-            $fileFormats = gig_special_req_file_formats();
-            $chosenFormat = trim((string)($rawSpecial['file_type'] ?? 'pdf_image'));
-            if (!isset($fileFormats[$chosenFormat])) {
-                $chosenFormat = 'pdf_image';
-            }
-            $fMeta = $fileFormats[$chosenFormat];
-            $fileType = $chosenFormat;
+        if (str_starts_with($chosenInputType, 'file_') || in_array($chosenInputType, ['file', 'pdf_image', 'pdf_only', 'image_only', 'any_doc'], true)) {
+            $inputMode = 'file';
+            $fileFormatKey = match ($chosenInputType) {
+                'file_pdf', 'pdf_only' => 'pdf_only',
+                'file_image', 'image_only' => 'image_only',
+                'file_any', 'any_doc' => 'any_doc',
+                default => 'pdf_image',
+            };
+            $fMeta = $fileFormats[$fileFormatKey] ?? [
+                'label'        => 'PDF atau Gambar (PDF, JPG, PNG)',
+                'accept'       => '.pdf,.jpg,.jpeg,.png',
+                'format_hint'  => 'Upload File (PDF atau Gambar JPG/PNG)',
+                'worker_hint'  => 'Unggah dokumen dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+                'allowed_exts' => ['pdf', 'jpg', 'jpeg', 'png'],
+            ];
+            $fileType = $fileFormatKey;
             $fileTypeLabel = $fMeta['label'];
             $accept = $fMeta['accept'];
             $formatHint = $fMeta['format_hint'];
             $workerHint = $fMeta['worker_hint'];
             $allowedExts = $fMeta['allowed_exts'];
+        } elseif ($chosenInputType === 'url') {
+            $inputMode = 'url';
+            $fileType = null;
+            $fileTypeLabel = null;
+            $accept = '';
+            $formatHint = 'Tautan URL Online';
+            $workerHint = 'Masukkan tautan URL valid menuju portofolio atau repositori Anda.';
+            $allowedExts = null;
+        } elseif ($chosenInputType === 'textarea') {
+            $inputMode = 'textarea';
+            $fileType = null;
+            $fileTypeLabel = null;
+            $accept = '';
+            $formatHint = 'Teks Panjang (Jawaban / Studi Kasus)';
+            $workerHint = 'Tuliskan jawaban atau penjelasan Anda pada kolom teks yang disediakan.';
+            $allowedExts = null;
+        } elseif ($chosenInputType === 'text') {
+            $inputMode = 'text';
+            $fileType = null;
+            $fileTypeLabel = null;
+            $accept = '';
+            $formatHint = 'Teks Bebas Singkat';
+            $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
+            $allowedExts = null;
+        } else {
+            $inputMode = (string)($meta['input_mode'] ?? 'file');
+            $fileType = $inputMode === 'file' ? 'pdf_image' : null;
+            $fileTypeLabel = $inputMode === 'file' ? 'PDF atau Gambar (PDF, JPG, PNG)' : null;
+            $accept = (string)($meta['accept'] ?? '');
+            $formatHint = (string)($meta['format_hint'] ?? '');
+            $workerHint = (string)($meta['worker_hint'] ?? '');
+            $allowedExts = $inputMode === 'file' ? ['pdf', 'jpg', 'jpeg', 'png'] : null;
         }
 
         $specialReq = [
             'type'            => $reqTypeKey,
             'type_label'      => $meta['label'],
             'label'           => $reqLabel,
+            'input_type'      => $chosenInputType !== '' ? $chosenInputType : ($inputMode === 'file' ? 'file_pdf_image' : $inputMode),
             'input_mode'      => $inputMode,
             'file_type'       => $fileType,
             'file_type_label' => $fileTypeLabel,

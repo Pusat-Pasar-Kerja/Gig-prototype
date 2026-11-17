@@ -525,13 +525,26 @@ declare(strict_types=1);
                 </div>
 
                 <div id="projSpecialReqDetails" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;">
-                  <div class="form-row" style="margin-bottom: 8px;">
+                  <div class="form-row" style="margin-bottom: 10px;">
                     <label for="proj_special_req_label">Detail / Nama Kualifikasi yang Diminta *</label>
                     <input type="text" id="proj_special_req_label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
                   </div>
+                  <div class="form-row" style="margin-bottom: 10px;">
+                    <label for="proj_special_req_input_type">Tipe Input / Format Berkas untuk Pelamar *</label>
+                    <select id="proj_special_req_input_type" onchange="syncSpecialReqInputType()">
+                      <option value="file_pdf_image" data-mode="file" data-accept=".pdf,.jpg,.jpeg,.png" data-hint="Upload File (PDF atau Gambar JPG/PNG, maks. 5 MB)">Upload File — PDF atau Gambar (PDF, JPG, PNG)</option>
+                      <option value="file_pdf" data-mode="file" data-accept=".pdf" data-hint="Upload File (Khusus Dokumen PDF .pdf, maks. 5 MB)">Upload File — Khusus Dokumen PDF (.pdf)</option>
+                      <option value="file_image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Upload File (Khusus Gambar JPG/JPEG/PNG, maks. 5 MB)">Upload File — Khusus Gambar (JPG, JPEG, PNG)</option>
+                      <option value="file_any" data-mode="file" data-accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" data-hint="Upload File (Dokumen PDF/Word &amp; Gambar, maks. 5 MB)">Upload File — Dokumen &amp; Gambar (PDF, DOC/DOCX, JPG, PNG)</option>
+                      <option value="url" data-mode="url" data-accept="" data-hint="Tautan URL Online (GitHub, Portofolio Web, Google Drive)">Tautan / URL Online (GitHub, Portofolio, Drive)</option>
+                      <option value="text" data-mode="text" data-accept="" data-hint="Teks Bebas Singkat (Username Akun, ID Sertifikat, dll.)">Teks Bebas Singkat (Username, Nomor Lisensi)</option>
+                      <option value="textarea" data-mode="textarea" data-accept="" data-hint="Teks Panjang (Jawaban Pertanyaan / Studi Kasus Singkat)">Teks Panjang (Jawaban / Studi Kasus)</option>
+                    </select>
+                    <div class="gig-note" style="margin-top: 3px;">Pilih jenis input atau format berkas yang wajib disediakan oleh Gig Worker saat melamar proyek ini.</div>
+                  </div>
                   <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
                     <span>&#128206;</span>
-                    <span>Format input untuk Gig Worker: <strong id="projSpecialReqFormatPreview">-</strong></span>
+                    <span>Format input untuk Gig Worker: <strong id="projSpecialReqFormatPreview">Upload File (PDF atau Gambar JPG/PNG)</strong></span>
                   </div>
                 </div>
 
@@ -670,11 +683,20 @@ declare(strict_types=1);
     return true;
   }
 
+  function syncSpecialReqInputType() {
+    var inputTypeSel = document.getElementById('proj_special_req_input_type');
+    var preview = document.getElementById('projSpecialReqFormatPreview');
+    if (!inputTypeSel || !preview) return;
+    var opt = inputTypeSel.options[inputTypeSel.selectedIndex];
+    var hint = opt ? (opt.getAttribute('data-hint') || 'Upload File') : 'Upload File';
+    preview.textContent = hint;
+  }
+
   function syncSpecialReqUI() {
     var sel = document.getElementById('proj_special_req_type');
     var box = document.getElementById('projSpecialReqDetails');
     var labelInput = document.getElementById('proj_special_req_label');
-    var preview = document.getElementById('projSpecialReqFormatPreview');
+    var inputTypeSel = document.getElementById('proj_special_req_input_type');
     if (!sel || !box) return;
     if (sel.value === '') {
       box.style.display = 'none';
@@ -682,10 +704,25 @@ declare(strict_types=1);
       return;
     }
     var opt = sel.options[sel.selectedIndex];
-    var formatHint = opt ? (opt.getAttribute('data-format') || '-') : '-';
     var placeholder = opt ? (opt.getAttribute('data-placeholder') || '') : '';
-    if (preview) preview.textContent = formatHint;
+    var defaultInputMode = opt ? (opt.getAttribute('data-input-mode') || 'file') : 'file';
+
+    if (inputTypeSel) {
+      if (defaultInputMode === 'url') {
+        inputTypeSel.value = 'url';
+      } else if (defaultInputMode === 'textarea') {
+        inputTypeSel.value = 'textarea';
+      } else if (defaultInputMode === 'text') {
+        inputTypeSel.value = 'text';
+      } else {
+        if (!inputTypeSel.value || !inputTypeSel.value.startsWith('file_')) {
+          inputTypeSel.value = 'file_pdf_image';
+        }
+      }
+    }
+
     if (labelInput && placeholder) labelInput.placeholder = placeholder;
+    syncSpecialReqInputType();
     box.style.display = 'block';
   }
 
@@ -755,11 +792,22 @@ declare(strict_types=1);
 
     var reqTypeEl = document.getElementById('proj_special_req_type');
     var reqLabelEl = document.getElementById('proj_special_req_label');
+    var reqInputTypeEl = document.getElementById('proj_special_req_input_type');
     var specialRequirement = null;
     if (reqTypeEl && reqTypeEl.value !== '' && reqLabelEl && reqLabelEl.value.trim() !== '') {
+      var chosenOpt = reqInputTypeEl ? reqInputTypeEl.options[reqInputTypeEl.selectedIndex] : null;
+      var chosenMode = chosenOpt ? chosenOpt.getAttribute('data-mode') : 'file';
+      var chosenAccept = chosenOpt ? chosenOpt.getAttribute('data-accept') : '.pdf,.jpg,.jpeg,.png';
+      var chosenHint = chosenOpt ? chosenOpt.getAttribute('data-hint') : 'Upload File';
+      var chosenVal = reqInputTypeEl ? reqInputTypeEl.value : 'file_pdf_image';
+
       specialRequirement = {
         type: reqTypeEl.value,
-        label: reqLabelEl.value.trim()
+        label: reqLabelEl.value.trim(),
+        input_type: chosenVal,
+        input_mode: chosenMode,
+        accept: chosenAccept,
+        format_hint: chosenHint
       };
     }
 
