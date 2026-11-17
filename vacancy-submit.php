@@ -60,13 +60,40 @@ if (is_array($rawSpecial)) {
     $reqLabel = trim((string)($rawSpecial['label'] ?? ''));
     if ($reqTypeKey !== '' && isset($reqTypes[$reqTypeKey]) && $reqLabel !== '') {
         $meta = $reqTypes[$reqTypeKey];
+        $inputMode = (string)($meta['input_mode'] ?? 'text');
+        $accept = (string)($meta['accept'] ?? '');
+        $formatHint = (string)($meta['format_hint'] ?? '');
+        $workerHint = (string)($meta['worker_hint'] ?? '');
+        $fileType = null;
+        $fileTypeLabel = null;
+        $allowedExts = null;
+
+        if ($inputMode === 'file') {
+            $fileFormats = gig_special_req_file_formats();
+            $chosenFormat = trim((string)($rawSpecial['file_type'] ?? 'pdf_image'));
+            if (!isset($fileFormats[$chosenFormat])) {
+                $chosenFormat = 'pdf_image';
+            }
+            $fMeta = $fileFormats[$chosenFormat];
+            $fileType = $chosenFormat;
+            $fileTypeLabel = $fMeta['label'];
+            $accept = $fMeta['accept'];
+            $formatHint = $fMeta['format_hint'];
+            $workerHint = $fMeta['worker_hint'];
+            $allowedExts = $fMeta['allowed_exts'];
+        }
+
         $specialReq = [
-            'type'        => $reqTypeKey,
-            'type_label'  => $meta['label'],
-            'label'       => $reqLabel,
-            'input_mode'  => $meta['input_mode'],
-            'accept'      => $meta['accept'],
-            'worker_hint' => $meta['worker_hint'],
+            'type'            => $reqTypeKey,
+            'type_label'      => $meta['label'],
+            'label'           => $reqLabel,
+            'input_mode'      => $inputMode,
+            'file_type'       => $fileType,
+            'file_type_label' => $fileTypeLabel,
+            'accept'          => $accept,
+            'format_hint'     => $formatHint,
+            'worker_hint'     => $workerHint,
+            'allowed_exts'    => $allowedExts,
         ];
     }
 }

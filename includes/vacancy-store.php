@@ -99,6 +99,47 @@ function gig_special_requirement_types(): array
     ];
 }
 
+/**
+ * Supported file format options when an employer requires file uploads for special qualifications.
+ */
+function gig_special_req_file_formats(): array
+{
+    return [
+        'pdf_image' => [
+            'label'        => 'PDF atau Gambar (PDF, JPG, PNG)',
+            'short_label'  => 'PDF atau Gambar',
+            'accept'       => '.pdf,.jpg,.jpeg,.png',
+            'allowed_exts' => ['pdf', 'jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Upload File (PDF atau Gambar JPG/PNG)',
+            'worker_hint'  => 'Unggah dokumen dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+        ],
+        'pdf_only' => [
+            'label'        => 'Hanya Dokumen PDF (.pdf)',
+            'short_label'  => 'Hanya Dokumen PDF',
+            'accept'       => '.pdf',
+            'allowed_exts' => ['pdf'],
+            'format_hint'  => 'Upload File (Khusus Dokumen PDF)',
+            'worker_hint'  => 'Unggah dokumen resmi khusus dalam format PDF (.pdf, maks. 5 MB).',
+        ],
+        'image_only' => [
+            'label'        => 'Hanya Gambar (JPG, JPEG, PNG)',
+            'short_label'  => 'Hanya Gambar',
+            'accept'       => '.jpg,.jpeg,.png',
+            'allowed_exts' => ['jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Upload File (Khusus Gambar JPG/PNG)',
+            'worker_hint'  => 'Unggah foto/gambar dokumen dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+        ],
+        'any_doc' => [
+            'label'        => 'Dokumen & Gambar (PDF, DOC/DOCX, JPG, PNG)',
+            'short_label'  => 'Dokumen (PDF/DOCX) & Gambar',
+            'accept'       => '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+            'allowed_exts' => ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Upload File (PDF, DOC/DOCX, atau Gambar)',
+            'worker_hint'  => 'Unggah berkas dokumen dalam format PDF, Word (DOC/DOCX), atau gambar (maks. 5 MB).',
+        ],
+    ];
+}
+
 function gig_vacancy_add_business_days(DateTimeImmutable $start, int $days): DateTimeImmutable
 {
     $cursor = $start;
@@ -460,6 +501,39 @@ function gig_vacancy_normalize(array $vacancy): array
 
     $vacancy['vacancy_type'] = $vacancyType;
     $vacancy['entity_type']  = $entityType;
+
+    if (isset($vacancy['special_requirement']) && is_array($vacancy['special_requirement'])) {
+        $sReq = $vacancy['special_requirement'];
+        $type = (string)($sReq['type'] ?? '');
+        $typesCatalog = gig_special_requirement_types();
+        if ($type !== '' && isset($typesCatalog[$type])) {
+            $baseMeta = $typesCatalog[$type];
+            $sReq['type_label'] = (string)($sReq['type_label'] ?? $baseMeta['label']);
+            $sReq['input_mode'] = (string)($sReq['input_mode'] ?? $baseMeta['input_mode']);
+            if ($sReq['input_mode'] === 'file') {
+                $fileFormats = gig_special_req_file_formats();
+                $fileType = (string)($sReq['file_type'] ?? 'pdf_image');
+                if (!isset($fileFormats[$fileType])) {
+                    $fileType = 'pdf_image';
+                }
+                $fileMeta = $fileFormats[$fileType];
+                $sReq['file_type'] = $fileType;
+                $sReq['file_type_label'] = (string)($sReq['file_type_label'] ?? $fileMeta['label']);
+                if (empty($sReq['accept']) || $sReq['accept'] === $baseMeta['accept']) {
+                    $sReq['accept'] = $fileMeta['accept'];
+                }
+                if (empty($sReq['format_hint']) || $sReq['format_hint'] === $baseMeta['format_hint']) {
+                    $sReq['format_hint'] = $fileMeta['format_hint'];
+                }
+                if (empty($sReq['worker_hint']) || $sReq['worker_hint'] === $baseMeta['worker_hint']) {
+                    $sReq['worker_hint'] = $fileMeta['worker_hint'];
+                }
+                $sReq['allowed_exts'] = $fileMeta['allowed_exts'];
+            }
+            $vacancy['special_requirement'] = $sReq;
+        }
+    }
+
     return $vacancy;
 }
 
