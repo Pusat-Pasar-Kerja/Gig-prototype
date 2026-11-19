@@ -283,7 +283,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
             <div class="req-label">Kualifikasi Khusus Pelamar</div>
-            <button type="button" onclick="openAdminEditSpecialReqModal()" style="background:none;border:none;color:#0284c7;font-size:0.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">✏️ Atur</button>
+            <button type="button" onclick="openAdminEditSpecialReqModal()" style="background:none;border:none;color:#0284c7;font-size:0.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">✏️ Edit</button>
           </div>
           <?php if ($specialReq !== null && !empty($specialReq['label'])): 
             $topIsPub = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
@@ -375,7 +375,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
             </div>
           </div>
           <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:7px 14px;font-size:0.78rem;font-weight:700;border-radius:8px;display:inline-flex;align-items:center;gap:6px;" onclick="openAdminEditSpecialReqModal()">
-            ✏️ Ubah Persyaratan &amp; Tampilan
+            ✏️ Edit
           </button>
         </div>
 
@@ -414,11 +414,11 @@ require __DIR__ . '/includes/admin-layout-start.php';
                 <input type="hidden" name="vacancy_id" value="<?php echo htmlspecialchars((string)$vacancy['id'], ENT_QUOTES, 'UTF-8'); ?>" />
                 <?php if ($isPublicVal): ?>
                   <button type="submit" onclick="return confirm('Sembunyikan kualifikasi khusus ini dari rincian lowongan publik?')" style="background:#ffffff;border:1.5px solid #cbd5e1;color:#475569;font-weight:700;font-size:0.80rem;padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#ffffff'">
-                    🔒 Sembunyikan dari Publik
+                    🔒 Sembunyikan
                   </button>
                 <?php else: ?>
                   <button type="submit" onclick="return confirm('Tampilkan kualifikasi khusus ini secara publik di halaman lowongan & bursa kerja?')" style="background:#16a34a;border:1px solid #15803d;color:#ffffff;font-weight:700;font-size:0.80rem;padding:8px 16px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.1);transition:all 0.15s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
-                    🌐 Tampilkan ke Publik Sekarang
+                    🌐 Tampilkan
                   </button>
                 <?php endif; ?>
               </form>
@@ -445,7 +445,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
               <div style="font-weight:700;color:#475569;font-size:0.86rem;">Tidak Ada Kualifikasi Khusus</div>
               <div style="font-size:0.76rem;color:#64748b;margin-top:2px;">Pemberi kerja hanya memerlukan berkas lamaran standar. Admin dapat menambahkan syarat jika diperlukan.</div>
             </div>
-            <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:7px 14px;font-size:0.78rem;font-weight:700;" onclick="openAdminEditSpecialReqModal()">+ Tambah Syarat</button>
+            <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:7px 14px;font-size:0.78rem;font-weight:700;" onclick="openAdminEditSpecialReqModal()">+ Tambah</button>
           </div>
         <?php endif; ?>
       </div>
@@ -482,14 +482,14 @@ require __DIR__ . '/includes/admin-layout-start.php';
 
 
 <!-- ADMIN EDIT SPECIAL REQUIREMENT MODAL -->
-<div id="adminEditSpecialReqModal" class="decision-modal-backdrop" onclick="handleAdminEditBackdrop(event)" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
-  <div class="decision-modal" onclick="event.stopPropagation();" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.2);overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+<div id="adminEditSpecialReqModal" onclick="handleAdminEditBackdrop(event)" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;background:rgba(15,23,42,0.65);backdrop-filter:blur(3px);z-index:99999;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+  <div onclick="event.stopPropagation();" style="max-width:540px;width:100%;background:#ffffff;border-radius:16px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);overflow:hidden;display:flex;flex-direction:column;max-height:92vh;position:relative;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
       <div>
-        <div style="font-size:1.05rem;font-weight:800;color:#0f172a;">Edit Kualifikasi Khusus Lowongan</div>
-        <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">Ubah input pemberi kerja, sesuaikan format berkas, atau nonaktifkan persyaratan.</div>
+        <div style="font-size:1.05rem;font-weight:800;color:#0f172a;">Edit Kualifikasi Khusus</div>
+        <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">Ubah syarat kualifikasi atau atur visibilitasnya.</div>
       </div>
-      <button type="button" onclick="closeAdminEditSpecialReqModal()" style="border:none;background:none;font-size:1.4rem;line-height:1;color:#64748b;cursor:pointer;" aria-label="Tutup">&times;</button>
+      <button type="button" onclick="closeAdminEditSpecialReqModal()" style="border:none;background:none;font-size:1.4rem;line-height:1;color:#64748b;cursor:pointer;padding:0 4px;" aria-label="Tutup">&times;</button>
     </div>
 
     <form method="post" id="adminEditSpecialReqForm" style="display:flex;flex-direction:column;flex:1;overflow-y:auto;padding:20px;gap:14px;">
@@ -606,7 +606,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
 
       <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding-top:14px;border-top:1px solid #e2e8f0;margin-top:6px;">
         <button type="button" onclick="closeAdminEditSpecialReqModal()" style="padding:9px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#ffffff;font-size:0.82rem;font-weight:700;color:#475569;cursor:pointer;">Batal</button>
-        <button type="submit" style="padding:9px 18px;border-radius:8px;border:none;background:#0ea5e9;color:#ffffff;font-size:0.82rem;font-weight:700;cursor:pointer;">Simpan Perubahan</button>
+        <button type="submit" style="padding:9px 20px;border-radius:8px;border:none;background:#0ea5e9;color:#ffffff;font-size:0.82rem;font-weight:700;cursor:pointer;">Simpan</button>
       </div>
     </form>
   </div>
@@ -617,16 +617,22 @@ require __DIR__ . '/includes/admin-layout-start.php';
     var modal = document.getElementById('adminEditSpecialReqModal');
     if (modal) {
       modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
       var chk = document.getElementById('admin_req_enabled');
       toggleAdminReqFields(chk ? chk.checked : true);
     }
   }
   function closeAdminEditSpecialReqModal() {
     var modal = document.getElementById('adminEditSpecialReqModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
   }
   function handleAdminEditBackdrop(e) {
-    if (e.target.id === 'adminEditSpecialReqModal') closeAdminEditSpecialReqModal();
+    if (e.target.id === 'adminEditSpecialReqModal') {
+      closeAdminEditSpecialReqModal();
+    }
   }
   function toggleAdminReqFields(enabled) {
     var wrap = document.getElementById('adminReqFieldsWrap');
