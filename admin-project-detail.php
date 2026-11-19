@@ -450,8 +450,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
           ?>
           <select name="special_req_input_type" id="admin_req_input_type" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
             <option value="pdf" <?php echo $currInputType === 'pdf' ? 'selected' : ''; ?>>PDF (.pdf, maks. 5 MB)</option>
-            <option value="jpg" <?php echo in_array($currInputType, ['jpg', 'jpeg'], true) ? 'selected' : ''; ?>>JPG (.jpg, .jpeg, maks. 5 MB)</option>
-            <option value="png" <?php echo $currInputType === 'png' ? 'selected' : ''; ?>>PNG (.png, maks. 5 MB)</option>
+            <option value="image" <?php echo in_array($currInputType, ['image', 'jpg', 'jpeg', 'png'], true) ? 'selected' : ''; ?>>Gambar (JPG, JPEG, PNG, maks. 5 MB)</option>
             <option value="doc" <?php echo in_array($currInputType, ['doc', 'docx'], true) ? 'selected' : ''; ?>>DOC / DOCX (.doc, .docx, maks. 5 MB)</option>
             <option value="url" <?php echo $currInputType === 'url' ? 'selected' : ''; ?>>Link / URL</option>
             <option value="text" <?php echo in_array($currInputType, ['text', 'textarea'], true) ? 'selected' : ''; ?>>Text</option>

@@ -705,10 +705,9 @@ declare(strict_types=1);
                     <div class="form-row" style="margin-bottom: 12px;">
                       <label for="proj_special_req_input_type">Tipe Input / Format Berkas untuk Pelamar *</label>
                       <select id="proj_special_req_input_type" onchange="syncSpecialReqInputType()">
-                        <option value="pdf" data-mode="file" data-accept=".pdf" data-hint="PDF (.pdf, maks. 5 MB)">PDF</option>
-                        <option value="jpg" data-mode="file" data-accept=".jpg,.jpeg" data-hint="JPG (.jpg, .jpeg, maks. 5 MB)">JPG</option>
-                        <option value="png" data-mode="file" data-accept=".png" data-hint="PNG (.png, maks. 5 MB)">PNG</option>
-                        <option value="doc" data-mode="file" data-accept=".doc,.docx" data-hint="DOC / DOCX (.doc, .docx, maks. 5 MB)">DOC / DOCX</option>
+                        <option value="pdf" data-mode="file" data-accept=".pdf" data-hint="PDF (.pdf, maks. 5 MB)">PDF (.pdf)</option>
+                        <option value="image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Gambar JPG, JPEG, PNG (maks. 5 MB)">Gambar (JPG, JPEG, PNG)</option>
+                        <option value="doc" data-mode="file" data-accept=".doc,.docx" data-hint="DOC / DOCX (.doc, .docx, maks. 5 MB)">DOC / DOCX (.doc, .docx)</option>
                         <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
                         <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
                       </select>
@@ -920,7 +919,7 @@ declare(strict_types=1);
       } else if (defaultInputMode === 'textarea' || defaultInputMode === 'text') {
         inputTypeSel.value = 'text';
       } else {
-        if (!inputTypeSel.value || !['pdf', 'jpg', 'png', 'doc'].includes(inputTypeSel.value)) {
+        if (!inputTypeSel.value || !['pdf', 'image', 'doc', 'jpg', 'png'].includes(inputTypeSel.value)) {
           inputTypeSel.value = 'pdf';
         }
       }

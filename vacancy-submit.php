@@ -72,22 +72,14 @@ if (is_array($rawSpecial)) {
             $formatHint = 'PDF (.pdf)';
             $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
             $allowedExts = ['pdf'];
-        } elseif ($chosenKey === 'jpg' || in_array($chosenKey, ['jpeg', 'file_image', 'image_only'], true)) {
+        } elseif (in_array($chosenKey, ['image', 'jpg', 'jpeg', 'png', 'file_image', 'image_only'], true)) {
             $inputMode = 'file';
-            $fileType = 'jpg';
-            $fileTypeLabel = 'JPG';
-            $accept = '.jpg,.jpeg';
-            $formatHint = 'JPG (.jpg, .jpeg)';
-            $workerHint = 'Unggah gambar dalam format JPG / JPEG (maks. 5 MB).';
-            $allowedExts = ['jpg', 'jpeg'];
-        } elseif ($chosenKey === 'png') {
-            $inputMode = 'file';
-            $fileType = 'png';
-            $fileTypeLabel = 'PNG';
-            $accept = '.png';
-            $formatHint = 'PNG (.png)';
-            $workerHint = 'Unggah gambar dalam format PNG (maks. 5 MB).';
-            $allowedExts = ['png'];
+            $fileType = 'image';
+            $fileTypeLabel = 'Gambar (JPG, JPEG, PNG)';
+            $accept = '.jpg,.jpeg,.png';
+            $formatHint = 'Gambar (JPG, JPEG, PNG)';
+            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).';
+            $allowedExts = ['jpg', 'jpeg', 'png'];
         } elseif ($chosenKey === 'doc' || in_array($chosenKey, ['docx', 'file_any', 'any_doc'], true)) {
             $inputMode = 'file';
             $fileType = 'doc';

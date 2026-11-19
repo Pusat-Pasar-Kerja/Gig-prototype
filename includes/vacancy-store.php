@@ -52,17 +52,17 @@ function gig_special_requirement_types(): array
             'label'       => 'Sertifikat / Sertifikasi Keahlian',
             'input_mode'  => 'file',
             'accept'      => '.pdf,.jpg,.jpeg,.png',
-            'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
+            'format_hint' => 'Upload File (PDF atau Gambar)',
             'placeholder' => 'Contoh: Sertifikat AWS Cloud Practitioner / BNSP',
-            'worker_hint' => 'Unggah bukti sertifikat dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+            'worker_hint' => 'Unggah bukti sertifikat dalam format PDF atau gambar (JPG, JPEG, PNG, maks. 5 MB).',
         ],
         'license' => [
             'label'       => 'Lisensi / Surat Izin Praktik / SKK',
             'input_mode'  => 'file',
             'accept'      => '.pdf,.jpg,.jpeg,.png',
-            'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
+            'format_hint' => 'Upload File (PDF atau Gambar)',
             'placeholder' => 'Contoh: SKK Konstruksi / Surat Izin Praktik Aktif',
-            'worker_hint' => 'Unggah dokumen lisensi atau izin resmi dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
+            'worker_hint' => 'Unggah dokumen lisensi atau izin resmi dalam format PDF atau gambar (JPG, JPEG, PNG, maks. 5 MB).',
         ],
         'social_media' => [
             'label'       => 'Username / Akun Media Sosial',
@@ -80,27 +80,11 @@ function gig_special_requirement_types(): array
             'placeholder' => 'Contoh: Link repositori GitHub atau file Figma',
             'worker_hint' => 'Masukkan URL valid menuju portofolio atau repositori Anda.',
         ],
-        'assessment_text' => [
-            'label'       => 'Jawaban Pertanyaan / Studi Kasus Singkat',
-            'input_mode'  => 'textarea',
-            'accept'      => '',
-            'format_hint' => 'Teks Panjang (Jawaban / Penjelasan Singkat)',
-            'placeholder' => 'Contoh: Jelaskan pengalaman Anda menangani proyek serupa',
-            'worker_hint' => 'Tuliskan jawaban atau penjelasan singkat sesuai permintaan pemberi kerja.',
-        ],
-        'other_file' => [
-            'label'       => 'Dokumen Pendukung Lainnya (Surat Referensi, Portofolio PDF)',
-            'input_mode'  => 'file',
-            'accept'      => '.pdf,.jpg,.jpeg,.png',
-            'format_hint' => 'Upload File (PDF atau Gambar JPG/PNG)',
-            'placeholder' => 'Contoh: Surat Referensi Kerja / Dokumen Portofolio PDF',
-            'worker_hint' => 'Unggah dokumen pendukung dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
-        ],
         'other' => [
-            'label'       => 'Lainnya (Tentukan Sendiri)',
+            'label'       => 'Lainnya',
             'input_mode'  => 'file',
             'accept'      => '.pdf,.jpg,.jpeg,.png,.doc,.docx',
-            'format_hint' => 'Upload File (PDF / Gambar / Dokumen)',
+            'format_hint' => 'Upload Berkas atau Tautan',
             'placeholder' => 'Contoh: Tuliskan nama kualifikasi atau berkas khusus yang diminta',
             'worker_hint' => 'Sediakan kualifikasi atau dokumen sesuai ketentuan yang diminta.',
         ],
@@ -114,56 +98,72 @@ function gig_special_req_file_formats(): array
 {
     return [
         'pdf' => [
-            'label'        => 'PDF',
+            'label'        => 'PDF (.pdf)',
             'short_label'  => 'PDF',
             'accept'       => '.pdf',
             'allowed_exts' => ['pdf'],
             'format_hint'  => 'PDF (.pdf)',
             'worker_hint'  => 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).',
         ],
-        'jpg' => [
-            'label'        => 'JPG',
-            'short_label'  => 'JPG',
-            'accept'       => '.jpg,.jpeg',
-            'allowed_exts' => ['jpg', 'jpeg'],
-            'format_hint'  => 'JPG (.jpg, .jpeg)',
-            'worker_hint'  => 'Unggah gambar dalam format JPG / JPEG (maks. 5 MB).',
-        ],
-        'png' => [
-            'label'        => 'PNG',
-            'short_label'  => 'PNG',
-            'accept'       => '.png',
-            'allowed_exts' => ['png'],
-            'format_hint'  => 'PNG (.png)',
-            'worker_hint'  => 'Unggah gambar dalam format PNG (maks. 5 MB).',
+        'image' => [
+            'label'        => 'Gambar (JPG, JPEG, PNG)',
+            'short_label'  => 'Gambar (JPG, JPEG, PNG)',
+            'accept'       => '.jpg,.jpeg,.png',
+            'allowed_exts' => ['jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Gambar (JPG, JPEG, PNG)',
+            'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
         ],
         'doc' => [
-            'label'        => 'DOC / DOCX',
+            'label'        => 'DOC / DOCX (.doc, .docx)',
             'short_label'  => 'DOC / DOCX',
             'accept'       => '.doc,.docx',
             'allowed_exts' => ['doc', 'docx'],
             'format_hint'  => 'DOC / DOCX (.doc, .docx)',
             'worker_hint'  => 'Unggah berkas dokumen Word (.doc, .docx, maks. 5 MB).',
         ],
-        // Legacy keys for backward compatibility
+        // Backward-compatible aliases
+        'jpg' => [
+            'label'        => 'Gambar (JPG, JPEG, PNG)',
+            'short_label'  => 'Gambar',
+            'accept'       => '.jpg,.jpeg,.png',
+            'allowed_exts' => ['jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Gambar (JPG, JPEG, PNG)',
+            'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+        ],
+        'png' => [
+            'label'        => 'Gambar (JPG, JPEG, PNG)',
+            'short_label'  => 'Gambar',
+            'accept'       => '.jpg,.jpeg,.png',
+            'allowed_exts' => ['jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Gambar (JPG, JPEG, PNG)',
+            'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+        ],
+        'jpeg' => [
+            'label'        => 'Gambar (JPG, JPEG, PNG)',
+            'short_label'  => 'Gambar',
+            'accept'       => '.jpg,.jpeg,.png',
+            'allowed_exts' => ['jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Gambar (JPG, JPEG, PNG)',
+            'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+        ],
+        'image_only' => [
+            'label'        => 'Gambar (JPG, JPEG, PNG)',
+            'short_label'  => 'Gambar',
+            'accept'       => '.jpg,.jpeg,.png',
+            'allowed_exts' => ['jpg', 'jpeg', 'png'],
+            'format_hint'  => 'Gambar (JPG, JPEG, PNG)',
+            'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+        ],
         'pdf_only' => [
-            'label'        => 'PDF',
+            'label'        => 'PDF (.pdf)',
             'short_label'  => 'PDF',
             'accept'       => '.pdf',
             'allowed_exts' => ['pdf'],
             'format_hint'  => 'PDF (.pdf)',
             'worker_hint'  => 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).',
         ],
-        'image_only' => [
-            'label'        => 'JPG',
-            'short_label'  => 'JPG',
-            'accept'       => '.jpg,.jpeg,.png',
-            'allowed_exts' => ['jpg', 'jpeg', 'png'],
-            'format_hint'  => 'JPG / PNG',
-            'worker_hint'  => 'Unggah gambar dalam format JPG / PNG (maks. 5 MB).',
-        ],
         'pdf_image' => [
-            'label'        => 'PDF',
+            'label'        => 'PDF (.pdf)',
             'short_label'  => 'PDF',
             'accept'       => '.pdf',
             'allowed_exts' => ['pdf'],
@@ -171,7 +171,7 @@ function gig_special_req_file_formats(): array
             'worker_hint'  => 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).',
         ],
         'any_doc' => [
-            'label'        => 'DOC / DOCX',
+            'label'        => 'DOC / DOCX (.doc, .docx)',
             'short_label'  => 'DOC / DOCX',
             'accept'       => '.doc,.docx',
             'allowed_exts' => ['doc', 'docx'],
@@ -905,31 +905,23 @@ function gig_vacancy_update_special_requirement(string $vacancyId, ?array $reqDa
         if ($chosenInputType === 'pdf') {
             $inputMode = 'file';
             $fileType = 'pdf';
-            $fileTypeLabel = 'PDF';
+            $fileTypeLabel = 'PDF (.pdf)';
             $accept = '.pdf';
             $formatHint = 'PDF (.pdf)';
             $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
             $allowedExts = ['pdf'];
-        } elseif ($chosenInputType === 'jpg' || $chosenInputType === 'jpeg') {
+        } elseif (in_array($chosenInputType, ['image', 'jpg', 'jpeg', 'png'], true)) {
             $inputMode = 'file';
-            $fileType = 'jpg';
-            $fileTypeLabel = 'JPG';
-            $accept = '.jpg,.jpeg';
-            $formatHint = 'JPG (.jpg, .jpeg)';
-            $workerHint = 'Unggah gambar dalam format JPG / JPEG (maks. 5 MB).';
-            $allowedExts = ['jpg', 'jpeg'];
-        } elseif ($chosenInputType === 'png') {
-            $inputMode = 'file';
-            $fileType = 'png';
-            $fileTypeLabel = 'PNG';
-            $accept = '.png';
-            $formatHint = 'PNG (.png)';
-            $workerHint = 'Unggah gambar dalam format PNG (maks. 5 MB).';
-            $allowedExts = ['png'];
+            $fileType = 'image';
+            $fileTypeLabel = 'Gambar (JPG, JPEG, PNG)';
+            $accept = '.jpg,.jpeg,.png';
+            $formatHint = 'Gambar (JPG, JPEG, PNG)';
+            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).';
+            $allowedExts = ['jpg', 'jpeg', 'png'];
         } elseif ($chosenInputType === 'doc' || $chosenInputType === 'docx') {
             $inputMode = 'file';
             $fileType = 'doc';
-            $fileTypeLabel = 'DOC / DOCX';
+            $fileTypeLabel = 'DOC / DOCX (.doc, .docx)';
             $accept = '.doc,.docx';
             $formatHint = 'DOC / DOCX (.doc, .docx)';
             $workerHint = 'Unggah dokumen dalam format Word (.doc, .docx, maks. 5 MB).';
