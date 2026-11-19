@@ -15,14 +15,31 @@ $selectedCat = trim((string)($_GET['category'] ?? 'all'));
 $selectedBudget = trim((string)($_GET['budget'] ?? 'all'));
 $selectedLocation = trim((string)($_GET['location'] ?? 'all'));
 $selectedMode = trim((string)($_GET['mode'] ?? 'all'));
+$selectedSpec = trim((string)($_GET['spec'] ?? 'all'));
 
 $vacancies = $allActiveVacancies;
 
-// Filter by Keyword / Skill / Title / Client
+// Filter by Keyword / Skill / Title / Client / Special Requirement
 if ($q !== '') {
     $vacancies = array_values(array_filter($vacancies, static function ($job) use ($q) {
-        $hay = strtolower($job['title'] . ' ' . $job['category'] . ' ' . implode(' ', $job['skills']) . ' ' . $job['desc'] . ' ' . $job['client']);
+        $spec = $job['special_requirement'] ?? [];
+        $specText = is_array($spec) ? (($spec['label'] ?? '') . ' ' . ($spec['type_label'] ?? '') . ' ' . ($spec['file_type_label'] ?? '') . ' ' . ($spec['format_hint'] ?? '')) : '';
+        $hay = strtolower($job['title'] . ' ' . $job['category'] . ' ' . implode(' ', $job['skills']) . ' ' . $job['desc'] . ' ' . $job['client'] . ' ' . $specText);
         return str_contains($hay, strtolower($q));
+    }));
+}
+
+// Filter by Special Requirement
+if ($selectedSpec !== '' && $selectedSpec !== 'all') {
+    $vacancies = array_values(array_filter($vacancies, static function ($job) use ($selectedSpec) {
+        $hasSpec = !empty($job['special_requirement']['label']);
+        if ($selectedSpec === 'with_req') {
+            return $hasSpec;
+        }
+        if ($selectedSpec === 'without_req') {
+            return !$hasSpec;
+        }
+        return true;
     }));
 }
 
@@ -561,6 +578,14 @@ a.proyek-card-item:hover .apply-cta {
       'remote' => ['label' => '🌐 Remote', 'count' => $remoteCount],
       'onsite' => ['label' => '🏢 On-site / Hybrid', 'count' => $onsiteCount],
     ];
+
+    $specWithCount = count(array_filter($allActiveVacancies, static fn($j) => !empty($j['special_requirement']['label'])));
+    $specWithoutCount = count($allActiveVacancies) - $specWithCount;
+    $specMap = [
+      'all' => ['label' => 'Semua Proyek', 'count' => count($allActiveVacancies)],
+      'with_req' => ['label' => '📎 Kualifikasi Khusus', 'count' => $specWithCount],
+      'without_req' => ['label' => 'Tanpa Kualifikasi Khusus', 'count' => $specWithoutCount],
+    ];
   ?>
 
   <section class="page-title-block">
@@ -579,6 +604,7 @@ a.proyek-card-item:hover .apply-cta {
         <input type="hidden" name="budget" value="<?php echo htmlspecialchars($selectedBudget, ENT_QUOTES, 'UTF-8'); ?>">
         <input type="hidden" name="location" value="<?php echo htmlspecialchars($selectedLocation, ENT_QUOTES, 'UTF-8'); ?>">
         <input type="hidden" name="mode" value="<?php echo htmlspecialchars($selectedMode, ENT_QUOTES, 'UTF-8'); ?>">
+        <input type="hidden" name="spec" value="<?php echo htmlspecialchars($selectedSpec, ENT_QUOTES, 'UTF-8'); ?>">
         <div class="filter-search-box">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" name="q" placeholder="Cari kata kunci lowongan..." value="<?php echo htmlspecialchars($q, ENT_QUOTES, 'UTF-8'); ?>" />
@@ -591,7 +617,7 @@ a.proyek-card-item:hover .apply-cta {
           <?php foreach ($modeMap as $modeKey => $modeInfo): ?>
             <?php $isModeActive = ($selectedMode === $modeKey || ($modeKey === 'all' && ($selectedMode === '' || $selectedMode === 'all'))); ?>
             <li>
-              <a class="filter-link <?php echo $isModeActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $modeKey]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isModeActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $modeKey, 'spec' => $selectedSpec]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span style="flex:1;"><?php echo htmlspecialchars($modeInfo['label'], ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="filter-pill-count"><?php echo (int)$modeInfo['count']; ?></span>
@@ -602,10 +628,26 @@ a.proyek-card-item:hover .apply-cta {
       </div>
 
       <div class="filter-group">
+        <div class="filter-group-title">Kualifikasi Khusus</div>
+        <ul class="filter-link-list">
+          <?php foreach ($specMap as $specKey => $specInfo): ?>
+            <?php $isSpecActive = ($selectedSpec === $specKey || ($specKey === 'all' && ($selectedSpec === '' || $selectedSpec === 'all'))); ?>
+            <li>
+              <a class="filter-link <?php echo $isSpecActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode, 'spec' => $specKey]), ENT_QUOTES, 'UTF-8'); ?>">
+                <span class="filter-radio-dot"></span>
+                <span style="flex:1;"><?php echo htmlspecialchars($specInfo['label'], ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="filter-pill-count"><?php echo (int)$specInfo['count']; ?></span>
+              </a>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+
+      <div class="filter-group">
         <div class="filter-group-title">Lokasi</div>
         <ul class="filter-link-list">
           <li>
-            <a class="filter-link <?php echo ($selectedLocation === 'all' || $selectedLocation === '') ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => 'all', 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
+            <a class="filter-link <?php echo ($selectedLocation === 'all' || $selectedLocation === '') ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => 'all', 'mode' => $selectedMode, 'spec' => $selectedSpec]), ENT_QUOTES, 'UTF-8'); ?>">
               <span class="filter-radio-dot"></span>
               <span style="flex:1;">Semua Lokasi</span>
               <span class="filter-pill-count"><?php echo count($allActiveVacancies); ?></span>
@@ -617,7 +659,7 @@ a.proyek-card-item:hover .apply-cta {
               $isLocActive = strtolower($selectedLocation) === strtolower($locLabel);
             ?>
             <li>
-              <a class="filter-link <?php echo $isLocActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $locLabel, 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isLocActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $selectedBudget, 'q' => $q, 'location' => $locLabel, 'mode' => $selectedMode, 'spec' => $selectedSpec]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span style="flex:1;"><?php echo htmlspecialchars($locLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="filter-pill-count"><?php echo (int)$loc['count']; ?></span>
@@ -633,7 +675,7 @@ a.proyek-card-item:hover .apply-cta {
           <?php foreach ($catMap as $catKey => $catLabel): ?>
             <?php $isActive = (strtolower($selectedCat) === strtolower($catKey) || ($catKey === 'all' && $selectedCat === 'all')); ?>
             <li>
-              <a class="filter-link <?php echo $isActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $catKey, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $catKey, 'budget' => $selectedBudget, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode, 'spec' => $selectedSpec]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span style="flex:1;"><?php echo htmlspecialchars($catLabel, ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="filter-pill-count"><?php echo (int)($catCounts[$catKey] ?? 0); ?></span>
@@ -649,7 +691,7 @@ a.proyek-card-item:hover .apply-cta {
           <?php foreach ($budgetMap as $budgetKey => $budgetLabel): ?>
             <?php $isBudgetActive = $selectedBudget === $budgetKey || ($selectedBudget === '' && $budgetKey === 'all'); ?>
             <li>
-              <a class="filter-link <?php echo $isBudgetActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $budgetKey, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode]), ENT_QUOTES, 'UTF-8'); ?>">
+              <a class="filter-link <?php echo $isBudgetActive ? 'active' : ''; ?>" href="?<?php echo htmlspecialchars(http_build_query(['category' => $selectedCat, 'budget' => $budgetKey, 'q' => $q, 'location' => $selectedLocation, 'mode' => $selectedMode, 'spec' => $selectedSpec]), ENT_QUOTES, 'UTF-8'); ?>">
                 <span class="filter-radio-dot"></span>
                 <span><?php echo htmlspecialchars($budgetLabel, ENT_QUOTES, 'UTF-8'); ?></span>
               </a>
@@ -707,6 +749,24 @@ a.proyek-card-item:hover .apply-cta {
                 </div>
 
                 <h3 class="card-project-title"><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
+
+                <?php
+                  $cardSpec = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
+                  if ($cardSpec !== null && !empty($cardSpec['label'])):
+                    $cardSpecType = (string)($cardSpec['type_label'] ?? 'Kualifikasi Khusus');
+                    $cardSpecFormat = (string)($cardSpec['file_type_label'] ?? $cardSpec['format_hint'] ?? '');
+                ?>
+                  <div style="margin: 0 0 10px 0;">
+                    <span style="display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;padding:4px 10px;border-radius:6px;font-size:0.72rem;font-weight:700;line-height:1.2;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                      <span>Wajib <?php echo htmlspecialchars($cardSpecType, ENT_QUOTES, 'UTF-8'); ?></span>
+                      <?php if ($cardSpecFormat !== ''): ?>
+                        <span style="color:#a5b4fc;">•</span>
+                        <span style="color:#4f46e5;font-weight:600;"><?php echo htmlspecialchars($cardSpecFormat, ENT_QUOTES, 'UTF-8'); ?></span>
+                      <?php endif; ?>
+                    </span>
+                  </div>
+                <?php endif; ?>
 
                 <div class="card-meta-detail">
                   <div>

@@ -640,6 +640,28 @@ function gig_seed_demo_applications_if_needed(): void
             'created_at'         => '2026-09-20 09:45:00',
             'updated_at'         => '2026-09-20 09:45:00',
         ],
+        [
+            'id'                 => 'APP-2026-11-002',
+            'vacancy_id'         => 'GIG-2026-11-002',
+            'worker_id'          => 'tessa',
+            'worker_name'        => 'Theressa Zaratrusha',
+            'employer_username'  => 'PT Solusi Infrastruktur Digital',
+            'bid_amount'         => 'Rp 18.000.000',
+            'status'             => 'applied',
+            'note'               => 'Saya memiliki pengalaman 5+ tahun dalam arsitektur cloud AWS dan telah memegang sertifikasi AWS Solutions Architect.',
+            'special_req_response' => json_encode([
+                'type'       => 'certificate',
+                'type_label' => 'Sertifikat / Sertifikasi Keahlian',
+                'label'      => 'Sertifikasi AWS Solutions Architect Associate/Professional atau BNSP Cloud Computing',
+                'input_mode' => 'file',
+                'file_name'  => 'Sertifikat_AWS_Solutions_Architect_Tessa.pdf',
+                'file_path'  => 'uploads/applications/demo_aws_cert.pdf',
+            ], JSON_UNESCAPED_UNICODE),
+            'consent_version'    => 'v1.0',
+            'consent_at'         => '2026-11-16 14:00:00',
+            'created_at'         => '2026-11-16 14:00:00',
+            'updated_at'         => '2026-11-16 14:00:00',
+        ],
     ];
 
     foreach ($defaultApps as $app) {
