@@ -75,11 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
                         }
                     }
 
+                    $isArchive = in_array($ext, ['zip', 'rar', '7z'], true) || in_array(($specialReq['file_type'] ?? ''), ['archive', 'zip', 'rar', '7z'], true);
+                    $maxBytes = $isArchive ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+                    $maxMbText = $isArchive ? '10 MB' : '5 MB';
+
                     if (!in_array($ext, $allowedExts, true)) {
                         $formatDesc = (string)($specialReq['file_type_label'] ?? strtoupper(implode(', ', $allowedExts)));
                         $validationError = 'Format file tidak didukung. Pemberi kerja mensyaratkan berkas: ' . $formatDesc . '.';
-                    } elseif ($size > 5 * 1024 * 1024) {
-                        $validationError = 'Ukuran file maksimal 5 MB.';
+                    } elseif ($size > $maxBytes) {
+                        $validationError = 'Ukuran file maksimal ' . $maxMbText . '.';
                     } else {
                         $uploadDir = __DIR__ . '/uploads/applications';
                         if (!is_dir($uploadDir)) {
@@ -746,11 +750,15 @@ require __DIR__ . '/includes/worker-layout-start.php';
                 <div id="specFilePromptText" style="font-size:0.88rem;font-weight:700;color:#2563eb;margin-bottom:4px;">
                   Klik untuk Memilih File
                 </div>
+                <?php
+                  $isArchiveReq = in_array(($specialReq['file_type'] ?? ''), ['archive', 'zip', 'rar', '7z'], true);
+                  $maxAllowedMb = $isArchiveReq ? 10 : 5;
+                ?>
                 <div style="font-size:0.76rem;color:#64748b;line-height:1.4;">
                   Format yang diizinkan: <strong style="color:#1e40af;"><?php echo htmlspecialchars($reqFileLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
-                  <br />Ukuran file maksimal <strong>5 MB</strong>
+                  <br />Ukuran file maksimal <strong><?php echo $maxAllowedMb; ?> MB</strong>
                 </div>
-                <input type="file" id="specialReqInput" name="special_req_file" accept="<?php echo htmlspecialchars($reqAccept, ENT_QUOTES, 'UTF-8'); ?>" required style="display:none;" onchange="handleSpecialFileChosen(this)" />
+                <input type="file" id="specialReqInput" name="special_req_file" accept="<?php echo htmlspecialchars($reqAccept, ENT_QUOTES, 'UTF-8'); ?>" data-max-mb="<?php echo $maxAllowedMb; ?>" required style="display:none;" onchange="handleSpecialFileChosen(this)" />
               </div>
 
               <!-- Chosen file preview badge -->
@@ -860,9 +868,10 @@ require __DIR__ . '/includes/worker-layout-start.php';
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
+      const maxMb = Number(input.dataset.maxMb || 5);
+      if (file.size > maxMb * 1024 * 1024) {
         if (errEl) {
-          errEl.textContent = 'Ukuran berkas ' + (file.size / (1024*1024)).toFixed(2) + ' MB melebihi batas maksimal 5 MB.';
+          errEl.textContent = 'Ukuran berkas ' + (file.size / (1024*1024)).toFixed(2) + ' MB melebihi batas maksimal ' + maxMb + ' MB.';
           errEl.style.display = 'block';
         }
         input.value = '';
