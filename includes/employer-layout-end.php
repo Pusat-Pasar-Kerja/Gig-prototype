@@ -299,6 +299,153 @@ declare(strict_types=1);
           color: #64748b;
           line-height: 1.4;
         }
+        /* Optional Feature Switch Card */
+        .gig-optional-card {
+          border: 1.5px dashed #cbd5e1;
+          border-radius: 12px;
+          background: #f8fafc;
+          padding: 14px 16px;
+          margin: 14px 0 12px;
+          transition: all 0.2s ease;
+        }
+        .gig-optional-card.active {
+          border-style: solid;
+          border-color: #38bdf8;
+          background: #f0f9ff;
+          box-shadow: 0 2px 10px rgba(14, 165, 233, 0.08);
+        }
+        .gig-optional-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+        }
+        .gig-optional-info {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          flex: 1;
+        }
+        .gig-optional-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: #e2e8f0;
+          color: #64748b;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.15rem;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
+        }
+        .gig-optional-card.active .gig-optional-icon {
+          background: #0ea5e9;
+          color: #ffffff;
+        }
+        .gig-optional-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .gig-optional-title {
+          font-size: 0.92rem;
+          font-weight: 700;
+          color: #0f172a;
+          line-height: 1.3;
+        }
+        .gig-optional-badge {
+          display: inline-block;
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 2px 8px;
+          border-radius: 9999px;
+          background: #e2e8f0;
+          color: #64748b;
+          border: 1px solid #cbd5e1;
+        }
+        .gig-optional-card.active .gig-optional-badge {
+          background: #e0f2fe;
+          color: #0284c7;
+          border-color: #bae6fd;
+        }
+        .gig-optional-desc {
+          font-size: 0.77rem;
+          color: #64748b;
+          margin-top: 3px;
+          line-height: 1.4;
+        }
+        .gig-switch-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .gig-switch-status {
+          font-size: 0.76rem;
+          font-weight: 700;
+          color: #94a3b8;
+          min-width: 58px;
+          text-align: right;
+          transition: color 0.2s ease;
+        }
+        .gig-optional-card.active .gig-switch-status {
+          color: #0284c7;
+        }
+        .gig-switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+          flex-shrink: 0;
+          cursor: pointer;
+        }
+        .gig-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+          position: absolute;
+        }
+        .gig-slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: #cbd5e1;
+          transition: .25s ease;
+          border-radius: 24px;
+        }
+        .gig-slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: .25s ease;
+          border-radius: 50%;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+        .gig-switch input:checked + .gig-slider {
+          background-color: #0ea5e9;
+        }
+        .gig-switch input:checked + .gig-slider:before {
+          transform: translateX(20px);
+        }
+        .gig-optional-body {
+          display: none;
+          margin-top: 14px;
+          padding-top: 14px;
+          border-top: 1px solid #e2e8f0;
+          animation: gigFadeDown 0.2s ease-out;
+        }
+        @keyframes gigFadeDown {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .gig-form-callout {
           font-size: 0.8rem;
           color: #1e40af;
@@ -508,42 +655,64 @@ declare(strict_types=1);
                   require_once __DIR__ . '/vacancy-store.php';
                   $specialReqTypes = gig_special_requirement_types();
                 ?>
-                <div class="form-row" style="margin-top: 4px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
-                  <label for="proj_special_req_type">Permintaan Kualifikasi Khusus dari Pelamar (Opsional)</label>
-                  <select id="proj_special_req_type" onchange="syncSpecialReqUI()">
-                    <option value="">Tidak ada (hanya lamaran standar)</option>
-                    <?php foreach ($specialReqTypes as $reqKey => $reqMeta): ?>
-                      <option
-                        value="<?php echo htmlspecialchars($reqKey, ENT_QUOTES, 'UTF-8'); ?>"
-                        data-format="<?php echo htmlspecialchars($reqMeta['format_hint'], ENT_QUOTES, 'UTF-8'); ?>"
-                        data-placeholder="<?php echo htmlspecialchars($reqMeta['placeholder'], ENT_QUOTES, 'UTF-8'); ?>"
-                        data-input-mode="<?php echo htmlspecialchars($reqMeta['input_mode'], ENT_QUOTES, 'UTF-8'); ?>"
-                      ><?php echo htmlspecialchars($reqMeta['label'], ENT_QUOTES, 'UTF-8'); ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                  <div class="gig-note">Pilih jika Anda mewajibkan pelamar melampirkan dokumen/informasi khusus (mis. sertifikat atau akun media sosial) saat melamar.</div>
-                </div>
+                <div class="gig-optional-card" id="projSpecialReqCard">
+                  <div class="gig-optional-head" onclick="handleOptionalHeadClick(event)" style="cursor: pointer;">
+                    <div class="gig-optional-info">
+                      <div class="gig-optional-icon">&#127894;</div>
+                      <div>
+                        <div class="gig-optional-title-row">
+                          <span class="gig-optional-title">Wajibkan Kualifikasi Khusus</span>
+                          <span class="gig-optional-badge">Opsional</span>
+                        </div>
+                        <div class="gig-optional-desc">Secara default pelamar cukup melampirkan lamaran standar. Aktifkan jika posisi ini mewajibkan sertifikasi, lisensi resmi, atau portofolio khusus.</div>
+                      </div>
+                    </div>
+                    <div class="gig-switch-wrap">
+                      <span class="gig-switch-status" id="projSpecialReqSwitchStatus">Tidak Aktif</span>
+                      <label class="gig-switch" title="Aktifkan syarat kualifikasi khusus (opsional)">
+                        <input type="checkbox" id="proj_special_req_toggle" onchange="toggleSpecialReq(this.checked)" />
+                        <span class="gig-slider"></span>
+                      </label>
+                    </div>
+                  </div>
 
-                <div id="projSpecialReqDetails" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;">
-                  <div class="form-row" style="margin-bottom: 10px;">
-                    <label for="proj_special_req_label">Detail / Nama Kualifikasi yang Diminta *</label>
-                    <input type="text" id="proj_special_req_label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
-                  </div>
-                  <div class="form-row" style="margin-bottom: 10px;">
-                    <label for="proj_special_req_input_type">Tipe Input / Format Berkas untuk Pelamar *</label>
-                    <select id="proj_special_req_input_type" onchange="syncSpecialReqInputType()">
-                      <option value="pdf" data-mode="file" data-accept=".pdf" data-hint="PDF (.pdf, maks. 5 MB)">PDF</option>
-                      <option value="jpg" data-mode="file" data-accept=".jpg,.jpeg" data-hint="JPG (.jpg, .jpeg, maks. 5 MB)">JPG</option>
-                      <option value="png" data-mode="file" data-accept=".png" data-hint="PNG (.png, maks. 5 MB)">PNG</option>
-                      <option value="doc" data-mode="file" data-accept=".doc,.docx" data-hint="DOC / DOCX (.doc, .docx, maks. 5 MB)">DOC / DOCX</option>
-                      <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
-                      <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
-                    </select>
-                    <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh pelamar saat melamar lowongan ini.</div>
-                  </div>
-                  <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
-                    <span>&#128206;</span>
-                    <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">PDF (.pdf, maks. 5 MB)</strong></span>
+                  <div class="gig-optional-body" id="projSpecialReqBody">
+                    <div class="form-row" style="margin-bottom: 12px;">
+                      <label for="proj_special_req_type">Jenis Kualifikasi Khusus *</label>
+                      <select id="proj_special_req_type" onchange="syncSpecialReqUI()">
+                        <?php foreach ($specialReqTypes as $reqKey => $reqMeta): ?>
+                          <option
+                            value="<?php echo htmlspecialchars($reqKey, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-format="<?php echo htmlspecialchars($reqMeta['format_hint'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-placeholder="<?php echo htmlspecialchars($reqMeta['placeholder'], ENT_QUOTES, 'UTF-8'); ?>"
+                            data-input-mode="<?php echo htmlspecialchars($reqMeta['input_mode'], ENT_QUOTES, 'UTF-8'); ?>"
+                          ><?php echo htmlspecialchars($reqMeta['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                    </div>
+
+                    <div class="form-row" style="margin-bottom: 12px;">
+                      <label for="proj_special_req_label">Detail / Nama Kualifikasi yang Diminta *</label>
+                      <input type="text" id="proj_special_req_label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
+                    </div>
+
+                    <div class="form-row" style="margin-bottom: 12px;">
+                      <label for="proj_special_req_input_type">Tipe Input / Format Berkas untuk Pelamar *</label>
+                      <select id="proj_special_req_input_type" onchange="syncSpecialReqInputType()">
+                        <option value="pdf" data-mode="file" data-accept=".pdf" data-hint="PDF (.pdf, maks. 5 MB)">PDF</option>
+                        <option value="jpg" data-mode="file" data-accept=".jpg,.jpeg" data-hint="JPG (.jpg, .jpeg, maks. 5 MB)">JPG</option>
+                        <option value="png" data-mode="file" data-accept=".png" data-hint="PNG (.png, maks. 5 MB)">PNG</option>
+                        <option value="doc" data-mode="file" data-accept=".doc,.docx" data-hint="DOC / DOCX (.doc, .docx, maks. 5 MB)">DOC / DOCX</option>
+                        <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
+                        <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
+                      </select>
+                      <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh pelamar saat melamar lowongan ini.</div>
+                    </div>
+
+                    <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
+                      <span>&#128206;</span>
+                      <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">PDF (.pdf, maks. 5 MB)</strong></span>
+                    </div>
                   </div>
                 </div>
 
@@ -671,15 +840,40 @@ declare(strict_types=1);
         return false;
       }
     } else if (step === 3) {
-      var reqTypeSelect = document.getElementById('proj_special_req_type');
-      var reqLabelInput = document.getElementById('proj_special_req_label');
-      if (reqTypeSelect && reqTypeSelect.value !== '' && reqLabelInput && !reqLabelInput.value.trim()) {
-        reqLabelInput.focus();
-        showToast('Tuliskan detail / nama kualifikasi khusus yang diminta.');
-        return false;
+      var toggle = document.getElementById('proj_special_req_toggle');
+      if (toggle && toggle.checked) {
+        var reqLabelInput = document.getElementById('proj_special_req_label');
+        if (reqLabelInput && !reqLabelInput.value.trim()) {
+          reqLabelInput.focus();
+          showToast('Tuliskan detail / nama kualifikasi khusus yang diminta.');
+          return false;
+        }
       }
     }
     return true;
+  }
+
+  function handleOptionalHeadClick(e) {
+    if (e.target.closest('.gig-switch')) return;
+    var toggle = document.getElementById('proj_special_req_toggle');
+    if (toggle) {
+      toggle.checked = !toggle.checked;
+      toggleSpecialReq(toggle.checked);
+    }
+  }
+
+  function toggleSpecialReq(enabled) {
+    var card = document.getElementById('projSpecialReqCard');
+    var body = document.getElementById('projSpecialReqBody');
+    var statusText = document.getElementById('projSpecialReqSwitchStatus');
+    var toggle = document.getElementById('proj_special_req_toggle');
+    if (toggle) toggle.checked = !!enabled;
+    if (card) card.classList.toggle('active', !!enabled);
+    if (statusText) statusText.textContent = enabled ? 'Aktif' : 'Tidak Aktif';
+    if (body) body.style.display = enabled ? 'block' : 'none';
+    if (enabled) {
+      syncSpecialReqUI();
+    }
   }
 
   function syncSpecialReqInputType() {
@@ -692,19 +886,16 @@ declare(strict_types=1);
   }
 
   function syncSpecialReqUI() {
+    var toggle = document.getElementById('proj_special_req_toggle');
+    if (toggle && !toggle.checked) return;
     var sel = document.getElementById('proj_special_req_type');
-    var box = document.getElementById('projSpecialReqDetails');
     var labelInput = document.getElementById('proj_special_req_label');
     var inputTypeSel = document.getElementById('proj_special_req_input_type');
-    if (!sel || !box) return;
-    if (sel.value === '') {
-      box.style.display = 'none';
-      if (labelInput) labelInput.value = '';
-      return;
-    }
+    if (!sel) return;
     var opt = sel.options[sel.selectedIndex];
-    var placeholder = opt ? (opt.getAttribute('data-placeholder') || '') : '';
-    var defaultInputMode = opt ? (opt.getAttribute('data-input-mode') || 'file') : 'file';
+    if (!opt) return;
+    var placeholder = opt.getAttribute('data-placeholder') || '';
+    var defaultInputMode = opt.getAttribute('data-input-mode') || 'file';
 
     if (inputTypeSel) {
       if (defaultInputMode === 'url') {
@@ -718,9 +909,10 @@ declare(strict_types=1);
       }
     }
 
-    if (labelInput && placeholder) labelInput.placeholder = placeholder;
+    if (labelInput && placeholder && !labelInput.value) {
+      labelInput.placeholder = placeholder;
+    }
     syncSpecialReqInputType();
-    box.style.display = 'block';
   }
 
   function nextProjectStep() {
@@ -753,7 +945,7 @@ declare(strict_types=1);
 
   function openPostProjectModal() {
     setProjectStep(1);
-    syncSpecialReqUI();
+    toggleSpecialReq(false);
     document.getElementById('postProjectModal').classList.add('open');
   }
   function closePostProjectModal() {
@@ -787,11 +979,12 @@ declare(strict_types=1);
     const salaryRaw = document.getElementById('proj_salary').value || '';
     const salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
 
+    var toggleEl = document.getElementById('proj_special_req_toggle');
     var reqTypeEl = document.getElementById('proj_special_req_type');
     var reqLabelEl = document.getElementById('proj_special_req_label');
     var reqInputTypeEl = document.getElementById('proj_special_req_input_type');
     var specialRequirement = null;
-    if (reqTypeEl && reqTypeEl.value !== '' && reqLabelEl && reqLabelEl.value.trim() !== '') {
+    if (toggleEl && toggleEl.checked && reqTypeEl && reqLabelEl && reqLabelEl.value.trim() !== '') {
       var chosenOpt = reqInputTypeEl ? reqInputTypeEl.options[reqInputTypeEl.selectedIndex] : null;
       var chosenMode = chosenOpt ? chosenOpt.getAttribute('data-mode') : 'file';
       var chosenAccept = chosenOpt ? chosenOpt.getAttribute('data-accept') : '.pdf';
@@ -836,7 +1029,7 @@ declare(strict_types=1);
     }).then(function (r) { return r.json(); }).then(function (data) {
       closePostProjectModal();
       document.getElementById('newProjectForm').reset();
-      syncSpecialReqUI();
+      toggleSpecialReq(false);
       setProjectStep(1);
       if (data && data.ok) {
         showToast('Lowongan "' + title + '" berhasil diajukan. Menunggu verifikasi Admin KarirHub.');
