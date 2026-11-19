@@ -43,6 +43,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: admin-project-detail.php?' . http_build_query($params));
         exit;
     }
+    if ($action === 'admin_toggle_special_req_visibility') {
+        $targetId = trim((string)($_POST['vacancy_id'] ?? $vacancyId));
+        $targetVacancy = gig_find_vacancy($targetId);
+        $sReq = is_array($targetVacancy['special_requirement'] ?? null) ? $targetVacancy['special_requirement'] : null;
+        if ($sReq !== null && !empty($sReq['label'])) {
+            $currentIsPublic = !isset($sReq['is_public']) || !empty($sReq['is_public']);
+            $newIsPublic = !$currentIsPublic;
+            $sReq['is_public'] = $newIsPublic;
+            $auditNote = 'Admin mengubah visibilitas kualifikasi khusus menjadi: ' . ($newIsPublic ? 'Ditampilkan ke Publik' : 'Disembunyikan dari Publik');
+            $ok = gig_vacancy_update_special_requirement($targetId, $sReq, $auditNote);
+            $flash = $ok 
+                ? ('Status visibilitas kualifikasi khusus berhasil diubah: ' . ($newIsPublic ? 'Sekarang DITAMPILKAN KE PUBLIK.' : 'Sekarang DISEMBUNYIKAN DARI PUBLIK.'))
+                : 'Gagal mengubah status visibilitas.';
+            $flashType = $ok ? 'success' : 'error';
+        } else {
+            $flash = 'Lowongan ini tidak memiliki kualifikasi khusus.';
+            $flashType = 'error';
+        }
+        header('Location: admin-project-detail.php?id=' . urlencode($targetId) . '&msg=' . urlencode($flash) . '&type=' . urlencode($flashType));
+        exit;
+    }
+
     if ($action === 'admin_update_special_req') {
         $targetId = trim((string)($_POST['vacancy_id'] ?? $vacancyId));
         $enabled = !empty($_POST['special_req_enabled']);
@@ -59,7 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flash = 'Detail / nama kualifikasi yang diminta wajib diisi.';
                 $flashType = 'error';
             } else {
-                $isPublic = !empty($_POST['special_req_is_public']);
+                $rawPub = $_POST['special_req_is_public'] ?? '1';
+                $isPublic = ($rawPub === '1' || $rawPub === 1 || $rawPub === true || $rawPub === 'true');
                 $reqPayload = [
                     'type' => $type,
                     'custom_type' => $customType,
@@ -260,17 +283,23 @@ require __DIR__ . '/includes/admin-layout-start.php';
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
             <div class="req-label">Kualifikasi Khusus Pelamar</div>
-            <button type="button" onclick="openAdminEditSpecialReqModal()" style="background:none;border:none;color:#0284c7;font-size:0.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">✏️ Edit</button>
+            <button type="button" onclick="openAdminEditSpecialReqModal()" style="background:none;border:none;color:#0284c7;font-size:0.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">✏️ Atur</button>
           </div>
-          <?php if ($specialReq !== null && !empty($specialReq['label'])): ?>
+          <?php if ($specialReq !== null && !empty($specialReq['label'])): 
+            $topIsPub = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
+          ?>
             <div class="req-value" style="color:#1e40af;"><?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></div>
             <div style="font-size:0.74rem;color:#334155;margin-top:2px;font-weight:600;"><?php echo htmlspecialchars((string)$specialReq['label'], ENT_QUOTES, 'UTF-8'); ?></div>
             <div style="font-size:0.7rem;color:#64748b;margin-top:2px;"><?php echo htmlspecialchars($reqFormatHint, ENT_QUOTES, 'UTF-8'); ?></div>
-            <div style="margin-top:4px;">
-              <?php if (!isset($specialReq['is_public']) || !empty($specialReq['is_public'])): ?>
-                <span style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 6px;border-radius:4px;">🌐 Ditampilkan Publik</span>
+            <div style="margin-top:6px;">
+              <?php if ($topIsPub): ?>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;font-weight:700;color:#15803d;background:#dcfce7;border:1px solid #86efac;padding:2px 8px;border-radius:6px;" title="Syarat ini tampil terbuka di lowongan dan bursa kerja">
+                  🌐 Publik (Terlihat)
+                </span>
               <?php else: ?>
-                <span style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 6px;border-radius:4px;">🔒 Disembunyikan dari Publik</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 8px;border-radius:6px;" title="Syarat ini disembunyikan dari publik, hanya diminta saat melamar">
+                  🔒 Tersembunyi (Saat Melamar)
+                </span>
               <?php endif; ?>
             </div>
           <?php else: ?>
@@ -335,35 +364,91 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <div class="req-section-title">Persyaratan Khusus</div>
       <p class="req-paragraph"><?php echo nl2br(htmlspecialchars((string)($vacancy['qualifications'] ?? '-'), ENT_QUOTES, 'UTF-8')); ?></p>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;margin-bottom:6px;">
-        <div class="req-section-title" style="margin:0;">Permintaan Kualifikasi Khusus dari Pelamar (Untuk Verifikasi Admin)</div>
-        <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:5px 12px;font-size:0.75rem;" onclick="openAdminEditSpecialReqModal()">
-          ✏️ Edit Kualifikasi Khusus
-        </button>
+      <div style="margin-top:20px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          <div>
+            <div class="req-section-title" style="margin:0;display:flex;align-items:center;gap:6px;">
+              <span>📎</span> Permintaan Kualifikasi Khusus Pelamar
+            </div>
+            <div style="font-size:0.77rem;color:#64748b;margin-top:2px;">
+              Admin dapat memutuskan apakah syarat ini ditampilkan secara publik atau hanya diminta saat pelamar melamar.
+            </div>
+          </div>
+          <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:7px 14px;font-size:0.78rem;font-weight:700;border-radius:8px;display:inline-flex;align-items:center;gap:6px;" onclick="openAdminEditSpecialReqModal()">
+            ✏️ Ubah Persyaratan &amp; Tampilan
+          </button>
+        </div>
+
+        <?php if ($specialReq !== null && !empty($specialReq['label'])): 
+          $isPublicVal = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
+        ?>
+          <div style="background:#ffffff;border:1.5px solid <?php echo $isPublicVal ? '#bbf7d0' : '#e2e8f0'; ?>;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+            <!-- Status Visibilitas Banner (Super Ramah Pengguna Awam) -->
+            <div style="padding:12px 16px;border-radius:10px;background:<?php echo $isPublicVal ? '#f0fdf4' : '#f8fafc'; ?>;border:1px solid <?php echo $isPublicVal ? '#86efac' : '#cbd5e1'; ?>;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="font-size:1.6rem;line-height:1;margin-top:2px;">
+                  <?php echo $isPublicVal ? '🌐' : '🔒'; ?>
+                </div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:0.88rem;font-weight:800;color:<?php echo $isPublicVal ? '#15803d' : '#334155'; ?>;">
+                      Status Tampilan: <?php echo $isPublicVal ? 'Ditampilkan ke Publik' : 'Disembunyikan dari Publik'; ?>
+                    </span>
+                    <span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:9999px;background:<?php echo $isPublicVal ? '#dcfce7;color:#166534;border:1px solid #86efac' : '#e2e8f0;color:#475569;border:1px solid #cbd5e1'; ?>;">
+                      <?php echo $isPublicVal ? 'Terlihat oleh Pelamar' : 'Hanya Saat Melamar'; ?>
+                    </span>
+                  </div>
+                  <div style="font-size:0.78rem;color:<?php echo $isPublicVal ? '#166534' : '#64748b'; ?>;margin-top:4px;line-height:1.45;">
+                    <?php if ($isPublicVal): ?>
+                      Syarat ini <strong>tampil terbuka</strong> pada halaman lowongan dan bursa kerja. Calon pelamar dapat langsung mengetahui syarat ini sebelum melamar.
+                    <?php else: ?>
+                      Syarat ini <strong>disembunyikan</strong> dari rincian lowongan publik. Calon pelamar baru akan diminta melampirkan berkas ini saat menekan tombol "Lamar Proyek".
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 1-Click Quick Toggle for Non-Tech-Savvy Admin -->
+              <form method="post" style="margin:0;">
+                <input type="hidden" name="action" value="admin_toggle_special_req_visibility" />
+                <input type="hidden" name="vacancy_id" value="<?php echo htmlspecialchars((string)$vacancy['id'], ENT_QUOTES, 'UTF-8'); ?>" />
+                <?php if ($isPublicVal): ?>
+                  <button type="submit" onclick="return confirm('Sembunyikan kualifikasi khusus ini dari rincian lowongan publik?')" style="background:#ffffff;border:1.5px solid #cbd5e1;color:#475569;font-weight:700;font-size:0.80rem;padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#ffffff'">
+                    🔒 Sembunyikan dari Publik
+                  </button>
+                <?php else: ?>
+                  <button type="submit" onclick="return confirm('Tampilkan kualifikasi khusus ini secara publik di halaman lowongan & bursa kerja?')" style="background:#16a34a;border:1px solid #15803d;color:#ffffff;font-weight:700;font-size:0.80rem;padding:8px 16px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.1);transition:all 0.15s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+                    🌐 Tampilkan ke Publik Sekarang
+                  </button>
+                <?php endif; ?>
+              </form>
+            </div>
+
+            <div class="req-detail-grid" style="margin-top:0;">
+              <div>
+                <div class="req-label">Jenis Kualifikasi</div>
+                <div class="req-value" style="color:#1e40af;font-weight:700;"><?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></div>
+              </div>
+              <div>
+                <div class="req-label">Format Input Pelamar</div>
+                <div class="req-value" style="font-weight:600;"><?php echo htmlspecialchars($reqFormatHint, ENT_QUOTES, 'UTF-8'); ?></div>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;">
+              <div class="req-label">Detail / Nama Kualifikasi yang Diminta</div>
+              <div class="req-value" style="font-weight:700;color:#0f172a;font-size:0.92rem;margin-top:2px;"><?php echo htmlspecialchars((string)$specialReq['label'], ENT_QUOTES, 'UTF-8'); ?></div>
+            </div>
+          </div>
+        <?php else: ?>
+          <div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-weight:700;color:#475569;font-size:0.86rem;">Tidak Ada Kualifikasi Khusus</div>
+              <div style="font-size:0.76rem;color:#64748b;margin-top:2px;">Pemberi kerja hanya memerlukan berkas lamaran standar. Admin dapat menambahkan syarat jika diperlukan.</div>
+            </div>
+            <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:7px 14px;font-size:0.78rem;font-weight:700;" onclick="openAdminEditSpecialReqModal()">+ Tambah Syarat</button>
+          </div>
+        <?php endif; ?>
       </div>
-      <?php if ($specialReq !== null && !empty($specialReq['label'])): ?>
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
-          <div class="req-detail-grid" style="margin-top:0;">
-            <div>
-              <div class="req-label">Jenis Kualifikasi</div>
-              <div class="req-value" style="color:#1e40af;"><?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></div>
-            </div>
-            <div>
-              <div class="req-label">Format Input Pelamar</div>
-              <div class="req-value"><?php echo htmlspecialchars($reqFormatHint, ENT_QUOTES, 'UTF-8'); ?></div>
-            </div>
-          </div>
-          <div style="margin-top:8px;">
-            <div class="req-label">Detail / Nama Kualifikasi yang Diminta</div>
-            <div class="req-value" style="font-weight:700;color:#0f172a;"><?php echo htmlspecialchars((string)$specialReq['label'], ENT_QUOTES, 'UTF-8'); ?></div>
-          </div>
-        </div>
-      <?php else: ?>
-        <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <p class="req-paragraph" style="color:#64748b;margin:0;">Tidak ada permintaan kualifikasi khusus tambahan dari pemberi kerja.</p>
-          <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:4px 10px;font-size:0.73rem;" onclick="openAdminEditSpecialReqModal()">+ Tambah Syarat</button>
-        </div>
-      <?php endif; ?>
 
       <div class="req-section-title">Detail Lowongan</div>
       <div class="req-detail-grid">
@@ -411,23 +496,69 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <input type="hidden" name="action" value="admin_update_special_req" />
       <input type="hidden" name="vacancy_id" value="<?php echo htmlspecialchars((string)$vacancy['id'], ENT_QUOTES, 'UTF-8'); ?>" />
 
-      <!-- Enable / Disable Card -->
-      <div style="padding:12px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <!-- Enable / Disable Card (Ramah & Jelas) -->
+      <?php $isEnabled = ($specialReq !== null && !empty($specialReq['label'])); ?>
+      <div style="padding:14px 16px;background:#f8fafc;border:1.5px solid <?php echo $isEnabled ? '#38bdf8' : '#cbd5e1'; ?>;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div>
-          <div style="font-size:0.86rem;font-weight:700;color:#0f172a;">Wajibkan Kualifikasi Khusus</div>
-          <div style="font-size:0.75rem;color:#64748b;">Jika dinonaktifkan, lowongan hanya memerlukan lamaran standar tanpa syarat berkas tambahan.</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:0.92rem;font-weight:800;color:#0f172a;">Wajibkan Kualifikasi Khusus</span>
+            <span id="admin_toggle_status_badge" style="font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:9999px;background:<?php echo $isEnabled ? '#dcfce7;color:#15803d;border:1px solid #86efac' : '#f1f5f9;color:#64748b;border:1px solid #cbd5e1'; ?>;">
+              <?php echo $isEnabled ? 'Aktif (Wajib)' : 'Nonaktif'; ?>
+            </span>
+          </div>
+          <div style="font-size:0.77rem;color:#64748b;margin-top:3px;">
+            Jika dimatikan, lowongan hanya memerlukan berkas lamaran standar tanpa syarat khusus.
+          </div>
         </div>
-        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;cursor:pointer;">
-          <input type="checkbox" name="special_req_enabled" id="admin_req_enabled" value="1" <?php echo ($specialReq !== null && !empty($specialReq['label'])) ? 'checked' : ''; ?> onchange="toggleAdminReqFields(this.checked)" style="opacity:0;width:0;height:0;" />
-          <span style="position:absolute;inset:0;background-color:<?php echo ($specialReq !== null && !empty($specialReq['label'])) ? '#0ea5e9' : '#cbd5e1'; ?>;border-radius:24px;transition:.2s;" id="admin_switch_slider"></span>
+        <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;">
+          <input type="checkbox" name="special_req_enabled" id="admin_req_enabled" value="1" <?php echo $isEnabled ? 'checked' : ''; ?> onchange="toggleAdminReqFields(this.checked)" style="opacity:0;width:0;height:0;" />
+          <span style="position:absolute;inset:0;background-color:<?php echo $isEnabled ? '#0ea5e9' : '#cbd5e1'; ?>;border-radius:24px;transition:.2s;" id="admin_switch_slider"></span>
         </label>
       </div>
 
-      <div id="adminReqFieldsWrap" style="<?php echo ($specialReq !== null && !empty($specialReq['label'])) ? '' : 'display:none;'; ?>">
+      <div id="adminReqFieldsWrap" style="<?php echo $isEnabled ? '' : 'display:none;'; ?>">
+        <!-- Visibilitas Publik Selection Cards (Sangat Mudah Dipahami Orang Awam) -->
+        <?php $modalIsPub = (!isset($specialReq['is_public']) || !empty($specialReq['is_public'])); ?>
+        <div style="margin-bottom:14px;background:#f8fafc;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;">
+          <label style="display:block;font-size:0.80rem;font-weight:800;color:#1e293b;margin-bottom:4px;">
+            Keputusan Tampilan Publik (Apakah syarat ini terlihat oleh pelamar sebelum melamar?) *
+          </label>
+          <div style="font-size:0.74rem;color:#64748b;margin-bottom:10px;">
+            Pilih salah satu opsi di bawah ini. Anda dapat mengubah keputusan ini kapan saja.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <!-- Option 1: Publik -->
+            <div id="admin_opt_public_card" onclick="selectAdminVisibility(1)" style="border:2px solid <?php echo $modalIsPub ? '#0284c7' : '#cbd5e1'; ?>;background:<?php echo $modalIsPub ? '#f0f9ff' : '#ffffff'; ?>;border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:all 0.15s;position:relative;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:0.86rem;font-weight:800;color:#0369a1;display:flex;align-items:center;gap:6px;">
+                  <span>🌐</span> Ditampilkan ke Publik
+                </span>
+                <input type="radio" name="special_req_is_public" id="admin_rad_pub" value="1" <?php echo $modalIsPub ? 'checked' : ''; ?> style="accent-color:#0284c7;width:16px;height:16px;" />
+              </div>
+              <div style="font-size:0.74rem;color:#475569;line-height:1.4;">
+                <span style="color:#0369a1;font-weight:700;">Direkomendasikan.</span> Pelamar dapat membaca syarat ini di bursa kerja dan halaman proyek sebelum melamar.
+              </div>
+            </div>
+
+            <!-- Option 2: Tersembunyi -->
+            <div id="admin_opt_private_card" onclick="selectAdminVisibility(0)" style="border:2px solid <?php echo !$modalIsPub ? '#0284c7' : '#cbd5e1'; ?>;background:<?php echo !$modalIsPub ? '#f0f9ff' : '#ffffff'; ?>;border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:all 0.15s;position:relative;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:0.86rem;font-weight:800;color:#475569;display:flex;align-items:center;gap:6px;">
+                  <span>🔒</span> Disembunyikan
+                </span>
+                <input type="radio" name="special_req_is_public" id="admin_rad_priv" value="0" <?php echo !$modalIsPub ? 'checked' : ''; ?> style="accent-color:#0284c7;width:16px;height:16px;" />
+              </div>
+              <div style="font-size:0.74rem;color:#64748b;line-height:1.4;">
+                Syarat dirahasiakan dari publik; pelamar baru akan diminta melampirkan saat mengisi formulir lamaran.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Jenis Kualifikasi -->
         <div style="margin-bottom:12px;">
-          <label for="admin_req_type" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Jenis Kualifikasi *</label>
-          <select name="special_req_type" id="admin_req_type" onchange="syncAdminReqType(this.value)" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
+          <label for="admin_req_type" style="display:block;font-size:0.80rem;font-weight:700;color:#334155;margin-bottom:4px;">Jenis Kualifikasi *</label>
+          <select name="special_req_type" id="admin_req_type" onchange="syncAdminReqType(this.value)" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
             <?php foreach ($reqTypesCatalog as $rk => $rm): ?>
               <option value="<?php echo htmlspecialchars($rk, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $reqTypeKey === $rk ? 'selected' : ''; ?>>
                 <?php echo htmlspecialchars($rm['label'], ENT_QUOTES, 'UTF-8'); ?>
@@ -438,43 +569,32 @@ require __DIR__ . '/includes/admin-layout-start.php';
 
         <!-- Custom Type Input (for 'other') -->
         <div id="adminReqCustomTypeRow" style="margin-bottom:12px;display:<?php echo $reqTypeKey === 'other' ? 'block' : 'none'; ?>;">
-          <label for="admin_req_custom_type" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Nama Jenis Kualifikasi (Lainnya) *</label>
-          <input type="text" name="special_req_custom_type" id="admin_req_custom_type" value="<?php echo htmlspecialchars((string)($specialReq['custom_type'] ?? ($reqTypeKey === 'other' ? $reqTypeLabel : '')), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
+          <label for="admin_req_custom_type" style="display:block;font-size:0.80rem;font-weight:700;color:#334155;margin-bottom:4px;">Nama Jenis Kualifikasi (Lainnya) *</label>
+          <input type="text" name="special_req_custom_type" id="admin_req_custom_type" value="<?php echo htmlspecialchars((string)($specialReq['custom_type'] ?? ($reqTypeKey === 'other' ? $reqTypeLabel : '')), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
         </div>
 
         <!-- Detail / Nama Kualifikasi -->
         <div style="margin-bottom:12px;">
-          <label for="admin_req_label" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Detail / Nama Kualifikasi yang Diminta *</label>
-          <input type="text" name="special_req_label" id="admin_req_label" value="<?php echo htmlspecialchars((string)($specialReq['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
+          <label for="admin_req_label" style="display:block;font-size:0.80rem;font-weight:700;color:#334155;margin-bottom:4px;">Detail / Nama Kualifikasi yang Diminta *</label>
+          <input type="text" name="special_req_label" id="admin_req_label" value="<?php echo htmlspecialchars((string)($specialReq['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
         </div>
 
         <!-- Format Berkas / Input Mode -->
         <div style="margin-bottom:12px;">
-          <label for="admin_req_input_type" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Tipe Input / Format Berkas untuk Pelamar *</label>
+          <label for="admin_req_input_type" style="display:block;font-size:0.80rem;font-weight:700;color:#334155;margin-bottom:4px;">Tipe Input / Format Berkas untuk Pelamar *</label>
           <?php
             $currInputType = strtolower((string)($specialReq['input_type'] ?? ($specialReq['input_mode'] ?? 'document')));
             if ($currInputType === 'file') {
                 $currInputType = (string)($specialReq['file_type'] ?? 'document');
             }
           ?>
-          <select name="special_req_input_type" id="admin_req_input_type" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
+          <select name="special_req_input_type" id="admin_req_input_type" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
             <option value="document" <?php echo in_array($currInputType, ['document', 'pdf', 'doc', 'docx'], true) ? 'selected' : ''; ?>>Dokumen (PDF, DOC, DOCX, maks. 5 MB)</option>
             <option value="image" <?php echo in_array($currInputType, ['image', 'jpg', 'jpeg', 'png'], true) ? 'selected' : ''; ?>>Gambar (JPG, JPEG, PNG, maks. 5 MB)</option>
             <option value="archive" <?php echo in_array($currInputType, ['archive', 'compressed', 'zip', 'rar', '7z'], true) ? 'selected' : ''; ?>>Berkas Kompresi (ZIP, RAR, 7Z, maks. 10 MB)</option>
             <option value="url" <?php echo $currInputType === 'url' ? 'selected' : ''; ?>>Link / URL</option>
             <option value="text" <?php echo in_array($currInputType, ['text', 'textarea'], true) ? 'selected' : ''; ?>>Text</option>
           </select>
-        </div>
-
-        <!-- Visibilitas Publik Checkbox -->
-        <div style="margin-bottom:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
-          <label for="admin_req_is_public" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0;">
-            <input type="checkbox" name="special_req_is_public" id="admin_req_is_public" value="1" <?php echo (!isset($specialReq['is_public']) || !empty($specialReq['is_public'])) ? 'checked' : ''; ?> style="margin-top:2px;width:16px;height:16px;accent-color:#0ea5e9;cursor:pointer;" />
-            <span style="font-size:0.82rem;line-height:1.4;color:#1e293b;">
-              <strong style="font-weight:700;">Tampilkan kualifikasi khusus</strong>
-              <span style="color:#64748b;margin-left:4px;">(Kualifikasi khusus ini akan ditampilkan secara publik pada halaman rincian lowongan agar calon pelamar dapat mengetahuinya sebelum melamar.)</span>
-            </span>
-          </label>
         </div>
 
         <!-- Catatan Admin -->
@@ -511,11 +631,35 @@ require __DIR__ . '/includes/admin-layout-start.php';
   function toggleAdminReqFields(enabled) {
     var wrap = document.getElementById('adminReqFieldsWrap');
     var slider = document.getElementById('admin_switch_slider');
+    var badge = document.getElementById('admin_toggle_status_badge');
     if (wrap) wrap.style.display = enabled ? 'block' : 'none';
     if (slider) {
       slider.style.backgroundColor = enabled ? '#0ea5e9' : '#cbd5e1';
     }
+    if (badge) {
+      badge.textContent = enabled ? 'Aktif (Wajib)' : 'Nonaktif';
+      badge.style.background = enabled ? '#dcfce7' : '#f1f5f9';
+      badge.style.color = enabled ? '#15803d' : '#64748b';
+      badge.style.borderColor = enabled ? '#86efac' : '#cbd5e1';
+    }
   }
+
+  function selectAdminVisibility(val) {
+    var rad1 = document.getElementById('admin_rad_pub');
+    var rad0 = document.getElementById('admin_rad_priv');
+    var card1 = document.getElementById('admin_opt_public_card');
+    var card0 = document.getElementById('admin_opt_private_card');
+    if (val === 1) {
+      if (rad1) rad1.checked = true;
+      if (card1) { card1.style.borderColor = '#0284c7'; card1.style.background = '#f0f9ff'; }
+      if (card0) { card0.style.borderColor = '#cbd5e1'; card0.style.background = '#ffffff'; }
+    } else {
+      if (rad0) rad0.checked = true;
+      if (card0) { card0.style.borderColor = '#0284c7'; card0.style.background = '#f0f9ff'; }
+      if (card1) { card1.style.borderColor = '#cbd5e1'; card1.style.background = '#ffffff'; }
+    }
+  }
+
   function syncAdminReqType(val) {
     var customRow = document.getElementById('adminReqCustomTypeRow');
     if (customRow) {
