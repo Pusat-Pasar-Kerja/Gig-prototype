@@ -43,6 +43,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: admin-project-detail.php?' . http_build_query($params));
         exit;
     }
+    if ($action === 'admin_update_special_req') {
+        $targetId = trim((string)($_POST['vacancy_id'] ?? $vacancyId));
+        $enabled = !empty($_POST['special_req_enabled']);
+        $reqPayload = null;
+        if ($enabled) {
+            $type = trim((string)($_POST['special_req_type'] ?? 'certificate'));
+            $customType = trim((string)($_POST['special_req_custom_type'] ?? ''));
+            $label = trim((string)($_POST['special_req_label'] ?? ''));
+            $inputType = trim((string)($_POST['special_req_input_type'] ?? 'pdf'));
+            if ($type === 'other' && $customType === '') {
+                $flash = 'Nama jenis kualifikasi (lainnya) wajib diisi.';
+                $flashType = 'error';
+            } elseif ($label === '') {
+                $flash = 'Detail / nama kualifikasi yang diminta wajib diisi.';
+                $flashType = 'error';
+            } else {
+                $reqPayload = [
+                    'type' => $type,
+                    'custom_type' => $customType,
+                    'label' => $label,
+                    'input_type' => $inputType,
+                ];
+            }
+        }
+        if ($flashType !== 'error') {
+            $adminNote = trim((string)($_POST['admin_note'] ?? ''));
+            $auditNote = 'Admin memperbarui kualifikasi khusus lowongan';
+            if ($adminNote !== '') {
+                $auditNote .= ': ' . $adminNote;
+            }
+            $ok = gig_vacancy_update_special_requirement($targetId, $reqPayload, $auditNote);
+            $flash = $ok ? 'Kualifikasi khusus lowongan berhasil diperbarui oleh Admin.' : 'Gagal memperbarui kualifikasi khusus.';
+            $flashType = $ok ? 'success' : 'error';
+        }
+        header('Location: admin-project-detail.php?id=' . urlencode($targetId) . '&msg=' . urlencode($flash) . '&type=' . urlencode($flashType));
+        exit;
+    }
 }
 
 $vacancy = $vacancyId !== '' ? gig_find_vacancy($vacancyId) : null;
@@ -219,13 +256,16 @@ require __DIR__ . '/includes/admin-layout-start.php';
         <div><div class="req-label">Blacklist</div><div class="req-value" style="color:#065f46;"><?php echo htmlspecialchars($blacklistStatus, ENT_QUOTES, 'UTF-8'); ?></div></div>
         <div><div class="req-label">SLA Verifikasi</div><div class="req-value"><?php echo htmlspecialchars($slaLabel, ENT_QUOTES, 'UTF-8'); ?></div></div>
         <div>
-          <div class="req-label">Kualifikasi Khusus Pelamar</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+            <div class="req-label">Kualifikasi Khusus Pelamar</div>
+            <button type="button" onclick="openAdminEditSpecialReqModal()" style="background:none;border:none;color:#0284c7;font-size:0.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">✏️ Edit</button>
+          </div>
           <?php if ($specialReq !== null && !empty($specialReq['label'])): ?>
             <div class="req-value" style="color:#1e40af;"><?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></div>
             <div style="font-size:0.74rem;color:#334155;margin-top:2px;font-weight:600;"><?php echo htmlspecialchars((string)$specialReq['label'], ENT_QUOTES, 'UTF-8'); ?></div>
             <div style="font-size:0.7rem;color:#64748b;margin-top:2px;"><?php echo htmlspecialchars($reqFormatHint, ENT_QUOTES, 'UTF-8'); ?></div>
           <?php else: ?>
-            <div class="req-value">Tidak ada</div>
+            <div class="req-value" style="color:#64748b;">Tidak ada</div>
           <?php endif; ?>
         </div>
       </div>
@@ -286,7 +326,12 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <div class="req-section-title">Persyaratan Khusus</div>
       <p class="req-paragraph"><?php echo nl2br(htmlspecialchars((string)($vacancy['qualifications'] ?? '-'), ENT_QUOTES, 'UTF-8')); ?></p>
 
-      <div class="req-section-title">Permintaan Kualifikasi Khusus dari Pelamar (Untuk Verifikasi Admin)</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;margin-bottom:6px;">
+        <div class="req-section-title" style="margin:0;">Permintaan Kualifikasi Khusus dari Pelamar (Untuk Verifikasi Admin)</div>
+        <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:5px 12px;font-size:0.75rem;" onclick="openAdminEditSpecialReqModal()">
+          ✏️ Edit Kualifikasi Khusus
+        </button>
+      </div>
       <?php if ($specialReq !== null && !empty($specialReq['label'])): ?>
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:10px;">
           <div class="req-detail-grid" style="margin-top:0;">
@@ -305,7 +350,10 @@ require __DIR__ . '/includes/admin-layout-start.php';
           </div>
         </div>
       <?php else: ?>
-        <p class="req-paragraph">Tidak ada permintaan kualifikasi khusus tambahan.</p>
+        <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <p class="req-paragraph" style="color:#64748b;margin:0;">Tidak ada permintaan kualifikasi khusus tambahan dari pemberi kerja.</p>
+          <button type="button" class="req-btn" style="background:#0284c7;border-color:#0284c7;padding:4px 10px;font-size:0.73rem;" onclick="openAdminEditSpecialReqModal()">+ Tambah Syarat</button>
+        </div>
       <?php endif; ?>
 
       <div class="req-section-title">Detail Lowongan</div>
@@ -337,5 +385,124 @@ require __DIR__ . '/includes/admin-layout-start.php';
     </article>
   </div>
 </section>
+
+
+<!-- ADMIN EDIT SPECIAL REQUIREMENT MODAL -->
+<div id="adminEditSpecialReqModal" class="decision-modal-backdrop" onclick="handleAdminEditBackdrop(event)" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div class="decision-modal" onclick="event.stopPropagation();" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.2);overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">
+      <div>
+        <div style="font-size:1.05rem;font-weight:800;color:#0f172a;">Edit Kualifikasi Khusus Lowongan</div>
+        <div style="font-size:0.78rem;color:#64748b;margin-top:2px;">Ubah input pemberi kerja, sesuaikan format berkas, atau nonaktifkan persyaratan.</div>
+      </div>
+      <button type="button" onclick="closeAdminEditSpecialReqModal()" style="border:none;background:none;font-size:1.4rem;line-height:1;color:#64748b;cursor:pointer;" aria-label="Tutup">&times;</button>
+    </div>
+
+    <form method="post" id="adminEditSpecialReqForm" style="display:flex;flex-direction:column;flex:1;overflow-y:auto;padding:20px;gap:14px;">
+      <input type="hidden" name="action" value="admin_update_special_req" />
+      <input type="hidden" name="vacancy_id" value="<?php echo htmlspecialchars((string)$vacancy['id'], ENT_QUOTES, 'UTF-8'); ?>" />
+
+      <!-- Enable / Disable Card -->
+      <div style="padding:12px 14px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:0.86rem;font-weight:700;color:#0f172a;">Wajibkan Kualifikasi Khusus</div>
+          <div style="font-size:0.75rem;color:#64748b;">Jika dinonaktifkan, lowongan hanya memerlukan lamaran standar tanpa syarat berkas tambahan.</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;cursor:pointer;">
+          <input type="checkbox" name="special_req_enabled" id="admin_req_enabled" value="1" <?php echo ($specialReq !== null && !empty($specialReq['label'])) ? 'checked' : ''; ?> onchange="toggleAdminReqFields(this.checked)" style="opacity:0;width:0;height:0;" />
+          <span style="position:absolute;inset:0;background-color:<?php echo ($specialReq !== null && !empty($specialReq['label'])) ? '#0ea5e9' : '#cbd5e1'; ?>;border-radius:24px;transition:.2s;" id="admin_switch_slider"></span>
+        </label>
+      </div>
+
+      <div id="adminReqFieldsWrap" style="<?php echo ($specialReq !== null && !empty($specialReq['label'])) ? '' : 'display:none;'; ?>">
+        <!-- Jenis Kualifikasi -->
+        <div style="margin-bottom:12px;">
+          <label for="admin_req_type" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Jenis Kualifikasi *</label>
+          <select name="special_req_type" id="admin_req_type" onchange="syncAdminReqType(this.value)" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
+            <?php foreach ($reqTypesCatalog as $rk => $rm): ?>
+              <option value="<?php echo htmlspecialchars($rk, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $reqTypeKey === $rk ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars($rm['label'], ENT_QUOTES, 'UTF-8'); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <!-- Custom Type Input (for 'other') -->
+        <div id="adminReqCustomTypeRow" style="margin-bottom:12px;display:<?php echo $reqTypeKey === 'other' ? 'block' : 'none'; ?>;">
+          <label for="admin_req_custom_type" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Nama Jenis Kualifikasi (Lainnya) *</label>
+          <input type="text" name="special_req_custom_type" id="admin_req_custom_type" value="<?php echo htmlspecialchars((string)($specialReq['custom_type'] ?? ($reqTypeKey === 'other' ? $reqTypeLabel : '')), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
+        </div>
+
+        <!-- Detail / Nama Kualifikasi -->
+        <div style="margin-bottom:12px;">
+          <label for="admin_req_label" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Detail / Nama Kualifikasi yang Diminta *</label>
+          <input type="text" name="special_req_label" id="admin_req_label" value="<?php echo htmlspecialchars((string)($specialReq['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
+        </div>
+
+        <!-- Format Berkas / Input Mode -->
+        <div style="margin-bottom:12px;">
+          <label for="admin_req_input_type" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Tipe Input / Format Berkas untuk Pelamar *</label>
+          <?php
+            $currInputType = strtolower((string)($specialReq['input_type'] ?? ($specialReq['input_mode'] ?? 'pdf')));
+            if ($currInputType === 'file') {
+                $currInputType = (string)($specialReq['file_type'] ?? 'pdf');
+            }
+          ?>
+          <select name="special_req_input_type" id="admin_req_input_type" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
+            <option value="pdf" <?php echo $currInputType === 'pdf' ? 'selected' : ''; ?>>PDF (.pdf, maks. 5 MB)</option>
+            <option value="jpg" <?php echo in_array($currInputType, ['jpg', 'jpeg'], true) ? 'selected' : ''; ?>>JPG (.jpg, .jpeg, maks. 5 MB)</option>
+            <option value="png" <?php echo $currInputType === 'png' ? 'selected' : ''; ?>>PNG (.png, maks. 5 MB)</option>
+            <option value="doc" <?php echo in_array($currInputType, ['doc', 'docx'], true) ? 'selected' : ''; ?>>DOC / DOCX (.doc, .docx, maks. 5 MB)</option>
+            <option value="url" <?php echo $currInputType === 'url' ? 'selected' : ''; ?>>Link / URL</option>
+            <option value="text" <?php echo in_array($currInputType, ['text', 'textarea'], true) ? 'selected' : ''; ?>>Text</option>
+          </select>
+        </div>
+
+        <!-- Catatan Admin -->
+        <div style="margin-bottom:4px;">
+          <label for="admin_req_note" style="display:block;font-size:0.78rem;font-weight:700;color:#334155;margin-bottom:4px;">Catatan Perubahan Admin (Opsional)</label>
+          <input type="text" name="admin_note" id="admin_req_note" placeholder="Contoh: Menyesuaikan format berkas ke PDF sesuai regulasi" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;" />
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding-top:14px;border-top:1px solid #e2e8f0;margin-top:6px;">
+        <button type="button" onclick="closeAdminEditSpecialReqModal()" style="padding:9px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#ffffff;font-size:0.82rem;font-weight:700;color:#475569;cursor:pointer;">Batal</button>
+        <button type="submit" style="padding:9px 18px;border-radius:8px;border:none;background:#0ea5e9;color:#ffffff;font-size:0.82rem;font-weight:700;cursor:pointer;">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openAdminEditSpecialReqModal() {
+    var modal = document.getElementById('adminEditSpecialReqModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      var chk = document.getElementById('admin_req_enabled');
+      toggleAdminReqFields(chk ? chk.checked : true);
+    }
+  }
+  function closeAdminEditSpecialReqModal() {
+    var modal = document.getElementById('adminEditSpecialReqModal');
+    if (modal) modal.style.display = 'none';
+  }
+  function handleAdminEditBackdrop(e) {
+    if (e.target.id === 'adminEditSpecialReqModal') closeAdminEditSpecialReqModal();
+  }
+  function toggleAdminReqFields(enabled) {
+    var wrap = document.getElementById('adminReqFieldsWrap');
+    var slider = document.getElementById('admin_switch_slider');
+    if (wrap) wrap.style.display = enabled ? 'block' : 'none';
+    if (slider) {
+      slider.style.backgroundColor = enabled ? '#0ea5e9' : '#cbd5e1';
+    }
+  }
+  function syncAdminReqType(val) {
+    var customRow = document.getElementById('adminReqCustomTypeRow');
+    if (customRow) {
+      customRow.style.display = (val === 'other') ? 'block' : 'none';
+    }
+  }
+</script>
 
 <?php require __DIR__ . '/includes/admin-layout-end.php'; ?>

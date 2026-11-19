@@ -147,9 +147,13 @@ if (is_array($rawSpecial)) {
             }
         }
 
+        $customType = trim((string)($rawSpecial['custom_type'] ?? ''));
+        $typeLabel = ($reqTypeKey === 'other' && $customType !== '') ? $customType : (string)$meta['label'];
+
         $specialReq = [
             'type'            => $reqTypeKey,
-            'type_label'      => $meta['label'],
+            'custom_type'     => $customType,
+            'type_label'      => $typeLabel,
             'label'           => $reqLabel,
             'input_type'      => $chosenInputType !== '' ? $chosenInputType : ($inputMode === 'file' ? 'pdf' : $inputMode),
             'input_mode'      => $inputMode,

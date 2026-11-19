@@ -691,6 +691,12 @@ declare(strict_types=1);
                       </select>
                     </div>
 
+                    <div class="form-row" id="projSpecialReqCustomTypeRow" style="display: none; margin-bottom: 12px;">
+                      <label for="proj_special_req_custom_type">Nama Jenis Kualifikasi (Lainnya) *</label>
+                      <input type="text" id="proj_special_req_custom_type" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" />
+                      <div class="gig-note" style="margin-top: 3px;">Tuliskan nama kategori atau jenis kualifikasi yang belum tertera pada pilihan di atas.</div>
+                    </div>
+
                     <div class="form-row" style="margin-bottom: 12px;">
                       <label for="proj_special_req_label">Detail / Nama Kualifikasi yang Diminta *</label>
                       <input type="text" id="proj_special_req_label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
@@ -842,6 +848,13 @@ declare(strict_types=1);
     } else if (step === 3) {
       var toggle = document.getElementById('proj_special_req_toggle');
       if (toggle && toggle.checked) {
+        var reqTypeSelect = document.getElementById('proj_special_req_type');
+        var customTypeInput = document.getElementById('proj_special_req_custom_type');
+        if (reqTypeSelect && reqTypeSelect.value === 'other' && customTypeInput && !customTypeInput.value.trim()) {
+          customTypeInput.focus();
+          showToast('Tuliskan nama jenis kualifikasi khusus (lainnya).');
+          return false;
+        }
         var reqLabelInput = document.getElementById('proj_special_req_label');
         if (reqLabelInput && !reqLabelInput.value.trim()) {
           reqLabelInput.focus();
@@ -891,7 +904,11 @@ declare(strict_types=1);
     var sel = document.getElementById('proj_special_req_type');
     var labelInput = document.getElementById('proj_special_req_label');
     var inputTypeSel = document.getElementById('proj_special_req_input_type');
+    var customRow = document.getElementById('projSpecialReqCustomTypeRow');
     if (!sel) return;
+    if (customRow) {
+      customRow.style.display = (sel.value === 'other') ? 'block' : 'none';
+    }
     var opt = sel.options[sel.selectedIndex];
     if (!opt) return;
     var placeholder = opt.getAttribute('data-placeholder') || '';
@@ -981,6 +998,7 @@ declare(strict_types=1);
 
     var toggleEl = document.getElementById('proj_special_req_toggle');
     var reqTypeEl = document.getElementById('proj_special_req_type');
+    var customTypeEl = document.getElementById('proj_special_req_custom_type');
     var reqLabelEl = document.getElementById('proj_special_req_label');
     var reqInputTypeEl = document.getElementById('proj_special_req_input_type');
     var specialRequirement = null;
@@ -993,6 +1011,7 @@ declare(strict_types=1);
 
       specialRequirement = {
         type: reqTypeEl.value,
+        custom_type: (reqTypeEl.value === 'other' && customTypeEl) ? customTypeEl.value.trim() : '',
         label: reqLabelEl.value.trim(),
         input_type: chosenVal,
         input_mode: chosenMode,

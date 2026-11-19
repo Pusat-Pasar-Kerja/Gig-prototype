@@ -96,6 +96,14 @@ function gig_special_requirement_types(): array
             'placeholder' => 'Contoh: Surat Referensi Kerja / Dokumen Portofolio PDF',
             'worker_hint' => 'Unggah dokumen pendukung dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
         ],
+        'other' => [
+            'label'       => 'Lainnya (Tentukan Sendiri)',
+            'input_mode'  => 'file',
+            'accept'      => '.pdf,.jpg,.jpeg,.png,.doc,.docx',
+            'format_hint' => 'Upload File (PDF / Gambar / Dokumen)',
+            'placeholder' => 'Contoh: Tuliskan nama kualifikasi atau berkas khusus yang diminta',
+            'worker_hint' => 'Sediakan kualifikasi atau dokumen sesuai ketentuan yang diminta.',
+        ],
     ];
 }
 
@@ -541,7 +549,12 @@ function gig_vacancy_normalize(array $vacancy): array
         $typesCatalog = gig_special_requirement_types();
         if ($type !== '' && isset($typesCatalog[$type])) {
             $baseMeta = $typesCatalog[$type];
-            $sReq['type_label'] = (string)($sReq['type_label'] ?? $baseMeta['label']);
+            $customType = trim((string)($sReq['custom_type'] ?? ''));
+            if ($type === 'other' && $customType !== '') {
+                $sReq['type_label'] = $customType;
+            } else {
+                $sReq['type_label'] = (string)($sReq['type_label'] ?? $baseMeta['label']);
+            }
             $sReq['input_mode'] = (string)($sReq['input_mode'] ?? $baseMeta['input_mode']);
             if ($sReq['input_mode'] === 'file') {
                 $fileFormats = gig_special_req_file_formats();
@@ -636,13 +649,6 @@ function gig_vacancy_load_all(?string $statusFilter = null): array
             $id = (string)($item['id'] ?? '');
             if (!isset($all[$id])) {
                 $all[$id] = gig_vacancy_normalize($item);
-            } else {
-                // Ensure demo special requirement is available even if session had older cache
-                if (!empty($item['special_requirement'])) {
-                    if (empty($all[$id]['special_requirement']) || !empty($item['special_requirement']['type'])) {
-                        $all[$id]['special_requirement'] = $item['special_requirement'];
-                    }
-                }
             }
         }
         $out = array_values($all);
@@ -863,3 +869,172 @@ function gig_admin_list_project_vacancies(?string $statusFilter = null): array
     }));
 }
 
+
+/**
+ * Updates or removes the special qualification requirement for a vacancy (Admin tool).
+ * Allows admin to edit all fields: type, custom_type, label, format/input_type, or disable completely.
+ *
+ * @param string $vacancyId
+ * @param array<string, mixed>|null $reqData Null or empty array to disable/remove
+ * @param string $adminNote Optional admin audit note
+ * @return bool
+ */
+function gig_vacancy_update_special_requirement(string $vacancyId, ?array $reqData, string $adminNote = ''): bool
+{
+    gig_vacancy_ensure_schema();
+    $db = gig_db();
+    $typesCatalog = gig_special_requirement_types();
+    $fileFormats = gig_special_req_file_formats();
+
+    $normalizedReq = null;
+    if (is_array($reqData) && !empty($reqData)) {
+        $type = trim((string)($reqData['type'] ?? 'certificate'));
+        if (!isset($typesCatalog[$type])) {
+            $type = 'other';
+        }
+        $baseMeta = $typesCatalog[$type];
+        $customType = trim((string)($reqData['custom_type'] ?? ''));
+        $label = trim((string)($reqData['label'] ?? ''));
+        if ($label === '') {
+            $label = $baseMeta['label'];
+        }
+
+        $typeLabel = ($type === 'other' && $customType !== '') ? $customType : $baseMeta['label'];
+        $chosenInputType = strtolower(trim((string)($reqData['input_type'] ?? 'pdf')));
+
+        if ($chosenInputType === 'pdf') {
+            $inputMode = 'file';
+            $fileType = 'pdf';
+            $fileTypeLabel = 'PDF';
+            $accept = '.pdf';
+            $formatHint = 'PDF (.pdf)';
+            $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
+            $allowedExts = ['pdf'];
+        } elseif ($chosenInputType === 'jpg' || $chosenInputType === 'jpeg') {
+            $inputMode = 'file';
+            $fileType = 'jpg';
+            $fileTypeLabel = 'JPG';
+            $accept = '.jpg,.jpeg';
+            $formatHint = 'JPG (.jpg, .jpeg)';
+            $workerHint = 'Unggah gambar dalam format JPG / JPEG (maks. 5 MB).';
+            $allowedExts = ['jpg', 'jpeg'];
+        } elseif ($chosenInputType === 'png') {
+            $inputMode = 'file';
+            $fileType = 'png';
+            $fileTypeLabel = 'PNG';
+            $accept = '.png';
+            $formatHint = 'PNG (.png)';
+            $workerHint = 'Unggah gambar dalam format PNG (maks. 5 MB).';
+            $allowedExts = ['png'];
+        } elseif ($chosenInputType === 'doc' || $chosenInputType === 'docx') {
+            $inputMode = 'file';
+            $fileType = 'doc';
+            $fileTypeLabel = 'DOC / DOCX';
+            $accept = '.doc,.docx';
+            $formatHint = 'DOC / DOCX (.doc, .docx)';
+            $workerHint = 'Unggah dokumen dalam format Word (.doc, .docx, maks. 5 MB).';
+            $allowedExts = ['doc', 'docx'];
+        } elseif ($chosenInputType === 'url') {
+            $inputMode = 'url';
+            $fileType = null;
+            $fileTypeLabel = null;
+            $accept = '';
+            $formatHint = 'Link / URL';
+            $workerHint = 'Masukkan tautan / URL yang valid.';
+            $allowedExts = null;
+        } elseif ($chosenInputType === 'text' || $chosenInputType === 'textarea') {
+            $inputMode = 'text';
+            $fileType = null;
+            $fileTypeLabel = null;
+            $accept = '';
+            $formatHint = 'Text';
+            $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
+            $allowedExts = null;
+        } else {
+            $inputMode = (string)($baseMeta['input_mode'] ?? 'file');
+            $fileType = 'pdf';
+            $fileTypeLabel = 'PDF';
+            $accept = '.pdf';
+            $formatHint = 'PDF (.pdf)';
+            $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
+            $allowedExts = ['pdf'];
+        }
+
+        $normalizedReq = [
+            'type'            => $type,
+            'custom_type'     => $customType,
+            'type_label'      => $typeLabel,
+            'label'           => $label,
+            'input_type'      => $chosenInputType,
+            'input_mode'      => $inputMode,
+            'file_type'       => $fileType,
+            'file_type_label' => $fileTypeLabel,
+            'accept'          => $accept,
+            'format_hint'     => $formatHint,
+            'worker_hint'     => $workerHint,
+            'allowed_exts'    => $allowedExts,
+        ];
+    }
+
+    if ($db === null) {
+        if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+            session_start();
+        }
+        if (!isset($_SESSION['project_vacancies']) || !is_array($_SESSION['project_vacancies'])) {
+            $_SESSION['project_vacancies'] = [];
+        }
+        $existing = $_SESSION['project_vacancies'][$vacancyId] ?? gig_find_vacancy($vacancyId);
+        if ($existing !== null) {
+            $existing['special_requirement'] = $normalizedReq;
+            if ($adminNote !== '') {
+                $existing['adminNote'] = $adminNote;
+            }
+            $_SESSION['project_vacancies'][$vacancyId] = gig_vacancy_normalize($existing);
+            return true;
+        }
+        return false;
+    }
+
+    try {
+        $stmt = $db->prepare("SELECT * FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
+        $stmt->execute([':id' => $vacancyId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+
+        $vacancy = json_decode((string)($row['vacancy_json'] ?? ''), true);
+        if (!is_array($vacancy)) {
+            $vacancy = [];
+        }
+        $vacancy['id'] = $vacancyId;
+        $vacancy['special_requirement'] = $normalizedReq;
+        if ($adminNote !== '') {
+            $vacancy['adminNote'] = $adminNote;
+        }
+        $vacancy = gig_vacancy_normalize($vacancy);
+
+        $upd = $db->prepare(
+            "UPDATE `project_vacancies`
+             SET `vacancy_json` = :json, `admin_note` = COALESCE(:note, `admin_note`)
+             WHERE `id` = :id"
+        );
+        $upd->execute([
+            ':json' => json_encode($vacancy, JSON_UNESCAPED_UNICODE),
+            ':note' => $adminNote !== '' ? $adminNote : null,
+            ':id'   => $vacancyId,
+        ]);
+
+        if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+            session_start();
+        }
+        if (isset($_SESSION['project_vacancies'][$vacancyId])) {
+            $_SESSION['project_vacancies'][$vacancyId] = $vacancy;
+        }
+
+        return true;
+    } catch (Throwable $e) {
+        error_log('gig_vacancy_update_special_requirement error: ' . $e->getMessage());
+        return false;
+    }
+}
