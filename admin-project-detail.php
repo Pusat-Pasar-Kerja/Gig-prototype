@@ -283,7 +283,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
             <div class="req-label">Kualifikasi Khusus Pelamar</div>
-            <button type="button" onclick="openAdminEditSpecialReqModal()" style="background:none;border:none;color:#0284c7;font-size:0.72rem;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;">✏️ Edit</button>
+            <button type="button" class="req-btn" style="padding:4px 10px;font-size:0.72rem;line-height:1;" onclick="openAdminEditSpecialReqModal()">✏️ Edit</button>
           </div>
           <?php if ($specialReq !== null && !empty($specialReq['label'])): 
             $topIsPub = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
@@ -383,45 +383,28 @@ require __DIR__ . '/includes/admin-layout-start.php';
           $isPublicVal = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
         ?>
           <div style="background:#ffffff;border:1.5px solid <?php echo $isPublicVal ? '#bbf7d0' : '#e2e8f0'; ?>;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-            <!-- Status Visibilitas Banner (Super Ramah Pengguna Awam) -->
-            <div style="padding:12px 16px;border-radius:10px;background:<?php echo $isPublicVal ? '#f0fdf4' : '#f8fafc'; ?>;border:1px solid <?php echo $isPublicVal ? '#86efac' : '#cbd5e1'; ?>;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
-              <div style="display:flex;align-items:flex-start;gap:12px;">
-                <div style="font-size:1.6rem;line-height:1;margin-top:2px;">
-                  <?php echo $isPublicVal ? '🌐' : '🔒'; ?>
+            <!-- Status Visibilitas Banner (Bersih, Jelas, Tanpa Tombol Yang Membingungkan) -->
+            <div style="padding:14px 16px;border-radius:10px;background:<?php echo $isPublicVal ? '#f0fdf4' : '#f8fafc'; ?>;border:1px solid <?php echo $isPublicVal ? '#86efac' : '#cbd5e1'; ?>;display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+              <div style="font-size:1.6rem;line-height:1;margin-top:2px;">
+                <?php echo $isPublicVal ? '🌐' : '🔒'; ?>
+              </div>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:0.88rem;font-weight:800;color:<?php echo $isPublicVal ? '#15803d' : '#334155'; ?>;">
+                    Status Tampilan: <?php echo $isPublicVal ? 'Ditampilkan ke Publik' : 'Disembunyikan dari Publik'; ?>
+                  </span>
+                  <span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:9999px;background:<?php echo $isPublicVal ? '#dcfce7;color:#166534;border:1px solid #86efac' : '#e2e8f0;color:#475569;border:1px solid #cbd5e1'; ?>;">
+                    <?php echo $isPublicVal ? 'Terlihat oleh Pelamar' : 'Hanya Saat Melamar'; ?>
+                  </span>
                 </div>
-                <div>
-                  <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-size:0.88rem;font-weight:800;color:<?php echo $isPublicVal ? '#15803d' : '#334155'; ?>;">
-                      Status Tampilan: <?php echo $isPublicVal ? 'Ditampilkan ke Publik' : 'Disembunyikan dari Publik'; ?>
-                    </span>
-                    <span style="font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:9999px;background:<?php echo $isPublicVal ? '#dcfce7;color:#166534;border:1px solid #86efac' : '#e2e8f0;color:#475569;border:1px solid #cbd5e1'; ?>;">
-                      <?php echo $isPublicVal ? 'Terlihat oleh Pelamar' : 'Hanya Saat Melamar'; ?>
-                    </span>
-                  </div>
-                  <div style="font-size:0.78rem;color:<?php echo $isPublicVal ? '#166534' : '#64748b'; ?>;margin-top:4px;line-height:1.45;">
-                    <?php if ($isPublicVal): ?>
-                      Syarat ini <strong>tampil terbuka</strong> pada halaman lowongan dan bursa kerja. Calon pelamar dapat langsung mengetahui syarat ini sebelum melamar.
-                    <?php else: ?>
-                      Syarat ini <strong>disembunyikan</strong> dari rincian lowongan publik. Calon pelamar baru akan diminta melampirkan berkas ini saat menekan tombol "Lamar Proyek".
-                    <?php endif; ?>
-                  </div>
+                <div style="font-size:0.78rem;color:<?php echo $isPublicVal ? '#166534' : '#64748b'; ?>;margin-top:4px;line-height:1.45;">
+                  <?php if ($isPublicVal): ?>
+                    Syarat ini <strong>tampil terbuka</strong> pada halaman lowongan dan bursa kerja. Calon pelamar dapat langsung mengetahui syarat ini sebelum melamar.
+                  <?php else: ?>
+                    Syarat ini <strong>disembunyikan</strong> dari rincian lowongan publik. Calon pelamar baru akan diminta melampirkan berkas ini saat menekan tombol "Lamar Proyek".
+                  <?php endif; ?>
                 </div>
               </div>
-
-              <!-- 1-Click Quick Toggle for Non-Tech-Savvy Admin -->
-              <form method="post" style="margin:0;">
-                <input type="hidden" name="action" value="admin_toggle_special_req_visibility" />
-                <input type="hidden" name="vacancy_id" value="<?php echo htmlspecialchars((string)$vacancy['id'], ENT_QUOTES, 'UTF-8'); ?>" />
-                <?php if ($isPublicVal): ?>
-                  <button type="submit" onclick="return confirm('Sembunyikan kualifikasi khusus ini dari rincian lowongan publik?')" style="background:#ffffff;border:1.5px solid #cbd5e1;color:#475569;font-weight:700;font-size:0.80rem;padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#ffffff'">
-                    🔒 Sembunyikan
-                  </button>
-                <?php else: ?>
-                  <button type="submit" onclick="return confirm('Tampilkan kualifikasi khusus ini secara publik di halaman lowongan & bursa kerja?')" style="background:#16a34a;border:1px solid #15803d;color:#ffffff;font-weight:700;font-size:0.80rem;padding:8px 16px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.1);transition:all 0.15s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
-                    🌐 Tampilkan
-                  </button>
-                <?php endif; ?>
-              </form>
             </div>
 
             <div class="req-detail-grid" style="margin-top:0;">
