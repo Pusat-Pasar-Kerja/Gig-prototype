@@ -331,12 +331,12 @@ declare(strict_types=1);
         <div class="modal-window gig-post-modal">
           <div class="modal-header">
             <div>
-              <div class="gig-post-head-title">Tambah Lowongan</div>
-              <div class="gig-post-head-sub">Lengkapi form untuk mempublikasikan lowongan dan merekrut 1 kandidat.</div>
+              <div class="gig-post-head-title">Tambah Lowongan Proyek</div>
+              <div class="gig-post-head-sub">Lengkapi form untuk mempublikasikan proyek dan merekrut 1 Gig Workers.</div>
               <div class="gig-stepper">
-                <span class="gig-step-item active" data-step="1" onclick="goToProjectStep(1)"><span class="gig-step-dot">1</span>Informasi Lowongan</span>
+                <span class="gig-step-item active" data-step="1" onclick="goToProjectStep(1)"><span class="gig-step-dot">1</span>Informasi Proyek</span>
                 <span class="gig-step-sep"></span>
-                <span class="gig-step-item" data-step="2" onclick="goToProjectStep(2)"><span class="gig-step-dot">2</span>Kriteria Pelamar</span>
+                <span class="gig-step-item" data-step="2" onclick="goToProjectStep(2)"><span class="gig-step-dot">2</span>Kriteria Gig Workers</span>
                 <span class="gig-step-sep"></span>
                 <span class="gig-step-item" data-step="3" onclick="goToProjectStep(3)"><span class="gig-step-dot">3</span>Tambahan</span>
               </div>
@@ -347,20 +347,20 @@ declare(strict_types=1);
             <div class="modal-body" id="postProjectModalBody">
 
               <div class="gig-form-callout">
-                &#9432; Lowongan akan diverifikasi Admin terlebih dahulu sebelum dipublikasikan ke pelamar.
+                &#9432; Lowongan akan diverifikasi Admin terlebih dahulu sebelum tayang ke Gig Workers.
               </div>
 
               <section class="gig-section-card gig-step-panel active" data-step="1">
                 <div class="gig-section-head">
                   <span class="gig-section-icon">1</span>
                   <div>
-                    <div class="gig-section-title">Informasi Lowongan</div>
-                    <div class="gig-section-sub">Judul, deskripsi, durasi, nominal imbalan, batas waktu lamaran, deliverable, dan lokasi.</div>
+                    <div class="gig-section-title">Informasi Proyek</div>
+                    <div class="gig-section-sub">Judul, deskripsi, durasi, nilai proyek, batas waktu lamaran, deliverable, dan lokasi proyek.</div>
                   </div>
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_title">Judul Lowongan *</label>
+                  <label for="proj_title">Judul Lowongan Proyek *</label>
                   <input type="text" id="proj_title" required placeholder="Contoh: Redesign Dashboard Monitoring Penjualan" />
                 </div>
 
@@ -379,12 +379,12 @@ declare(strict_types=1);
                       <option value="Pemasaran &amp; Konten">Pemasaran &amp; Konten</option>
                       <option value="Penulisan &amp; Terjemahan">Penulisan &amp; Terjemahan</option>
                       <option value="Akuntansi &amp; Keuangan">Akuntansi &amp; Keuangan</option>
-                      <option value="Manajemen &amp; Operasional">Manajemen &amp; Operasional</option>
+                      <option value="Manajemen Proyek">Manajemen Proyek</option>
                       <option value="Lainnya">Lainnya</option>
                     </select>
                   </div>
                   <div class="form-row">
-                    <label for="proj_duration">Durasi Pengerjaan *</label>
+                    <label for="proj_duration">Durasi Proyek *</label>
                     <div class="gig-duration-split">
                       <input type="number" id="proj_duration_value" min="1" max="36" value="1" required />
                       <select id="proj_duration_unit" required>
@@ -408,24 +408,24 @@ declare(strict_types=1);
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_salary">Nominal Imbalan (Rp) *</label>
+                  <label for="proj_salary">Nilai Proyek (Rp) *</label>
                   <input type="text" id="proj_salary" required placeholder="Contoh: 7500000" />
                 </div>
 
                 <div class="gig-toggle-row" style="margin-bottom: 12px;">
                   <label for="proj_show_salary" class="gig-checkbox-label">
                     <input type="checkbox" id="proj_show_salary" checked />
-                    <span>Tampilkan nominal imbalan di postingan lowongan</span>
+                    <span>Tampilkan nominal nilai proyek di postingan lowongan</span>
                   </label>
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_desc">Deskripsi Pekerjaan *</label>
-                  <textarea id="proj_desc" rows="4" required placeholder="Jelaskan masalah, ruang lingkup, dan hasil yang diharapkan dari pelamar..."></textarea>
+                  <label for="proj_desc">Deskripsi Proyek *</label>
+                  <textarea id="proj_desc" rows="4" required placeholder="Jelaskan masalah, ruang lingkup, dan hasil yang diharapkan dari Gig Worker..."></textarea>
                 </div>
 
                 <div class="form-row">
-                  <label for="proj_target">Target / Deliverables *</label>
+                  <label for="proj_target">Target / Deliverable Proyek *</label>
                   <textarea id="proj_target" rows="3" required placeholder="Contoh: 12 layar high-fidelity + prototype interaktif + style guide komponen"></textarea>
                 </div>
 
@@ -456,7 +456,7 @@ declare(strict_types=1);
                 <div class="gig-section-head">
                   <span class="gig-section-icon">2</span>
                   <div>
-                    <div class="gig-section-title">Kriteria Pelamar</div>
+                    <div class="gig-section-title">Kriteria Gig Worker</div>
                     <div class="gig-section-sub">Atur skill wajib dan persyaratan kandidat.</div>
                   </div>
                 </div>
@@ -490,10 +490,10 @@ declare(strict_types=1);
                     </label>
                     <label>
                       <input type="radio" name="proj_lokasi_type" value="remote">
-                      <span>Ya, kerja remote<small>Pengerjaan jarak jauh dari lokasi manapun.</small></span>
+                      <span>Ya, project remote<small>Pengerjaan jarak jauh dari lokasi manapun.</small></span>
                     </label>
                   </div>
-                  <div class="gig-note">Lokasi provinsi dan kota tetap wajib diisi pada bagian Informasi Lowongan.</div>
+                  <div class="gig-note">Lokasi provinsi dan kota tetap wajib diisi pada bagian Informasi Proyek.</div>
                 </div>
 
                 <div class="form-row">
@@ -521,7 +521,7 @@ declare(strict_types=1);
                       ><?php echo htmlspecialchars($reqMeta['label'], ENT_QUOTES, 'UTF-8'); ?></option>
                     <?php endforeach; ?>
                   </select>
-                  <div class="gig-note">Pilih jika Anda mewajibkan pelamar melampirkan dokumen/informasi khusus (mis. sertifikat atau akun media sosial) saat melamar.</div>
+                  <div class="gig-note">Pilih jika Anda mewajibkan Gig Worker melampirkan dokumen/informasi khusus (mis. sertifikat atau akun media sosial) saat melamar.</div>
                 </div>
 
                 <div id="projSpecialReqDetails" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;">
@@ -539,15 +539,15 @@ declare(strict_types=1);
                       <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
                       <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
                     </select>
-                    <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh pelamar saat melamar lowongan ini.</div>
+                    <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh Gig Worker saat melamar proyek ini.</div>
                   </div>
                   <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
                     <span>&#128206;</span>
-                    <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">PDF (.pdf, maks. 5 MB)</strong></span>
+                    <span>Format input untuk Gig Worker: <strong id="projSpecialReqFormatPreview">PDF (.pdf, maks. 5 MB)</strong></span>
                   </div>
                 </div>
 
-                <div class="gig-note" style="margin-top: 10px;">Setiap lowongan secara otomatis hanya dapat merekrut <strong>1 orang pelamar</strong>.</div>
+                <div class="gig-note" style="margin-top: 10px;">Setiap lowongan secara otomatis hanya dapat merekrut <strong>1 Gig Worker</strong>.</div>
               </section>
 
             </div>
@@ -640,7 +640,7 @@ declare(strict_types=1);
       var durationValue = Number(durationInput ? durationInput.value : 0);
       if (!durationValue || durationValue < 1) {
         if (durationInput) durationInput.focus();
-        showToast('Durasi pengerjaan harus diisi minimal 1.');
+        showToast('Durasi proyek harus diisi minimal 1.');
         return false;
       }
       var deadlineInput = document.getElementById('proj_deadline');
@@ -654,13 +654,13 @@ declare(strict_types=1);
       var salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
       if (!salaryVal || salaryVal < 10000) {
         if (salaryInput) salaryInput.focus();
-        showToast('Nominal imbalan belum valid. Masukkan nominal minimal Rp 10.000.');
+        showToast('Nilai proyek belum valid. Masukkan nominal nilai proyek minimal Rp 10.000.');
         return false;
       }
       var province = (document.getElementById('proj_province').value || '').trim();
       var city = (document.getElementById('proj_city').value || '').trim();
       if (!province || !city) {
-        showToast('Lokasi wajib diisi: provinsi dan kota/kabupaten.');
+        showToast('Lokasi proyek wajib diisi: provinsi dan kota/kabupaten.');
         return false;
       }
     } else if (step === 2) {
