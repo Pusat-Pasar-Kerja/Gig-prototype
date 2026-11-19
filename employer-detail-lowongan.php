@@ -900,8 +900,17 @@ require __DIR__ . '/includes/employer-layout-start.php';
       <div style="margin-top:6px;font-size:0.92rem;font-weight:700;color:#0f172a;">
         <?php echo htmlspecialchars((string)$empSpecialReq['label'], ENT_QUOTES, 'UTF-8'); ?>
       </div>
-      <div style="margin-top:4px;font-size:0.78rem;color:#475569;">
-        Jenis: <strong><?php echo htmlspecialchars($tL, ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Format: <strong><?php echo htmlspecialchars((string)($empSpecialReq['file_type_label'] ?? $empSpecialReq['format_hint'] ?? ($cat[$tK]['format_hint'] ?? 'Sesuai format pilihan')), ENT_QUOTES, 'UTF-8'); ?></strong>
+      <div style="margin-top:4px;font-size:0.78rem;color:#475569;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div>
+          Jenis: <strong><?php echo htmlspecialchars($tL, ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Format: <strong><?php echo htmlspecialchars((string)($empSpecialReq['file_type_label'] ?? $empSpecialReq['format_hint'] ?? ($cat[$tK]['format_hint'] ?? 'Sesuai format pilihan')), ENT_QUOTES, 'UTF-8'); ?></strong>
+        </div>
+        <div>
+          <?php if (!isset($empSpecialReq['is_public']) || !empty($empSpecialReq['is_public'])): ?>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 8px;border-radius:6px;">🌐 Ditampilkan Publik</span>
+          <?php else: ?>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 8px;border-radius:6px;">🔒 Tidak Ditampilkan Publik</span>
+          <?php endif; ?>
+        </div>
       </div>
     </div>
     <?php endif; ?>

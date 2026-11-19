@@ -718,6 +718,16 @@ declare(strict_types=1);
                       <span>&#128206;</span>
                       <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">Dokumen PDF, DOC, DOCX (maks. 5 MB)</strong></span>
                     </div>
+
+                    <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                      <label for="proj_special_req_is_public" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" id="proj_special_req_is_public" checked style="margin-top: 2px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;" />
+                        <span style="font-size: 0.83rem; line-height: 1.45; color: #1e293b;">
+                          <strong style="font-weight: 700;">Tampilkan kualifikasi khusus</strong>
+                          <span style="color: #64748b; margin-left: 4px;">(Kualifikasi khusus ini akan ditampilkan secara publik pada halaman rincian lowongan agar calon pelamar dapat mengetahuinya sebelum melamar.)</span>
+                        </span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -1008,6 +1018,9 @@ declare(strict_types=1);
       var chosenHint = chosenOpt ? chosenOpt.getAttribute('data-hint') : (chosenOpt ? chosenOpt.text : 'PDF');
       var chosenVal = reqInputTypeEl ? reqInputTypeEl.value : 'document';
 
+      var isPublicEl = document.getElementById('proj_special_req_is_public');
+      var isPublic = isPublicEl ? isPublicEl.checked : true;
+
       specialRequirement = {
         type: reqTypeEl.value,
         custom_type: (reqTypeEl.value === 'other' && customTypeEl) ? customTypeEl.value.trim() : '',
@@ -1015,7 +1028,8 @@ declare(strict_types=1);
         input_type: chosenVal,
         input_mode: chosenMode,
         accept: chosenAccept,
-        format_hint: chosenHint
+        format_hint: chosenHint,
+        is_public: isPublic
       };
     }
 

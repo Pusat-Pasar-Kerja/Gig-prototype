@@ -32,7 +32,7 @@ if ($q !== '') {
 // Filter by Special Requirement
 if ($selectedSpec !== '' && $selectedSpec !== 'all') {
     $vacancies = array_values(array_filter($vacancies, static function ($job) use ($selectedSpec) {
-        $hasSpec = !empty($job['special_requirement']['label']);
+        $hasSpec = !empty($job['special_requirement']['label']) && (!isset($job['special_requirement']['is_public']) || !empty($job['special_requirement']['is_public']));
         if ($selectedSpec === 'with_req') {
             return $hasSpec;
         }
@@ -752,7 +752,8 @@ a.proyek-card-item:hover .apply-cta {
 
                 <?php
                   $cardSpec = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
-                  if ($cardSpec !== null && !empty($cardSpec['label'])):
+                  $cardSpecIsPublic = !isset($cardSpec['is_public']) || !empty($cardSpec['is_public']);
+                  if ($cardSpec !== null && !empty($cardSpec['label']) && $cardSpecIsPublic):
                     $cardSpecType = (string)($cardSpec['type_label'] ?? 'Kualifikasi Khusus');
                     $cardSpecFormat = (string)($cardSpec['file_type_label'] ?? $cardSpec['format_hint'] ?? '');
                 ?>

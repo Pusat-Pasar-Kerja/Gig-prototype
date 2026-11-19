@@ -59,11 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flash = 'Detail / nama kualifikasi yang diminta wajib diisi.';
                 $flashType = 'error';
             } else {
+                $isPublic = !empty($_POST['special_req_is_public']);
                 $reqPayload = [
                     'type' => $type,
                     'custom_type' => $customType,
                     'label' => $label,
                     'input_type' => $inputType,
+                    'is_public' => $isPublic,
                 ];
             }
         }
@@ -264,6 +266,13 @@ require __DIR__ . '/includes/admin-layout-start.php';
             <div class="req-value" style="color:#1e40af;"><?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></div>
             <div style="font-size:0.74rem;color:#334155;margin-top:2px;font-weight:600;"><?php echo htmlspecialchars((string)$specialReq['label'], ENT_QUOTES, 'UTF-8'); ?></div>
             <div style="font-size:0.7rem;color:#64748b;margin-top:2px;"><?php echo htmlspecialchars($reqFormatHint, ENT_QUOTES, 'UTF-8'); ?></div>
+            <div style="margin-top:4px;">
+              <?php if (!isset($specialReq['is_public']) || !empty($specialReq['is_public'])): ?>
+                <span style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 6px;border-radius:4px;">🌐 Ditampilkan Publik</span>
+              <?php else: ?>
+                <span style="display:inline-flex;align-items:center;gap:3px;font-size:0.68rem;font-weight:700;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 6px;border-radius:4px;">🔒 Disembunyikan dari Publik</span>
+              <?php endif; ?>
+            </div>
           <?php else: ?>
             <div class="req-value" style="color:#64748b;">Tidak ada</div>
           <?php endif; ?>
@@ -455,6 +464,17 @@ require __DIR__ . '/includes/admin-layout-start.php';
             <option value="url" <?php echo $currInputType === 'url' ? 'selected' : ''; ?>>Link / URL</option>
             <option value="text" <?php echo in_array($currInputType, ['text', 'textarea'], true) ? 'selected' : ''; ?>>Text</option>
           </select>
+        </div>
+
+        <!-- Visibilitas Publik Checkbox -->
+        <div style="margin-bottom:12px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+          <label for="admin_req_is_public" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0;">
+            <input type="checkbox" name="special_req_is_public" id="admin_req_is_public" value="1" <?php echo (!isset($specialReq['is_public']) || !empty($specialReq['is_public'])) ? 'checked' : ''; ?> style="margin-top:2px;width:16px;height:16px;accent-color:#0ea5e9;cursor:pointer;" />
+            <span style="font-size:0.82rem;line-height:1.4;color:#1e293b;">
+              <strong style="font-weight:700;">Tampilkan kualifikasi khusus</strong>
+              <span style="color:#64748b;margin-left:4px;">(Kualifikasi khusus ini akan ditampilkan secara publik pada halaman rincian lowongan agar calon pelamar dapat mengetahuinya sebelum melamar.)</span>
+            </span>
+          </label>
         </div>
 
         <!-- Catatan Admin -->

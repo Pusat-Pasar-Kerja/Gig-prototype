@@ -142,6 +142,8 @@ if (is_array($rawSpecial)) {
         $customType = trim((string)($rawSpecial['custom_type'] ?? ''));
         $typeLabel = ($reqTypeKey === 'other' && $customType !== '') ? $customType : (string)$meta['label'];
 
+        $isPublic = !isset($rawSpecial['is_public']) || !empty($rawSpecial['is_public']);
+
         $specialReq = [
             'type'            => $reqTypeKey,
             'custom_type'     => $customType,
@@ -155,6 +157,7 @@ if (is_array($rawSpecial)) {
             'format_hint'     => $formatHint,
             'worker_hint'     => $workerHint,
             'allowed_exts'    => $allowedExts,
+            'is_public'       => $isPublic,
         ];
     }
 }

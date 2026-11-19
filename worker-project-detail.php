@@ -648,7 +648,8 @@ require __DIR__ . '/includes/worker-layout-start.php';
         </ul>
         <?php
           $detailSpecialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
-          if ($detailSpecialReq !== null && !empty($detailSpecialReq['label'])):
+          $detailSpecIsPublic = !isset($detailSpecialReq['is_public']) || !empty($detailSpecialReq['is_public']);
+          if ($detailSpecialReq !== null && !empty($detailSpecialReq['label']) && $detailSpecIsPublic):
             $dReqMode = (string)($detailSpecialReq['input_mode'] ?? 'text');
             $dReqFormat = !empty($detailSpecialReq['format_hint'])
                 ? (string)$detailSpecialReq['format_hint']

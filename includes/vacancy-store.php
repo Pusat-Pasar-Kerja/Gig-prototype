@@ -546,6 +546,7 @@ function gig_vacancy_normalize(array $vacancy): array
                 }
                 $sReq['allowed_exts'] = $fileMeta['allowed_exts'];
             }
+            $sReq['is_public'] = !isset($sReq['is_public']) || !empty($sReq['is_public']);
             $vacancy['special_requirement'] = $sReq;
         }
     }
@@ -922,6 +923,8 @@ function gig_vacancy_update_special_requirement(string $vacancyId, ?array $reqDa
             $allowedExts = ['pdf', 'doc', 'docx'];
         }
 
+        $isPublic = !isset($reqData['is_public']) || !empty($reqData['is_public']);
+
         $normalizedReq = [
             'type'            => $type,
             'custom_type'     => $customType,
@@ -935,6 +938,7 @@ function gig_vacancy_update_special_requirement(string $vacancyId, ?array $reqDa
             'format_hint'     => $formatHint,
             'worker_hint'     => $workerHint,
             'allowed_exts'    => $allowedExts,
+            'is_public'       => $isPublic,
         ];
     }
 
