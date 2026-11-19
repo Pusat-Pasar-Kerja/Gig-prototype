@@ -901,7 +901,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
         <?php echo htmlspecialchars((string)$empSpecialReq['label'], ENT_QUOTES, 'UTF-8'); ?>
       </div>
       <div style="margin-top:4px;font-size:0.78rem;color:#475569;">
-        Jenis: <strong><?php echo htmlspecialchars($tL, ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Format: <strong><?php echo htmlspecialchars((string)($empSpecialReq['format_hint'] ?? ($cat[$tK]['format_hint'] ?? 'Sesuai format pilihan')), ENT_QUOTES, 'UTF-8'); ?></strong>
+        Jenis: <strong><?php echo htmlspecialchars($tL, ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Format: <strong><?php echo htmlspecialchars((string)($empSpecialReq['file_type_label'] ?? $empSpecialReq['format_hint'] ?? ($cat[$tK]['format_hint'] ?? 'Sesuai format pilihan')), ENT_QUOTES, 'UTF-8'); ?></strong>
       </div>
     </div>
     <?php endif; ?>

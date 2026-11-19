@@ -871,6 +871,21 @@ require __DIR__ . '/includes/worker-layout-start.php';
         return;
       }
 
+      if (input.accept) {
+        const allowed = input.accept.split(',').map(function(e) { return e.trim().toLowerCase().replace(/^\./, ''); });
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        if (allowed.length > 0 && !allowed.includes(ext)) {
+          if (errEl) {
+            errEl.textContent = 'Format berkas "' + ext.toUpperCase() + '" tidak didukung. Format yang diizinkan: ' + input.accept.toUpperCase();
+            errEl.style.display = 'block';
+          }
+          input.value = '';
+          if (preview) preview.style.display = 'none';
+          if (promptEl) promptEl.textContent = 'Klik untuk Memilih File';
+          return;
+        }
+      }
+
       let sizeStr = '';
       if (file.size < 1024 * 1024) {
         sizeStr = (file.size / 1024).toFixed(1) + ' KB';

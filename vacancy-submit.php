@@ -63,66 +63,95 @@ if (is_array($rawSpecial)) {
         $meta = $reqTypes[$reqTypeKey];
         $chosenInputType = trim((string)($rawSpecial['input_type'] ?? ''));
 
-        if (str_starts_with($chosenInputType, 'file_') || in_array($chosenInputType, ['file', 'pdf_image', 'pdf_only', 'image_only', 'any_doc'], true)) {
+        $chosenKey = strtolower($chosenInputType);
+        if ($chosenKey === 'pdf' || in_array($chosenKey, ['file_pdf', 'pdf_only'], true)) {
             $inputMode = 'file';
-            $fileFormatKey = match ($chosenInputType) {
-                'file_pdf', 'pdf_only' => 'pdf_only',
-                'file_image', 'image_only' => 'image_only',
-                'file_any', 'any_doc' => 'any_doc',
-                default => 'pdf_image',
-            };
-            $fMeta = $fileFormats[$fileFormatKey] ?? [
-                'label'        => 'PDF atau Gambar (PDF, JPG, PNG)',
-                'accept'       => '.pdf,.jpg,.jpeg,.png',
-                'format_hint'  => 'Upload File (PDF atau Gambar JPG/PNG)',
-                'worker_hint'  => 'Unggah dokumen dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
-                'allowed_exts' => ['pdf', 'jpg', 'jpeg', 'png'],
-            ];
-            $fileType = $fileFormatKey;
-            $fileTypeLabel = $fMeta['label'];
-            $accept = $fMeta['accept'];
-            $formatHint = $fMeta['format_hint'];
-            $workerHint = $fMeta['worker_hint'];
-            $allowedExts = $fMeta['allowed_exts'];
-        } elseif ($chosenInputType === 'url') {
+            $fileType = 'pdf';
+            $fileTypeLabel = 'PDF';
+            $accept = '.pdf';
+            $formatHint = 'PDF (.pdf)';
+            $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
+            $allowedExts = ['pdf'];
+        } elseif ($chosenKey === 'jpg' || in_array($chosenKey, ['jpeg', 'file_image', 'image_only'], true)) {
+            $inputMode = 'file';
+            $fileType = 'jpg';
+            $fileTypeLabel = 'JPG';
+            $accept = '.jpg,.jpeg';
+            $formatHint = 'JPG (.jpg, .jpeg)';
+            $workerHint = 'Unggah gambar dalam format JPG / JPEG (maks. 5 MB).';
+            $allowedExts = ['jpg', 'jpeg'];
+        } elseif ($chosenKey === 'png') {
+            $inputMode = 'file';
+            $fileType = 'png';
+            $fileTypeLabel = 'PNG';
+            $accept = '.png';
+            $formatHint = 'PNG (.png)';
+            $workerHint = 'Unggah gambar dalam format PNG (maks. 5 MB).';
+            $allowedExts = ['png'];
+        } elseif ($chosenKey === 'doc' || in_array($chosenKey, ['docx', 'file_any', 'any_doc'], true)) {
+            $inputMode = 'file';
+            $fileType = 'doc';
+            $fileTypeLabel = 'DOC / DOCX';
+            $accept = '.doc,.docx';
+            $formatHint = 'DOC / DOCX (.doc, .docx)';
+            $workerHint = 'Unggah dokumen dalam format Word (.doc, .docx, maks. 5 MB).';
+            $allowedExts = ['doc', 'docx'];
+        } elseif ($chosenKey === 'url') {
             $inputMode = 'url';
             $fileType = null;
             $fileTypeLabel = null;
             $accept = '';
-            $formatHint = 'Tautan URL Online';
-            $workerHint = 'Masukkan tautan URL valid menuju portofolio atau repositori Anda.';
+            $formatHint = 'Link / URL';
+            $workerHint = 'Masukkan tautan / URL yang valid.';
             $allowedExts = null;
-        } elseif ($chosenInputType === 'textarea') {
-            $inputMode = 'textarea';
-            $fileType = null;
-            $fileTypeLabel = null;
-            $accept = '';
-            $formatHint = 'Teks Panjang (Jawaban / Studi Kasus)';
-            $workerHint = 'Tuliskan jawaban atau penjelasan Anda pada kolom teks yang disediakan.';
-            $allowedExts = null;
-        } elseif ($chosenInputType === 'text') {
+        } elseif ($chosenKey === 'text' || $chosenKey === 'textarea') {
             $inputMode = 'text';
             $fileType = null;
             $fileTypeLabel = null;
             $accept = '';
-            $formatHint = 'Teks Bebas Singkat';
+            $formatHint = 'Text';
             $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
             $allowedExts = null;
+        } elseif (in_array($chosenKey, ['file', 'file_pdf_image', 'pdf_image'], true)) {
+            $inputMode = 'file';
+            $fileType = 'pdf';
+            $fileTypeLabel = 'PDF';
+            $accept = '.pdf';
+            $formatHint = 'PDF (.pdf)';
+            $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
+            $allowedExts = ['pdf'];
         } else {
             $inputMode = (string)($meta['input_mode'] ?? 'file');
-            $fileType = $inputMode === 'file' ? 'pdf_image' : null;
-            $fileTypeLabel = $inputMode === 'file' ? 'PDF atau Gambar (PDF, JPG, PNG)' : null;
-            $accept = (string)($meta['accept'] ?? '');
-            $formatHint = (string)($meta['format_hint'] ?? '');
-            $workerHint = (string)($meta['worker_hint'] ?? '');
-            $allowedExts = $inputMode === 'file' ? ['pdf', 'jpg', 'jpeg', 'png'] : null;
+            if ($inputMode === 'url') {
+                $fileType = null;
+                $fileTypeLabel = null;
+                $accept = '';
+                $formatHint = 'Link / URL';
+                $workerHint = 'Masukkan tautan / URL yang valid.';
+                $allowedExts = null;
+            } elseif ($inputMode === 'textarea' || $inputMode === 'text') {
+                $fileType = null;
+                $fileTypeLabel = null;
+                $accept = '';
+                $formatHint = 'Text';
+                $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
+                $allowedExts = null;
+            } else {
+                $inputMode = 'file';
+                $fileType = 'pdf';
+                $fileTypeLabel = 'PDF';
+                $accept = '.pdf';
+                $formatHint = 'PDF (.pdf)';
+                $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
+                $allowedExts = ['pdf'];
+            }
         }
 
         $specialReq = [
             'type'            => $reqTypeKey,
             'type_label'      => $meta['label'],
             'label'           => $reqLabel,
-            'input_type'      => $chosenInputType !== '' ? $chosenInputType : ($inputMode === 'file' ? 'file_pdf_image' : $inputMode),
+            'input_type'      => $chosenInputType !== '' ? $chosenInputType : ($inputMode === 'file' ? 'pdf' : $inputMode),
             'input_mode'      => $inputMode,
             'file_type'       => $fileType,
             'file_type_label' => $fileTypeLabel,

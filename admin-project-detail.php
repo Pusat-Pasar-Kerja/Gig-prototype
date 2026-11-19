@@ -184,11 +184,12 @@ require __DIR__ . '/includes/admin-layout-start.php';
   $reqTypeKey = $specialReq !== null ? (string)($specialReq['type'] ?? '') : '';
   $reqTypeLabel = $specialReq !== null ? (string)($specialReq['type_label'] ?? ($reqTypesCatalog[$reqTypeKey]['label'] ?? $reqTypeKey)) : '';
   $reqFormatHint = $specialReq !== null ? (string)(
-      !empty($specialReq['format_hint']) ? $specialReq['format_hint'] : (
-          $reqTypesCatalog[$reqTypeKey]['format_hint'] ?? (
-              ($specialReq['input_mode'] ?? '') === 'file' ? 'Upload File (PDF atau Gambar JPG/PNG)' :
-              (($specialReq['input_mode'] ?? '') === 'url' ? 'Tautan URL' :
-              (($specialReq['input_mode'] ?? '') === 'textarea' ? 'Teks Panjang' : 'Teks Bebas'))
+      !empty($specialReq['file_type_label']) ? $specialReq['file_type_label'] : (
+          !empty($specialReq['format_hint']) ? $specialReq['format_hint'] : (
+              $reqTypesCatalog[$reqTypeKey]['format_hint'] ?? (
+                  ($specialReq['input_mode'] ?? '') === 'file' ? 'PDF' :
+                  (($specialReq['input_mode'] ?? '') === 'url' ? 'Link / URL' : 'Text')
+              )
           )
       )
   ) : '';

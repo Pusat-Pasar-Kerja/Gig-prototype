@@ -105,37 +105,70 @@ function gig_special_requirement_types(): array
 function gig_special_req_file_formats(): array
 {
     return [
-        'pdf_image' => [
-            'label'        => 'PDF atau Gambar (PDF, JPG, PNG)',
-            'short_label'  => 'PDF atau Gambar',
-            'accept'       => '.pdf,.jpg,.jpeg,.png',
-            'allowed_exts' => ['pdf', 'jpg', 'jpeg', 'png'],
-            'format_hint'  => 'Upload File (PDF atau Gambar JPG/PNG)',
-            'worker_hint'  => 'Unggah dokumen dalam format PDF atau gambar (JPG/PNG, maks. 5 MB).',
-        ],
-        'pdf_only' => [
-            'label'        => 'Hanya Dokumen PDF (.pdf)',
-            'short_label'  => 'Hanya Dokumen PDF',
+        'pdf' => [
+            'label'        => 'PDF',
+            'short_label'  => 'PDF',
             'accept'       => '.pdf',
             'allowed_exts' => ['pdf'],
-            'format_hint'  => 'Upload File (Khusus Dokumen PDF)',
-            'worker_hint'  => 'Unggah dokumen resmi khusus dalam format PDF (.pdf, maks. 5 MB).',
+            'format_hint'  => 'PDF (.pdf)',
+            'worker_hint'  => 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).',
+        ],
+        'jpg' => [
+            'label'        => 'JPG',
+            'short_label'  => 'JPG',
+            'accept'       => '.jpg,.jpeg',
+            'allowed_exts' => ['jpg', 'jpeg'],
+            'format_hint'  => 'JPG (.jpg, .jpeg)',
+            'worker_hint'  => 'Unggah gambar dalam format JPG / JPEG (maks. 5 MB).',
+        ],
+        'png' => [
+            'label'        => 'PNG',
+            'short_label'  => 'PNG',
+            'accept'       => '.png',
+            'allowed_exts' => ['png'],
+            'format_hint'  => 'PNG (.png)',
+            'worker_hint'  => 'Unggah gambar dalam format PNG (maks. 5 MB).',
+        ],
+        'doc' => [
+            'label'        => 'DOC / DOCX',
+            'short_label'  => 'DOC / DOCX',
+            'accept'       => '.doc,.docx',
+            'allowed_exts' => ['doc', 'docx'],
+            'format_hint'  => 'DOC / DOCX (.doc, .docx)',
+            'worker_hint'  => 'Unggah berkas dokumen Word (.doc, .docx, maks. 5 MB).',
+        ],
+        // Legacy keys for backward compatibility
+        'pdf_only' => [
+            'label'        => 'PDF',
+            'short_label'  => 'PDF',
+            'accept'       => '.pdf',
+            'allowed_exts' => ['pdf'],
+            'format_hint'  => 'PDF (.pdf)',
+            'worker_hint'  => 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).',
         ],
         'image_only' => [
-            'label'        => 'Hanya Gambar (JPG, JPEG, PNG)',
-            'short_label'  => 'Hanya Gambar',
+            'label'        => 'JPG',
+            'short_label'  => 'JPG',
             'accept'       => '.jpg,.jpeg,.png',
             'allowed_exts' => ['jpg', 'jpeg', 'png'],
-            'format_hint'  => 'Upload File (Khusus Gambar JPG/PNG)',
-            'worker_hint'  => 'Unggah foto/gambar dokumen dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+            'format_hint'  => 'JPG / PNG',
+            'worker_hint'  => 'Unggah gambar dalam format JPG / PNG (maks. 5 MB).',
+        ],
+        'pdf_image' => [
+            'label'        => 'PDF',
+            'short_label'  => 'PDF',
+            'accept'       => '.pdf',
+            'allowed_exts' => ['pdf'],
+            'format_hint'  => 'PDF (.pdf)',
+            'worker_hint'  => 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).',
         ],
         'any_doc' => [
-            'label'        => 'Dokumen & Gambar (PDF, DOC/DOCX, JPG, PNG)',
-            'short_label'  => 'Dokumen (PDF/DOCX) & Gambar',
-            'accept'       => '.pdf,.doc,.docx,.jpg,.jpeg,.png',
-            'allowed_exts' => ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
-            'format_hint'  => 'Upload File (PDF, DOC/DOCX, atau Gambar)',
-            'worker_hint'  => 'Unggah berkas dokumen dalam format PDF, Word (DOC/DOCX), atau gambar (maks. 5 MB).',
+            'label'        => 'DOC / DOCX',
+            'short_label'  => 'DOC / DOCX',
+            'accept'       => '.doc,.docx',
+            'allowed_exts' => ['doc', 'docx'],
+            'format_hint'  => 'DOC / DOCX (.doc, .docx)',
+            'worker_hint'  => 'Unggah berkas dokumen Word (.doc, .docx, maks. 5 MB).',
         ],
     ];
 }
@@ -299,7 +332,7 @@ function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
                 $upd->execute([':id' => $id]);
                 $rawJson = (string)$upd->fetchColumn();
                 $payload = json_decode($rawJson, true);
-                if (is_array($payload) && empty($payload['special_requirement']) && !empty($item['special_requirement'])) {
+                if (is_array($payload) && !empty($item['special_requirement'])) {
                     $payload['special_requirement'] = $item['special_requirement'];
                     $payload['title'] = $item['title'];
                     $save = $pdo->prepare("UPDATE `project_vacancies` SET `title` = :t, `vacancy_json` = :j WHERE `id` = :id");
