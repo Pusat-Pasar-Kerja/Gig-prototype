@@ -479,9 +479,9 @@ require __DIR__ . '/includes/admin-layout-start.php';
       <input type="hidden" name="action" value="admin_update_special_req" />
       <input type="hidden" name="vacancy_id" value="<?php echo htmlspecialchars((string)$vacancy['id'], ENT_QUOTES, 'UTF-8'); ?>" />
 
-      <!-- Enable / Disable Card (Ramah & Jelas) -->
+      <!-- Enable / Disable Card (Ramah, Jelas & Berfungsi Mulus) -->
       <?php $isEnabled = ($specialReq !== null && !empty($specialReq['label'])); ?>
-      <div style="padding:14px 16px;background:#f8fafc;border:1.5px solid <?php echo $isEnabled ? '#38bdf8' : '#cbd5e1'; ?>;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div id="admin_req_toggle_card" onclick="handleAdminCardToggleClick(event)" style="padding:14px 16px;background:#f8fafc;border:1.5px solid <?php echo $isEnabled ? '#38bdf8' : '#cbd5e1'; ?>;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:border-color 0.2s, background 0.2s;">
         <div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:0.92rem;font-weight:800;color:#0f172a;">Wajibkan Kualifikasi Khusus</span>
@@ -493,9 +493,11 @@ require __DIR__ . '/includes/admin-layout-start.php';
             Jika dimatikan, lowongan hanya memerlukan berkas lamaran standar tanpa syarat khusus.
           </div>
         </div>
-        <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;">
-          <input type="checkbox" name="special_req_enabled" id="admin_req_enabled" value="1" <?php echo $isEnabled ? 'checked' : ''; ?> onchange="toggleAdminReqFields(this.checked)" style="opacity:0;width:0;height:0;" />
-          <span style="position:absolute;inset:0;background-color:<?php echo $isEnabled ? '#0ea5e9' : '#cbd5e1'; ?>;border-radius:24px;transition:.2s;" id="admin_switch_slider"></span>
+        <label for="admin_req_enabled" style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;cursor:pointer;user-select:none;margin:0;">
+          <input type="checkbox" name="special_req_enabled" id="admin_req_enabled" value="1" <?php echo $isEnabled ? 'checked' : ''; ?> onchange="toggleAdminReqFields(this.checked)" style="opacity:0;width:0;height:0;position:absolute;" />
+          <div id="admin_switch_track" style="position:absolute;inset:0;background:<?php echo $isEnabled ? '#0ea5e9' : '#cbd5e1'; ?>;border-radius:999px;transition:background 0.25s ease;">
+            <div id="admin_switch_thumb" style="width:20px;height:20px;background:#ffffff;border-radius:50%;position:absolute;top:3px;left:3px;transition:transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);box-shadow:0 1px 4px rgba(0,0,0,0.25);transform:translateX(<?php echo $isEnabled ? '22px' : '0px'; ?>);"></div>
+          </div>
         </label>
       </div>
 
@@ -617,13 +619,32 @@ require __DIR__ . '/includes/admin-layout-start.php';
       closeAdminEditSpecialReqModal();
     }
   }
+  function handleAdminCardToggleClick(e) {
+    if (e.target.closest('label') || e.target.id === 'admin_req_enabled') {
+      return;
+    }
+    var chk = document.getElementById('admin_req_enabled');
+    if (chk) {
+      chk.checked = !chk.checked;
+      toggleAdminReqFields(chk.checked);
+    }
+  }
+
   function toggleAdminReqFields(enabled) {
     var wrap = document.getElementById('adminReqFieldsWrap');
-    var slider = document.getElementById('admin_switch_slider');
+    var track = document.getElementById('admin_switch_track');
+    var thumb = document.getElementById('admin_switch_thumb');
     var badge = document.getElementById('admin_toggle_status_badge');
+    var cardBox = document.getElementById('admin_req_toggle_card');
     if (wrap) wrap.style.display = enabled ? 'block' : 'none';
-    if (slider) {
-      slider.style.backgroundColor = enabled ? '#0ea5e9' : '#cbd5e1';
+    if (track) {
+      track.style.background = enabled ? '#0ea5e9' : '#cbd5e1';
+    }
+    if (thumb) {
+      thumb.style.transform = enabled ? 'translateX(22px)' : 'translateX(0px)';
+    }
+    if (cardBox) {
+      cardBox.style.borderColor = enabled ? '#38bdf8' : '#cbd5e1';
     }
     if (badge) {
       badge.textContent = enabled ? 'Aktif (Wajib)' : 'Nonaktif';
