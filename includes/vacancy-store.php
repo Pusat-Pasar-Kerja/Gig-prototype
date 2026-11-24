@@ -333,11 +333,14 @@ function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
             } else {
                 $rawJson = (string)($row['vacancy_json'] ?? '');
                 $payload = json_decode($rawJson, true);
-                if (!is_array($payload) || empty($payload['special_requirement']) || ($row['status'] !== $item['status'])) {
+                $itemHasSpec = !empty($item['special_requirement']);
+                $dbHasSpec = is_array($payload) && !empty($payload['special_requirement']);
+                if (!is_array($payload) || ($itemHasSpec !== $dbHasSpec) || ($row['status'] !== $item['status'])) {
                     if (!is_array($payload)) {
                         $payload = [];
                     }
                     $payload = array_merge($payload, $item);
+                    $payload['special_requirement'] = $item['special_requirement'] ?? null;
                     $save = $pdo->prepare("UPDATE `project_vacancies`
                         SET `title` = :t,
                             `status` = :st,
