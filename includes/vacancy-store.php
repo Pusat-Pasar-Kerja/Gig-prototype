@@ -263,8 +263,19 @@ function gig_vacancy_apply_auto_sla(?PDO $pdo = null): void
 
 function gig_vacancy_ensure_schema(?PDO $pdo = null): void
 {
+    static $ensured = false;
+    static $inProgress = false;
+    if ($inProgress) {
+        return;
+    }
+    if ($ensured && $pdo === null) {
+        return;
+    }
+    $inProgress = true;
+
     $pdo = $pdo ?? gig_db();
     if ($pdo === null) {
+        $inProgress = false;
         return;
     }
 
@@ -290,10 +301,19 @@ function gig_vacancy_ensure_schema(?PDO $pdo = null): void
     gig_vacancy_migrate_legacy_tables($pdo);
     gig_vacancy_cleanup_removed_entries($pdo);
     gig_vacancy_seed_special_requirement_demo($pdo);
+
+    $ensured = true;
+    $inProgress = false;
 }
 
 function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
 {
+    static $seeded = false;
+    if ($seeded) {
+        return;
+    }
+    $seeded = true;
+
     require_once __DIR__ . '/project-vacancies.php';
     $baseItems = gig_project_vacancies_base();
     $demoIds = ['GIG-2026-11-001', 'GIG-2026-11-002', 'GIG-2026-11-003', 'GIG-2026-11-004', 'GIG-2026-11-005'];
@@ -305,36 +325,35 @@ function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
         }
 
         try {
-            $exists = $pdo->prepare("SELECT `status` FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
+            $exists = $pdo->prepare("SELECT `status`, `vacancy_json` FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
             $exists->execute([':id' => $id]);
-            $existingStatus = $exists->fetchColumn();
-            if ($existingStatus === false) {
+            $row = $exists->fetch(PDO::FETCH_ASSOC);
+            if ($row === false) {
                 gig_vacancy_upsert_row($pdo, $item, 'seed', false);
             } else {
-                // Keep demo items synced with designated statuses and special requirements
-                $upd = $pdo->prepare("SELECT `vacancy_json` FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
-                $upd->execute([':id' => $id]);
-                $rawJson = (string)$upd->fetchColumn();
+                $rawJson = (string)($row['vacancy_json'] ?? '');
                 $payload = json_decode($rawJson, true);
-                if (!is_array($payload)) {
-                    $payload = [];
+                if (!is_array($payload) || empty($payload['special_requirement']) || ($row['status'] !== $item['status'])) {
+                    if (!is_array($payload)) {
+                        $payload = [];
+                    }
+                    $payload = array_merge($payload, $item);
+                    $save = $pdo->prepare("UPDATE `project_vacancies`
+                        SET `title` = :t,
+                            `status` = :st,
+                            `status_label` = :stl,
+                            `admin_note` = :note,
+                            `vacancy_json` = :j
+                        WHERE `id` = :id");
+                    $save->execute([
+                        ':t' => $item['title'],
+                        ':st' => $item['status'],
+                        ':stl' => $item['statusLabel'] ?? $item['status'],
+                        ':note' => $item['adminNote'] ?? null,
+                        ':j' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                        ':id' => $id
+                    ]);
                 }
-                $payload = array_merge($payload, $item);
-                $save = $pdo->prepare("UPDATE `project_vacancies`
-                    SET `title` = :t,
-                        `status` = :st,
-                        `status_label` = :stl,
-                        `admin_note` = :note,
-                        `vacancy_json` = :j
-                    WHERE `id` = :id");
-                $save->execute([
-                    ':t' => $item['title'],
-                    ':st' => $item['status'],
-                    ':stl' => $item['statusLabel'] ?? $item['status'],
-                    ':note' => $item['adminNote'] ?? null,
-                    ':j' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-                    ':id' => $id
-                ]);
             }
         } catch (Throwable $e) {
             // Ignore DB errors during seed
@@ -394,6 +413,12 @@ function gig_vacancy_seed_catalog_if_empty(PDO $pdo): void
 
 function gig_vacancy_migrate_legacy_tables(PDO $pdo): void
 {
+    static $migrated = false;
+    if ($migrated) {
+        return;
+    }
+    $migrated = true;
+
     try {
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS `project_vacancy_overrides` (
@@ -405,8 +430,14 @@ function gig_vacancy_migrate_legacy_tables(PDO $pdo): void
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
         $overrides = $pdo->query("SELECT * FROM `project_vacancy_overrides`")->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        foreach ($overrides as $ov) {
-            gig_vacancy_set_status((string)$ov['vacancy_id'], (string)$ov['status'], (string)$ov['admin_note'], false);
+        if (!empty($overrides)) {
+            $labels = gig_vacancy_status_labels();
+            $upd = $pdo->prepare("UPDATE `project_vacancies` SET `status` = :st, `status_label` = :lbl, `admin_note` = :note WHERE `id` = :id");
+            foreach ($overrides as $ov) {
+                $st = (string)$ov['status'];
+                $lbl = $labels[$st] ?? $st;
+                $upd->execute([':st' => $st, ':lbl' => $lbl, ':note' => (string)$ov['admin_note'], ':id' => (string)$ov['vacancy_id']]);
+            }
         }
     } catch (Throwable $e) {
     }
@@ -432,7 +463,7 @@ function gig_vacancy_migrate_legacy_tables(PDO $pdo): void
             $exists = $pdo->prepare("SELECT 1 FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
             $exists->execute([':id' => $id]);
             if ($exists->fetch()) {
-                gig_vacancy_set_status($id, (string)$sub['status'], (string)$sub['admin_note'], false);
+                // Record already exists in project_vacancies — do not overwrite or recurse!
                 continue;
             }
             $payload = json_decode((string)($sub['payload_json'] ?? ''), true) ?: [];
