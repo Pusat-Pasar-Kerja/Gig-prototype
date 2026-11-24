@@ -53,21 +53,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
         $specialReqResponse = '';
         $validationError = '';
 
-        if ($specialReq !== null && !empty($specialReq['input_mode'])) {
+        if ($specialReq !== null && !empty($specialReq['label']) && !empty($specialReq['input_mode'])) {
             $mode = (string)$specialReq['input_mode'];
             $reqLabel = (string)($specialReq['label'] ?? 'Kualifikasi Khusus');
+            $rawType = (string)($specialReq['type'] ?? '');
+            $customType = trim((string)($specialReq['custom_type'] ?? ''));
+            $typeLabel = (string)($specialReq['type_label'] ?? '');
+            if ($rawType === 'other' && $customType !== '') {
+                $typeLabel = $customType;
+            }
+
             if ($mode === 'file') {
                 $formatHint = !empty($specialReq['format_hint']) ? ' (' . $specialReq['format_hint'] . ')' : '';
                 if (empty($_FILES['special_req_file']) || ($_FILES['special_req_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                    $validationError = 'Anda wajib mengunggah file untuk "' . $reqLabel . '"' . $formatHint . '.';
+                    $validationError = 'Anda wajib mengunggah berkas untuk "' . $reqLabel . '"' . $formatHint . '.';
                 } else {
                     $origName = (string)($_FILES['special_req_file']['name'] ?? 'file');
                     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
                     $size = (int)($_FILES['special_req_file']['size'] ?? 0);
 
-                    $allowedExts = ['pdf', 'jpg', 'jpeg', 'png'];
+                    $inputTypeKey = strtolower((string)($specialReq['input_type'] ?? ($specialReq['file_type'] ?? 'document')));
+                    $fileCatalog = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
+                    $catMeta = $fileCatalog[$inputTypeKey] ?? null;
+
+                    $allowedExts = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'zip', 'rar', '7z'];
                     if (!empty($specialReq['allowed_exts']) && is_array($specialReq['allowed_exts'])) {
                         $allowedExts = array_values(array_map('strtolower', $specialReq['allowed_exts']));
+                    } elseif ($catMeta && !empty($catMeta['allowed_exts'])) {
+                        $allowedExts = array_values(array_map('strtolower', $catMeta['allowed_exts']));
                     } elseif (!empty($specialReq['accept'])) {
                         $parsed = array_filter(array_map(fn($x) => ltrim(trim($x), '.'), explode(',', (string)$specialReq['accept'])));
                         if ($parsed !== []) {
@@ -75,15 +88,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
                         }
                     }
 
-                    $isArchive = in_array($ext, ['zip', 'rar', '7z'], true) || in_array(($specialReq['file_type'] ?? ''), ['archive', 'zip', 'rar', '7z'], true);
+                    $isArchive = in_array($ext, ['zip', 'rar', '7z'], true) || in_array(($specialReq['file_type'] ?? ''), ['archive', 'zip', 'rar', '7z'], true) || ($inputTypeKey === 'archive');
                     $maxBytes = $isArchive ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
                     $maxMbText = $isArchive ? '10 MB' : '5 MB';
 
                     if (!in_array($ext, $allowedExts, true)) {
-                        $formatDesc = (string)($specialReq['file_type_label'] ?? strtoupper(implode(', ', $allowedExts)));
-                        $validationError = 'Format file tidak didukung. Pemberi kerja mensyaratkan berkas: ' . $formatDesc . '.';
+                        $formatDesc = (string)($specialReq['file_type_label'] ?? ($catMeta['label'] ?? strtoupper(implode(', ', $allowedExts))));
+                        $validationError = 'Format berkas tidak didukung. Pemberi kerja mensyaratkan berkas: ' . $formatDesc . '.';
                     } elseif ($size > $maxBytes) {
-                        $validationError = 'Ukuran file maksimal ' . $maxMbText . '.';
+                        $validationError = 'Ukuran berkas melebihi batas maksimal ' . $maxMbText . '.';
                     } else {
                         $uploadDir = __DIR__ . '/uploads/applications';
                         if (!is_dir($uploadDir)) {
@@ -93,15 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
                         $destPath = $uploadDir . '/' . $safeName;
                         if (@move_uploaded_file((string)$_FILES['special_req_file']['tmp_name'], $destPath)) {
                             $specialReqResponse = json_encode([
-                                'type'       => (string)($specialReq['type'] ?? ''),
-                                'type_label' => (string)($specialReq['type_label'] ?? ''),
-                                'label'      => $reqLabel,
-                                'input_mode' => 'file',
-                                'file_name'  => $origName,
-                                'file_path'  => 'uploads/applications/' . $safeName,
+                                'type'        => $rawType,
+                                'custom_type' => $customType,
+                                'type_label'  => $typeLabel,
+                                'label'       => $reqLabel,
+                                'input_mode'  => 'file',
+                                'file_type'   => $isArchive ? 'archive' : ($inputTypeKey === 'image' ? 'image' : 'document'),
+                                'file_name'   => $origName,
+                                'file_path'   => 'uploads/applications/' . $safeName,
                             ], JSON_UNESCAPED_UNICODE) ?: '';
                         } else {
-                            $validationError = 'Gagal menyimpan file yang diunggah. Silakan coba lagi.';
+                            $validationError = 'Gagal menyimpan berkas yang diunggah. Silakan coba lagi.';
                         }
                     }
                 }
@@ -113,11 +128,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
                     $validationError = 'Harap masukkan tautan URL yang valid (contoh: https://...).';
                 } else {
                     $specialReqResponse = json_encode([
-                        'type'       => (string)($specialReq['type'] ?? ''),
-                        'type_label' => (string)($specialReq['type_label'] ?? ''),
-                        'label'      => $reqLabel,
-                        'input_mode' => $mode,
-                        'value'      => $val,
+                        'type'        => $rawType,
+                        'custom_type' => $customType,
+                        'type_label'  => $typeLabel,
+                        'label'       => $reqLabel,
+                        'input_mode'  => $mode,
+                        'value'       => $val,
                     ], JSON_UNESCAPED_UNICODE) ?: '';
                 }
             }
@@ -529,20 +545,23 @@ require __DIR__ . '/includes/worker-layout-start.php';
             </div>
           </div>
 
-          <?php if (is_array($appSpecData)): ?>
+          <?php if (is_array($appSpecData) && !empty($appSpecData['label'])): 
+            $specTypeLabel = !empty($appSpecData['custom_type']) ? (string)$appSpecData['custom_type'] : (string)($appSpecData['type_label'] ?? '');
+            $isAppArchive = (($appSpecData['file_type'] ?? '') === 'archive') || in_array(strtolower(pathinfo((string)($appSpecData['file_name'] ?? ''), PATHINFO_EXTENSION)), ['zip', 'rar', '7z'], true);
+          ?>
             <div style="background:#ffffff;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-top:10px;">
               <div style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                <span>Kualifikasi Khusus yang Anda Lampirkan</span>
+                <span>Kualifikasi Khusus yang Anda Lampirkan<?php echo $specTypeLabel !== '' ? ' · ' . htmlspecialchars($specTypeLabel, ENT_QUOTES, 'UTF-8') : ''; ?></span>
               </div>
               <div style="font-size:0.92rem;font-weight:800;color:#0f172a;margin-bottom:10px;">
-                <?php echo htmlspecialchars((string)($appSpecData['label'] ?? $appSpecData['type_label'] ?? 'Kualifikasi Khusus'), ENT_QUOTES, 'UTF-8'); ?>
+                <?php echo htmlspecialchars((string)$appSpecData['label'], ENT_QUOTES, 'UTF-8'); ?>
               </div>
 
               <?php if (($appSpecData['input_mode'] ?? '') === 'file' && !empty($appSpecData['file_path'])): ?>
                 <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1px solid #e2e8f0;padding:12px 16px;border-radius:10px;flex-wrap:wrap;gap:10px;">
                   <div style="display:flex;align-items:center;gap:12px;min-width:200px;">
-                    <span style="font-size:1.6rem;">📄</span>
+                    <span style="font-size:1.6rem;"><?php echo $isAppArchive ? '📦' : '📄'; ?></span>
                     <div>
                       <div style="font-size:0.86rem;font-weight:700;color:#0f172a;"><?php echo htmlspecialchars((string)($appSpecData['file_name'] ?? 'Berkas Kualifikasi'), ENT_QUOTES, 'UTF-8'); ?></div>
                       <div style="font-size:0.74rem;color:#64748b;">Berkas tersimpan &amp; terlampir pada profil kandidat Anda</div>
@@ -651,10 +670,22 @@ require __DIR__ . '/includes/worker-layout-start.php';
           $detailSpecIsPublic = !isset($detailSpecialReq['is_public']) || !empty($detailSpecialReq['is_public']);
           if ($detailSpecialReq !== null && !empty($detailSpecialReq['label']) && $detailSpecIsPublic):
             $dReqMode = (string)($detailSpecialReq['input_mode'] ?? 'text');
-            $dReqFormat = !empty($detailSpecialReq['format_hint'])
-                ? (string)$detailSpecialReq['format_hint']
-                : ($dReqMode === 'file' ? 'Upload File (PDF / Gambar JPG, PNG)' : ($dReqMode === 'url' ? 'Tautan URL' : ($dReqMode === 'textarea' ? 'Teks / Jawaban Singkat' : 'Teks / Username')));
-            $dReqFileLabel = (string)($detailSpecialReq['file_type_label'] ?? $dReqFormat);
+            $rawDetailType = (string)($detailSpecialReq['type'] ?? '');
+            $dReqTypeLabel = (string)($detailSpecialReq['type_label'] ?? '');
+            if ($rawDetailType === 'other' && !empty($detailSpecialReq['custom_type'])) {
+                $dReqTypeLabel = (string)$detailSpecialReq['custom_type'];
+            }
+            if ($dReqTypeLabel === '') {
+                $dTypesCat = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
+                $dReqTypeLabel = (string)($dTypesCat[$rawDetailType]['label'] ?? 'Kualifikasi Khusus');
+            }
+
+            $dInputTypeKey = strtolower((string)($detailSpecialReq['input_type'] ?? ($detailSpecialReq['file_type'] ?? 'document')));
+            $dFileCatalog = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
+            $dCatMeta = $dFileCatalog[$dInputTypeKey] ?? null;
+            $dReqFileLabel = (string)($detailSpecialReq['file_type_label'] ?? ($dCatMeta['label'] ?? ($detailSpecialReq['format_hint'] ?? 'Dokumen (PDF, DOC, DOCX)')));
+            $isArchiveDetail = in_array($dInputTypeKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true) || in_array(($detailSpecialReq['file_type'] ?? ''), ['archive', 'compressed', 'zip', 'rar', '7z'], true);
+            $maxDetailMb = $isArchiveDetail ? '10 MB' : '5 MB';
         ?>
           <div style="margin-top: 16px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 18px 20px;">
             <div style="display:flex;align-items:center;gap:6px;font-size: 0.74rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
@@ -666,14 +697,22 @@ require __DIR__ . '/includes/worker-layout-start.php';
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
               <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
-                🏷️ <?php echo htmlspecialchars((string)($detailSpecialReq['type_label'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
-              </span>
-              <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
-                📁 <?php echo htmlspecialchars($dReqFileLabel, ENT_QUOTES, 'UTF-8'); ?>
+                🏷️ <?php echo htmlspecialchars($dReqTypeLabel, ENT_QUOTES, 'UTF-8'); ?>
               </span>
               <?php if ($dReqMode === 'file'): ?>
+                <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                  📁 <?php echo htmlspecialchars($dReqFileLabel, ENT_QUOTES, 'UTF-8'); ?>
+                </span>
                 <span style="font-size:0.75rem;font-weight:700;background:#f1f5f9;color:#475569;padding:4px 10px;border-radius:6px;">
-                  ⚖️ Maks. 5 MB
+                  ⚖️ Maks. <?php echo $maxDetailMb; ?>
+                </span>
+              <?php elseif ($dReqMode === 'url'): ?>
+                <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                  🔗 Tautan / URL
+                </span>
+              <?php else: ?>
+                <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                  📝 Teks
                 </span>
               <?php endif; ?>
             </div>
@@ -728,18 +767,42 @@ require __DIR__ . '/includes/worker-layout-start.php';
 
         <?php
           $specialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
-          if ($specialReq !== null && !empty($specialReq['input_mode'])):
+          if ($specialReq !== null && !empty($specialReq['label']) && !empty($specialReq['input_mode'])):
             $reqMode = (string)$specialReq['input_mode'];
             $reqLabel = (string)($specialReq['label'] ?? 'Kualifikasi Khusus');
+            $rawModalType = (string)($specialReq['type'] ?? '');
             $reqTypeLabel = (string)($specialReq['type_label'] ?? '');
+            if ($rawModalType === 'other' && !empty($specialReq['custom_type'])) {
+                $reqTypeLabel = (string)$specialReq['custom_type'];
+            }
+            if ($reqTypeLabel === '') {
+                $mTypesCat = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
+                $reqTypeLabel = (string)($mTypesCat[$rawModalType]['label'] ?? 'Kualifikasi Khusus');
+            }
+
             $reqHint = (string)($specialReq['worker_hint'] ?? '');
-            $reqAccept = (string)($specialReq['accept'] ?? '.pdf,.jpg,.jpeg,.png');
-            $reqFileLabel = (string)($specialReq['file_type_label'] ?? $specialReq['format_hint'] ?? 'Dokumen / Gambar');
+
+            $mInputTypeKey = strtolower((string)($specialReq['input_type'] ?? ($specialReq['file_type'] ?? 'document')));
+            $mFileCatalog = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
+            $mCatMeta = $mFileCatalog[$mInputTypeKey] ?? null;
+
+            $reqAccept = (string)($specialReq['accept'] ?? ($mCatMeta['accept'] ?? '.pdf,.doc,.docx'));
+            $reqFileLabel = (string)($specialReq['file_type_label'] ?? ($mCatMeta['label'] ?? ($specialReq['format_hint'] ?? 'Dokumen (PDF, DOC, DOCX)')));
+            $isArchiveReq = in_array($mInputTypeKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true) || in_array(($specialReq['file_type'] ?? ''), ['archive', 'compressed', 'zip', 'rar', '7z'], true);
+            $maxAllowedMb = $isArchiveReq ? 10 : 5;
+            $modalIsPublic = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
         ?>
           <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:18px;">
-            <div style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              <span>Persyaratan Kualifikasi Khusus<?php echo $reqTypeLabel !== '' ? ' · ' . htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8') : ''; ?></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.03em;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <span>Persyaratan Kualifikasi Khusus<?php echo $reqTypeLabel !== '' ? ' · ' . htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8') : ''; ?></span>
+              </div>
+              <?php if (!$modalIsPublic): ?>
+                <span style="font-size:0.68rem;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 6px;border-radius:4px;">
+                  🔒 Dirahasiakan dari publik
+                </span>
+              <?php endif; ?>
             </div>
             <label style="display:block;font-size:0.9rem;font-weight:800;color:#0f172a;margin-bottom:8px;">
               <?php echo htmlspecialchars($reqLabel, ENT_QUOTES, 'UTF-8'); ?> <span style="color:#dc2626;">*</span>
@@ -747,14 +810,10 @@ require __DIR__ . '/includes/worker-layout-start.php';
 
             <?php if ($reqMode === 'file'): ?>
               <div id="dropzoneBox" onclick="document.getElementById('specialReqInput').click();" style="border:2px dashed #93c5fd;background:#f8fafc;border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#93c5fd';this.style.background='#f8fafc';">
-                <div style="font-size:2rem;margin-bottom:4px;">📁</div>
+                <div style="font-size:2rem;margin-bottom:4px;"><?php echo $isArchiveReq ? '📦' : '📁'; ?></div>
                 <div id="specFilePromptText" style="font-size:0.88rem;font-weight:700;color:#2563eb;margin-bottom:4px;">
                   Klik untuk Memilih File
                 </div>
-                <?php
-                  $isArchiveReq = in_array(($specialReq['file_type'] ?? ''), ['archive', 'zip', 'rar', '7z'], true);
-                  $maxAllowedMb = $isArchiveReq ? 10 : 5;
-                ?>
                 <div style="font-size:0.76rem;color:#64748b;line-height:1.4;">
                   Format yang diizinkan: <strong style="color:#1e40af;"><?php echo htmlspecialchars($reqFileLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
                   <br />Ukuran file maksimal <strong><?php echo $maxAllowedMb; ?> MB</strong>

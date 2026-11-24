@@ -579,7 +579,7 @@ a.proyek-card-item:hover .apply-cta {
       'onsite' => ['label' => '🏢 On-site / Hybrid', 'count' => $onsiteCount],
     ];
 
-    $specWithCount = count(array_filter($allActiveVacancies, static fn($j) => !empty($j['special_requirement']['label'])));
+    $specWithCount = count(array_filter($allActiveVacancies, static fn($j) => !empty($j['special_requirement']['label']) && (!isset($j['special_requirement']['is_public']) || !empty($j['special_requirement']['is_public']))));
     $specWithoutCount = count($allActiveVacancies) - $specWithCount;
     $specMap = [
       'all' => ['label' => 'Semua Proyek', 'count' => count($allActiveVacancies)],
@@ -754,8 +754,19 @@ a.proyek-card-item:hover .apply-cta {
                   $cardSpec = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
                   $cardSpecIsPublic = !isset($cardSpec['is_public']) || !empty($cardSpec['is_public']);
                   if ($cardSpec !== null && !empty($cardSpec['label']) && $cardSpecIsPublic):
-                    $cardSpecType = (string)($cardSpec['type_label'] ?? 'Kualifikasi Khusus');
-                    $cardSpecFormat = (string)($cardSpec['file_type_label'] ?? $cardSpec['format_hint'] ?? '');
+                    $rawCardType = (string)($cardSpec['type'] ?? '');
+                    $cardSpecType = (string)($cardSpec['type_label'] ?? '');
+                    if ($rawCardType === 'other' && !empty($cardSpec['custom_type'])) {
+                        $cardSpecType = (string)$cardSpec['custom_type'];
+                    }
+                    if ($cardSpecType === '') {
+                        $bTypesCat = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
+                        $cardSpecType = (string)($bTypesCat[$rawCardType]['label'] ?? 'Kualifikasi Khusus');
+                    }
+
+                    $cardInputTypeKey = strtolower((string)($cardSpec['input_type'] ?? ($cardSpec['file_type'] ?? '')));
+                    $bFileCat = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
+                    $cardSpecFormat = (string)($cardSpec['file_type_label'] ?? ($bFileCat[$cardInputTypeKey]['label'] ?? ($cardSpec['format_hint'] ?? '')));
                 ?>
                   <div style="margin: 0 0 10px 0;">
                     <span style="display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;padding:4px 10px;border-radius:6px;font-size:0.72rem;font-weight:700;line-height:1.2;">
