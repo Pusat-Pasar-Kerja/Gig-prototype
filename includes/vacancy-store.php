@@ -195,6 +195,12 @@ function gig_vacancy_apply_auto_sla(?PDO $pdo = null): void
             continue;
         }
 
+        // Do not auto-approve demo entries that are meant to showcase review/revision/rejected states!
+        $demoExempt = ['GIG-2026-11-001', 'GIG-2026-11-002', 'GIG-2026-11-003', 'GIG-2026-11-004', 'GIG-2026-11-005'];
+        if (in_array((string)$row['id'], $demoExempt, true)) {
+            continue;
+        }
+
         $createdAtRaw = trim((string)($row['created_at'] ?? ''));
         if ($createdAtRaw === '') {
             continue;
@@ -290,7 +296,7 @@ function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
 {
     require_once __DIR__ . '/project-vacancies.php';
     $baseItems = gig_project_vacancies_base();
-    $demoIds = ['GIG-2026-11-001', 'GIG-2026-11-002', 'GIG-2026-11-003'];
+    $demoIds = ['GIG-2026-11-001', 'GIG-2026-11-002', 'GIG-2026-11-003', 'GIG-2026-11-004', 'GIG-2026-11-005'];
 
     foreach ($baseItems as $item) {
         $id = (string)($item['id'] ?? '');
@@ -305,17 +311,30 @@ function gig_vacancy_seed_special_requirement_demo(PDO $pdo): void
             if ($existingStatus === false) {
                 gig_vacancy_upsert_row($pdo, $item, 'seed', false);
             } else {
-                // Update special requirement in DB if previously missing
+                // Keep demo items synced with designated statuses and special requirements
                 $upd = $pdo->prepare("SELECT `vacancy_json` FROM `project_vacancies` WHERE `id` = :id LIMIT 1");
                 $upd->execute([':id' => $id]);
                 $rawJson = (string)$upd->fetchColumn();
                 $payload = json_decode($rawJson, true);
-                if (is_array($payload) && !empty($item['special_requirement'])) {
-                    $payload['special_requirement'] = $item['special_requirement'];
-                    $payload['title'] = $item['title'];
-                    $save = $pdo->prepare("UPDATE `project_vacancies` SET `title` = :t, `vacancy_json` = :j WHERE `id` = :id");
-                    $save->execute([':t' => $item['title'], ':j' => json_encode($payload, JSON_UNESCAPED_UNICODE), ':id' => $id]);
+                if (!is_array($payload)) {
+                    $payload = [];
                 }
+                $payload = array_merge($payload, $item);
+                $save = $pdo->prepare("UPDATE `project_vacancies`
+                    SET `title` = :t,
+                        `status` = :st,
+                        `status_label` = :stl,
+                        `admin_note` = :note,
+                        `vacancy_json` = :j
+                    WHERE `id` = :id");
+                $save->execute([
+                    ':t' => $item['title'],
+                    ':st' => $item['status'],
+                    ':stl' => $item['statusLabel'] ?? $item['status'],
+                    ':note' => $item['adminNote'] ?? null,
+                    ':j' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                    ':id' => $id
+                ]);
             }
         } catch (Throwable $e) {
             // Ignore DB errors during seed
@@ -616,10 +635,14 @@ function gig_vacancy_load_all(?string $statusFilter = null): array
         foreach ($sessionItems as $id => $item) {
             $all[$id] = gig_vacancy_normalize($item);
         }
+        $demoIds = ['GIG-2026-11-001', 'GIG-2026-11-002', 'GIG-2026-11-003', 'GIG-2026-11-004', 'GIG-2026-11-005'];
         foreach ($baseItems as $item) {
             $id = (string)($item['id'] ?? '');
             if (!isset($all[$id])) {
                 $all[$id] = gig_vacancy_normalize($item);
+            } elseif (in_array($id, $demoIds, true) && empty($all[$id]['is_user_modified'])) {
+                // Ensure demo states (review, revision, rejected, active) are loaded properly
+                $all[$id] = gig_vacancy_normalize(array_merge($all[$id], $item));
             }
         }
         $out = array_values($all);
