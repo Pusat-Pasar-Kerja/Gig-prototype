@@ -52,115 +52,129 @@ if ($locType === 'remote' && !str_contains(strtolower($location), 'remote')) {
     $location .= ' (Remote)';
 }
 
-$specialReq = null;
-$rawSpecial = $payload['special_requirement'] ?? null;
-if (is_array($rawSpecial)) {
-    $reqTypes = gig_special_requirement_types();
-    $fileFormats = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
+$rawList = [];
+if (!empty($payload['special_requirements']) && is_array($payload['special_requirements'])) {
+    $rawList = $payload['special_requirements'];
+} elseif (!empty($payload['special_requirement']) && is_array($payload['special_requirement'])) {
+    $rawList = [$payload['special_requirement']];
+}
+
+$specialReqs = [];
+$reqTypes = gig_special_requirement_types();
+$fileFormats = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
+
+foreach ($rawList as $rawSpecial) {
+    if (!is_array($rawSpecial)) {
+        continue;
+    }
     $reqTypeKey = trim((string)($rawSpecial['type'] ?? ''));
     $reqLabel = trim((string)($rawSpecial['label'] ?? ''));
-    if ($reqTypeKey !== '' && isset($reqTypes[$reqTypeKey]) && $reqLabel !== '') {
-        $meta = $reqTypes[$reqTypeKey];
-        $chosenInputType = trim((string)($rawSpecial['input_type'] ?? ''));
+    if ($reqTypeKey === '' || !isset($reqTypes[$reqTypeKey]) || $reqLabel === '') {
+        continue;
+    }
 
-        $chosenKey = strtolower($chosenInputType);
-        if (in_array($chosenKey, ['document', 'pdf', 'doc', 'docx', 'file_pdf', 'pdf_only', 'any_doc'], true)) {
-            $inputMode = 'file';
-            $fileType = 'document';
-            $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
-            $accept = '.pdf,.doc,.docx';
-            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
-            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
-            $allowedExts = ['pdf', 'doc', 'docx'];
-        } elseif (in_array($chosenKey, ['image', 'jpg', 'jpeg', 'png', 'file_image', 'image_only'], true)) {
-            $inputMode = 'file';
-            $fileType = 'image';
-            $fileTypeLabel = 'Gambar (JPG, JPEG, PNG)';
-            $accept = '.jpg,.jpeg,.png';
-            $formatHint = 'Gambar (JPG, JPEG, PNG, maks. 2 MB)';
-            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 2 MB).';
-            $allowedExts = ['jpg', 'jpeg', 'png'];
-        } elseif (in_array($chosenKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true)) {
-            $inputMode = 'file';
-            $fileType = 'archive';
-            $fileTypeLabel = 'Berkas Kompresi (ZIP, RAR, 7Z)';
-            $accept = '.zip,.rar,.7z';
-            $formatHint = 'Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)';
-            $workerHint = 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 2 MB).';
-            $allowedExts = ['zip', 'rar', '7z'];
-        } elseif ($chosenKey === 'url') {
-            $inputMode = 'url';
+    $meta = $reqTypes[$reqTypeKey];
+    $chosenInputType = trim((string)($rawSpecial['input_type'] ?? ''));
+
+    $chosenKey = strtolower($chosenInputType);
+    if (in_array($chosenKey, ['document', 'pdf', 'doc', 'docx', 'file_pdf', 'pdf_only', 'any_doc'], true)) {
+        $inputMode = 'file';
+        $fileType = 'document';
+        $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
+        $accept = '.pdf,.doc,.docx';
+        $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
+        $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
+        $allowedExts = ['pdf', 'doc', 'docx'];
+    } elseif (in_array($chosenKey, ['image', 'jpg', 'jpeg', 'png', 'file_image', 'image_only'], true)) {
+        $inputMode = 'file';
+        $fileType = 'image';
+        $fileTypeLabel = 'Gambar (JPG, JPEG, PNG)';
+        $accept = '.jpg,.jpeg,.png';
+        $formatHint = 'Gambar (JPG, JPEG, PNG, maks. 2 MB)';
+        $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 2 MB).';
+        $allowedExts = ['jpg', 'jpeg', 'png'];
+    } elseif (in_array($chosenKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true)) {
+        $inputMode = 'file';
+        $fileType = 'archive';
+        $fileTypeLabel = 'Berkas Kompresi (ZIP, RAR, 7Z)';
+        $accept = '.zip,.rar,.7z';
+        $formatHint = 'Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)';
+        $workerHint = 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 2 MB).';
+        $allowedExts = ['zip', 'rar', '7z'];
+    } elseif ($chosenKey === 'url') {
+        $inputMode = 'url';
+        $fileType = null;
+        $fileTypeLabel = null;
+        $accept = '';
+        $formatHint = 'Link / URL';
+        $workerHint = 'Masukkan tautan / URL yang valid.';
+        $allowedExts = null;
+    } elseif ($chosenKey === 'text' || $chosenKey === 'textarea') {
+        $inputMode = 'text';
+        $fileType = null;
+        $fileTypeLabel = null;
+        $accept = '';
+        $formatHint = 'Text';
+        $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
+        $allowedExts = null;
+    } elseif (in_array($chosenKey, ['file', 'file_pdf_image', 'pdf_image'], true)) {
+        $inputMode = 'file';
+        $fileType = 'document';
+        $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
+        $accept = '.pdf,.doc,.docx';
+        $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
+        $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
+        $allowedExts = ['pdf', 'doc', 'docx'];
+    } else {
+        $inputMode = (string)($meta['input_mode'] ?? 'file');
+        if ($inputMode === 'url') {
             $fileType = null;
             $fileTypeLabel = null;
             $accept = '';
             $formatHint = 'Link / URL';
             $workerHint = 'Masukkan tautan / URL yang valid.';
             $allowedExts = null;
-        } elseif ($chosenKey === 'text' || $chosenKey === 'textarea') {
-            $inputMode = 'text';
+        } elseif ($inputMode === 'textarea' || $inputMode === 'text') {
             $fileType = null;
             $fileTypeLabel = null;
             $accept = '';
             $formatHint = 'Text';
             $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
             $allowedExts = null;
-        } elseif (in_array($chosenKey, ['file', 'file_pdf_image', 'pdf_image'], true)) {
-            $inputMode = 'file';
-            $fileType = 'document';
-            $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
-            $accept = '.pdf,.doc,.docx';
-            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
-            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
-            $allowedExts = ['pdf', 'doc', 'docx'];
         } else {
-            $inputMode = (string)($meta['input_mode'] ?? 'file');
-            if ($inputMode === 'url') {
-                $fileType = null;
-                $fileTypeLabel = null;
-                $accept = '';
-                $formatHint = 'Link / URL';
-                $workerHint = 'Masukkan tautan / URL yang valid.';
-                $allowedExts = null;
-            } elseif ($inputMode === 'textarea' || $inputMode === 'text') {
-                $fileType = null;
-                $fileTypeLabel = null;
-                $accept = '';
-                $formatHint = 'Text';
-                $workerHint = 'Masukkan teks atau informasi singkat yang diminta.';
-                $allowedExts = null;
-            } else {
-                $inputMode = 'file';
-                $fileType = 'pdf';
-                $fileTypeLabel = 'PDF';
-                $accept = '.pdf';
-                $formatHint = 'PDF (.pdf)';
-                $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 2 MB).';
-                $allowedExts = ['pdf'];
-            }
+            $inputMode = 'file';
+            $fileType = 'pdf';
+            $fileTypeLabel = 'PDF';
+            $accept = '.pdf';
+            $formatHint = 'PDF (.pdf)';
+            $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 2 MB).';
+            $allowedExts = ['pdf'];
         }
-
-        $customType = trim((string)($rawSpecial['custom_type'] ?? ''));
-        $typeLabel = ($reqTypeKey === 'other' && $customType !== '') ? $customType : (string)$meta['label'];
-
-        $isPublic = !isset($rawSpecial['is_public']) || !empty($rawSpecial['is_public']);
-
-        $specialReq = [
-            'type'            => $reqTypeKey,
-            'custom_type'     => $customType,
-            'type_label'      => $typeLabel,
-            'label'           => $reqLabel,
-            'input_type'      => $chosenInputType !== '' ? $chosenInputType : ($inputMode === 'file' ? 'pdf' : $inputMode),
-            'input_mode'      => $inputMode,
-            'file_type'       => $fileType,
-            'file_type_label' => $fileTypeLabel,
-            'accept'          => $accept,
-            'format_hint'     => $formatHint,
-            'worker_hint'     => $workerHint,
-            'allowed_exts'    => $allowedExts,
-            'is_public'       => $isPublic,
-        ];
     }
+
+    $customType = trim((string)($rawSpecial['custom_type'] ?? ''));
+    $typeLabel = ($reqTypeKey === 'other' && $customType !== '') ? $customType : (string)$meta['label'];
+
+    $isPublic = !isset($rawSpecial['is_public']) || !empty($rawSpecial['is_public']);
+
+    $specialReqs[] = [
+        'type'            => $reqTypeKey,
+        'custom_type'     => $customType,
+        'type_label'      => $typeLabel,
+        'label'           => $reqLabel,
+        'input_type'      => $chosenInputType !== '' ? $chosenInputType : ($inputMode === 'file' ? 'pdf' : $inputMode),
+        'input_mode'      => $inputMode,
+        'file_type'       => $fileType,
+        'file_type_label' => $fileTypeLabel,
+        'accept'          => $accept,
+        'format_hint'     => $formatHint,
+        'worker_hint'     => $workerHint,
+        'allowed_exts'    => $allowedExts,
+        'is_public'       => $isPublic,
+    ];
 }
+
+$specialReq = $specialReqs !== [] ? $specialReqs[0] : null;
 
 $vacancy = [
     'title' => $title,
@@ -184,6 +198,7 @@ $vacancy = [
     'budget' => $budget,
     'skills' => array_filter(array_map('trim', explode(',', (string)($payload['skills'] ?? '')))),
     'special_requirement' => $specialReq,
+    'special_requirements' => $specialReqs !== [] ? $specialReqs : null,
 ];
 
 $id = gig_vacancy_save_submission($employer, $vacancy);

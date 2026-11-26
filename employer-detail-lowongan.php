@@ -887,20 +887,22 @@ require __DIR__ . '/includes/employer-layout-start.php';
       <div><span style="font-size:0.74rem;color:#64748b;display:block;">Tipe Pekerjaan</span><strong><?php echo htmlspecialchars((string)($job['workType'] ?? 'Full time / Milestone-based'), ENT_QUOTES, 'UTF-8'); ?></strong></div>
     </div>
     <?php
-      $empSpecialReq = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
-      if ($empSpecialReq !== null && !empty($empSpecialReq['label'])):
+      $empSpecialReqs = function_exists('gig_vacancy_get_special_requirements') ? gig_vacancy_get_special_requirements($job) : ($job['special_requirements'] ?? ($job['special_requirement'] ? [$job['special_requirement']] : []));
+      if (!empty($empSpecialReqs)):
         $cat = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
-        $tK = (string)($empSpecialReq['type'] ?? '');
-        $tL = (string)($empSpecialReq['type_label'] ?? ($cat[$tK]['label'] ?? $tK));
+        foreach ($empSpecialReqs as $eIdx => $empSpecialReq):
+          $tK = (string)($empSpecialReq['type'] ?? '');
+          $tL = (string)($empSpecialReq['type_label'] ?? ($cat[$tK]['label'] ?? $tK));
+          $itemNumStr = count($empSpecialReqs) > 1 ? (' #' . ($eIdx + 1)) : '';
     ?>
-    <div style="margin-top:16px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;">
-      <div style="font-size:0.75rem;color:#1e40af;font-weight:700;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.04em;">
-        <span>📎</span> Kualifikasi Khusus dari Pelamar (Wajib)
+    <div style="margin-top:14px;padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+      <div style="font-size:0.75rem;color:#2563eb;font-weight:700;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.04em;">
+        <span>📎</span> Kualifikasi Khusus Pelamar<?php echo $itemNumStr; ?> (Wajib)
       </div>
       <div style="margin-top:6px;font-size:0.92rem;font-weight:700;color:#0f172a;">
         <?php echo htmlspecialchars((string)$empSpecialReq['label'], ENT_QUOTES, 'UTF-8'); ?>
       </div>
-      <div style="margin-top:4px;font-size:0.78rem;color:#475569;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <div style="margin-top:6px;font-size:0.78rem;color:#475569;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
         <div>
           Jenis: <strong><?php echo htmlspecialchars($tL, ENT_QUOTES, 'UTF-8'); ?></strong> &bull; Format: <strong><?php echo htmlspecialchars((string)($empSpecialReq['file_type_label'] ?? $empSpecialReq['format_hint'] ?? ($cat[$tK]['format_hint'] ?? 'Sesuai format pilihan')), ENT_QUOTES, 'UTF-8'); ?></strong>
         </div>
@@ -913,7 +915,7 @@ require __DIR__ . '/includes/employer-layout-start.php';
         </div>
       </div>
     </div>
-    <?php endif; ?>
+    <?php endforeach; endif; ?>
     <?php if (!empty($job['deliverables'])): ?>
     <div style="margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
       <span style="font-size:0.74rem;color:#64748b;font-weight:700;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">Target / Deliverables Proyek</span>
@@ -1642,14 +1644,25 @@ require __DIR__ . '/includes/employer-layout-start.php';
           try { parsedReq = JSON.parse(rawSpecialReq); } catch (e) { parsedReq = null; }
         }
         if (parsedReq && typeof parsedReq === 'object') {
-          specialReqTitle.textContent = '📎 ' + (parsedReq.label || parsedReq.type_label || 'Kualifikasi Khusus Pelamar');
-          if (parsedReq.input_mode === 'file' && parsedReq.file_path) {
-            specialReqValue.innerHTML = '<a href="' + escapeHtml(parsedReq.file_path) + '" target="_blank" style="color:#1d4ed8;text-decoration:underline;font-weight:700;">📄 ' + escapeHtml(parsedReq.file_name || 'Lihat Dokumen') + ' ↗</a>';
-          } else if (parsedReq.input_mode === 'url' && parsedReq.value) {
-            specialReqValue.innerHTML = '<a href="' + escapeHtml(parsedReq.value) + '" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;text-decoration:underline;font-weight:700;">' + escapeHtml(parsedReq.value) + ' ↗</a>';
-          } else {
-            specialReqValue.textContent = parsedReq.value || '-';
-          }
+          const reqList = Array.isArray(parsedReq) ? parsedReq : [parsedReq];
+          let html = '';
+          reqList.forEach(function(item, idx) {
+            const numStr = reqList.length > 1 ? (' #' + (idx + 1)) : '';
+            const itemLabel = item.label || item.type_label || ('Kualifikasi' + numStr);
+            let valHtml = '';
+            if (item.input_mode === 'file' && item.file_path) {
+              const isArc = (item.file_type === 'archive') || /\.(zip|rar|7z)$/i.test(item.file_name || '');
+              const icon = isArc ? '📦' : '📄';
+              valHtml = '<a href="' + escapeHtml(item.file_path) + '" target="_blank" style="color:#1d4ed8;text-decoration:underline;font-weight:700;">' + icon + ' ' + escapeHtml(item.file_name || 'Lihat Berkas') + ' ↗</a>';
+            } else if (item.input_mode === 'url' && item.value) {
+              valHtml = '<a href="' + escapeHtml(item.value) + '" target="_blank" rel="noopener noreferrer" style="color:#1d4ed8;text-decoration:underline;font-weight:700;">🔗 ' + escapeHtml(item.value) + ' ↗</a>';
+            } else {
+              valHtml = '<span style="font-weight:600;color:#0f172a;">' + escapeHtml(item.value || '-') + '</span>';
+            }
+            html += '<div style="margin-bottom:8px;padding-bottom:8px;' + (idx < reqList.length - 1 ? 'border-bottom:1px dashed #e2e8f0;' : '') + '"><div style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:2px;">📎 ' + escapeHtml(itemLabel) + '</div><div>' + valHtml + '</div></div>';
+          });
+          specialReqTitle.textContent = 'Kualifikasi Khusus Pelamar';
+          specialReqValue.innerHTML = html;
           specialReqRow.style.display = 'block';
         } else {
           specialReqRow.style.display = 'none';

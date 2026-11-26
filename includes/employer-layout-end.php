@@ -677,57 +677,18 @@ declare(strict_types=1);
                   </div>
 
                   <div class="gig-optional-body" id="projSpecialReqBody">
-                    <div class="form-row" style="margin-bottom: 12px;">
-                      <label for="proj_special_req_type">Jenis Kualifikasi Khusus *</label>
-                      <select id="proj_special_req_type" onchange="syncSpecialReqUI()">
-                        <?php foreach ($specialReqTypes as $reqKey => $reqMeta): ?>
-                          <option
-                            value="<?php echo htmlspecialchars($reqKey, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-format="<?php echo htmlspecialchars($reqMeta['format_hint'], ENT_QUOTES, 'UTF-8'); ?>"
-                            data-placeholder="<?php echo htmlspecialchars($reqMeta['placeholder'], ENT_QUOTES, 'UTF-8'); ?>"
-                            data-input-mode="<?php echo htmlspecialchars($reqMeta['input_mode'], ENT_QUOTES, 'UTF-8'); ?>"
-                          ><?php echo htmlspecialchars($reqMeta['label'], ENT_QUOTES, 'UTF-8'); ?></option>
-                        <?php endforeach; ?>
-                      </select>
+                    <div style="font-size:0.78rem; color:#64748b; margin-bottom:12px;">
+                      Anda dapat menambahkan lebih dari satu kualifikasi khusus sesuai kebutuhan proyek.
                     </div>
 
-                    <div class="form-row" id="projSpecialReqCustomTypeRow" style="display: none; margin-bottom: 12px;">
-                      <label for="proj_special_req_custom_type">Nama Jenis Kualifikasi (Lainnya) *</label>
-                      <input type="text" id="proj_special_req_custom_type" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" />
-                      <div class="gig-note" style="margin-top: 3px;">Tuliskan nama kategori atau jenis kualifikasi yang belum tertera pada pilihan di atas.</div>
-                    </div>
+                    <!-- Container for multiple qualification items -->
+                    <div id="projSpecialReqItemsList"></div>
 
-                    <div class="form-row" style="margin-bottom: 12px;">
-                      <label for="proj_special_req_label">Detail / Nama Kualifikasi yang Diminta *</label>
-                      <input type="text" id="proj_special_req_label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
-                    </div>
-
-                    <div class="form-row" style="margin-bottom: 12px;">
-                      <label for="proj_special_req_input_type">Tipe Input / Format Berkas untuk Pelamar *</label>
-                      <select id="proj_special_req_input_type" onchange="syncSpecialReqInputType()">
-                        <option value="document" data-mode="file" data-accept=".pdf,.doc,.docx" data-hint="Dokumen PDF, DOC, DOCX (maks. 2 MB)">Dokumen (PDF, DOC, DOCX)</option>
-                        <option value="image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Gambar JPG, JPEG, PNG (maks. 2 MB)">Gambar (JPG, JPEG, PNG)</option>
-                        <option value="archive" data-mode="file" data-accept=".zip,.rar,.7z" data-hint="Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)">Berkas Kompresi (ZIP, RAR, 7Z)</option>
-                        <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
-                        <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
-                      </select>
-                      <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh pelamar saat melamar lowongan ini.</div>
-                    </div>
-
-                    <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
-                      <span>&#128206;</span>
-                      <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">Dokumen PDF, DOC, DOCX (maks. 2 MB)</strong></span>
-                    </div>
-
-                    <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
-                      <label for="proj_special_req_is_public" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
-                        <input type="checkbox" id="proj_special_req_is_public" checked style="margin-top: 2px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;" />
-                        <span style="font-size: 0.83rem; line-height: 1.45; color: #1e293b;">
-                          <strong style="font-weight: 700;">Tampilkan kualifikasi khusus</strong>
-                          <span style="color: #64748b; margin-left: 4px;">(Kualifikasi khusus ini akan ditampilkan secara publik pada halaman rincian lowongan agar calon pelamar dapat mengetahuinya sebelum melamar.)</span>
-                        </span>
-                      </label>
-                    </div>
+                    <!-- Add More Button -->
+                    <button type="button" id="btnAddSpecialReqItem" onclick="addSpecialReqItem()" style="width:100%; padding:11px 16px; border:1.5px dashed #3b82f6; background:#eff6ff; color:#2563eb; border-radius:10px; font-size:0.86rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.15s ease;" onmouseover="this.style.background='#dbeafe';" onmouseout="this.style.background='#eff6ff';">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      Tambah Kualifikasi Lainnya
+                    </button>
                   </div>
                 </div>
 
@@ -857,64 +818,153 @@ declare(strict_types=1);
     } else if (step === 3) {
       var toggle = document.getElementById('proj_special_req_toggle');
       if (toggle && toggle.checked) {
-        var reqTypeSelect = document.getElementById('proj_special_req_type');
-        var customTypeInput = document.getElementById('proj_special_req_custom_type');
-        if (reqTypeSelect && reqTypeSelect.value === 'other' && customTypeInput && !customTypeInput.value.trim()) {
-          customTypeInput.focus();
-          showToast('Tuliskan nama jenis kualifikasi khusus (lainnya).');
+        var items = document.querySelectorAll('.proj-special-req-item');
+        if (items.length === 0) {
+          showToast('Tambahkan minimal 1 kualifikasi khusus.');
           return false;
         }
-        var reqLabelInput = document.getElementById('proj_special_req_label');
-        if (reqLabelInput && !reqLabelInput.value.trim()) {
-          reqLabelInput.focus();
-          showToast('Tuliskan detail / nama kualifikasi khusus yang diminta.');
-          return false;
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          var reqTypeSelect = item.querySelector('.item-req-type');
+          var customTypeInput = item.querySelector('.item-req-custom-type');
+          var reqLabelInput = item.querySelector('.item-req-label');
+          var itemNum = i + 1;
+          if (reqTypeSelect && reqTypeSelect.value === 'other' && customTypeInput && !customTypeInput.value.trim()) {
+            customTypeInput.focus();
+            showToast('Tuliskan nama jenis kualifikasi khusus (lainnya) pada Kualifikasi #' + itemNum + '.');
+            return false;
+          }
+          if (reqLabelInput && !reqLabelInput.value.trim()) {
+            reqLabelInput.focus();
+            showToast('Tuliskan detail / nama kualifikasi khusus pada Kualifikasi #' + itemNum + '.');
+            return false;
+          }
         }
       }
     }
     return true;
   }
 
-  function handleOptionalHeadClick(e) {
-    if (e.target.closest('.gig-switch')) return;
-    var toggle = document.getElementById('proj_special_req_toggle');
-    if (toggle) {
-      toggle.checked = !toggle.checked;
-      toggleSpecialReq(toggle.checked);
+  window.GIG_SPECIAL_REQ_TYPES = <?php echo json_encode($specialReqTypes, JSON_UNESCAPED_UNICODE); ?>;
+
+  function updateSpecialReqNumbers() {
+    var items = document.querySelectorAll('.proj-special-req-item');
+    items.forEach(function(item, idx) {
+      var badge = item.querySelector('.req-idx-badge');
+      var numText = item.querySelector('.req-idx-num');
+      var removeBtn = item.querySelector('.btn-remove-req');
+      if (badge) badge.textContent = (idx + 1);
+      if (numText) numText.textContent = '#' + (idx + 1);
+      if (removeBtn) {
+        removeBtn.style.display = (items.length > 1) ? 'inline-flex' : 'none';
+      }
+    });
+  }
+
+  function addSpecialReqItem(data) {
+    var list = document.getElementById('projSpecialReqItemsList');
+    if (!list) return;
+    var index = list.children.length;
+
+    var types = window.GIG_SPECIAL_REQ_TYPES || {};
+    var typeOptionsHtml = '';
+    for (var k in types) {
+      if (types.hasOwnProperty(k)) {
+        var m = types[k];
+        typeOptionsHtml += '<option value="' + escapeHtml(k) + '" data-format="' + escapeHtml(m.format_hint || '') + '" data-placeholder="' + escapeHtml(m.placeholder || '') + '" data-input-mode="' + escapeHtml(m.input_mode || 'file') + '">' + escapeHtml(m.label || k) + '</option>';
+      }
+    }
+
+    var div = document.createElement('div');
+    div.className = 'proj-special-req-item';
+    div.style.cssText = 'background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+        <span style="font-size:0.84rem; font-weight:800; color:#2563eb; display:flex; align-items:center; gap:6px;">
+          <span class="req-idx-badge" style="width:20px; height:20px; border-radius:50%; background:#eff6ff; color:#2563eb; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:800;">${index + 1}</span>
+          Kualifikasi Khusus <span class="req-idx-num">#${index + 1}</span>
+        </span>
+        <button type="button" class="btn-remove-req" onclick="removeSpecialReqItem(this)" style="background:none; border:none; color:#ef4444; font-size:0.78rem; font-weight:700; cursor:pointer; display:${index > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:4px; padding:2px 8px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='#fef2f2';" onmouseout="this.style.background='none';" title="Hapus syarat ini">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Hapus
+        </button>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 12px;">
+        <label>Jenis Kualifikasi Khusus *</label>
+        <select class="item-req-type" onchange="syncSpecialReqItemUI(this)">
+          ${typeOptionsHtml}
+        </select>
+      </div>
+
+      <div class="form-row item-custom-type-row" style="display: none; margin-bottom: 12px;">
+        <label>Nama Jenis Kualifikasi (Lainnya) *</label>
+        <input type="text" class="item-req-custom-type" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" />
+        <div class="gig-note" style="margin-top: 3px;">Tuliskan nama kategori atau jenis kualifikasi yang belum tertera pada pilihan di atas.</div>
+      </div>
+
+      <div class="form-row" style="margin-bottom: 12px;">
+        <label>Detail / Nama Kualifikasi yang Diminta *</label>
+        <input type="text" class="item-req-label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
+      </div>
+
+      <div class="form-row" style="margin-bottom: 12px;">
+        <label>Tipe Input / Format Berkas untuk Pelamar *</label>
+        <select class="item-req-input-type" onchange="syncSpecialReqItemInputType(this)">
+          <option value="document" data-mode="file" data-accept=".pdf,.doc,.docx" data-hint="Dokumen PDF, DOC, DOCX (maks. 2 MB)">Dokumen (PDF, DOC, DOCX)</option>
+          <option value="image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Gambar JPG, JPEG, PNG (maks. 2 MB)">Gambar (JPG, JPEG, PNG)</option>
+          <option value="archive" data-mode="file" data-accept=".zip,.rar,.7z" data-hint="Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)">Berkas Kompresi (ZIP, RAR, 7Z)</option>
+          <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
+          <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
+        </select>
+        <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh pelamar saat melamar lowongan ini.</div>
+      </div>
+
+      <div class="item-format-preview-bar" style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+        <span>&#128206;</span>
+        <span>Format input untuk Pelamar: <strong class="item-format-preview-text">Dokumen PDF, DOC, DOCX (maks. 2 MB)</strong></span>
+      </div>
+
+      <div style="padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
+          <input type="checkbox" class="item-req-is-public" checked style="margin-top: 2px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;" />
+          <span style="font-size: 0.83rem; line-height: 1.45; color: #1e293b;">
+            <strong style="font-weight: 700;">Tampilkan kualifikasi khusus</strong>
+            <span style="color: #64748b; margin-left: 4px;">(Kualifikasi khusus ini akan ditampilkan secara publik pada halaman rincian lowongan agar calon pelamar dapat mengetahuinya sebelum melamar.)</span>
+          </span>
+        </label>
+      </div>
+    `;
+
+    list.appendChild(div);
+    syncSpecialReqItemUI(div.querySelector('.item-req-type'));
+    updateSpecialReqNumbers();
+  }
+
+  function removeSpecialReqItem(btn) {
+    var item = btn.closest('.proj-special-req-item');
+    if (item) {
+      item.remove();
+      updateSpecialReqNumbers();
     }
   }
 
-  function toggleSpecialReq(enabled) {
-    var card = document.getElementById('projSpecialReqCard');
-    var body = document.getElementById('projSpecialReqBody');
-    var statusText = document.getElementById('projSpecialReqSwitchStatus');
-    var toggle = document.getElementById('proj_special_req_toggle');
-    if (toggle) toggle.checked = !!enabled;
-    if (card) card.classList.toggle('active', !!enabled);
-    if (statusText) statusText.textContent = enabled ? 'Aktif' : 'Tidak Aktif';
-    if (body) body.style.display = enabled ? 'block' : 'none';
-    if (enabled) {
-      syncSpecialReqUI();
+  function syncSpecialReqItemInputType(sel) {
+    var item = sel.closest('.proj-special-req-item');
+    if (!item) return;
+    var preview = item.querySelector('.item-format-preview-text');
+    var opt = sel.options[sel.selectedIndex];
+    if (preview && opt) {
+      preview.textContent = opt.getAttribute('data-hint') || 'Upload File';
     }
   }
 
-  function syncSpecialReqInputType() {
-    var inputTypeSel = document.getElementById('proj_special_req_input_type');
-    var preview = document.getElementById('projSpecialReqFormatPreview');
-    if (!inputTypeSel || !preview) return;
-    var opt = inputTypeSel.options[inputTypeSel.selectedIndex];
-    var hint = opt ? (opt.getAttribute('data-hint') || 'Upload File') : 'Upload File';
-    preview.textContent = hint;
-  }
-
-  function syncSpecialReqUI() {
-    var toggle = document.getElementById('proj_special_req_toggle');
-    if (toggle && !toggle.checked) return;
-    var sel = document.getElementById('proj_special_req_type');
-    var labelInput = document.getElementById('proj_special_req_label');
-    var inputTypeSel = document.getElementById('proj_special_req_input_type');
-    var customRow = document.getElementById('projSpecialReqCustomTypeRow');
-    if (!sel) return;
+  function syncSpecialReqItemUI(sel) {
+    var item = sel.closest('.proj-special-req-item');
+    if (!item) return;
+    var customRow = item.querySelector('.item-custom-type-row');
+    var labelInput = item.querySelector('.item-req-label');
+    var inputTypeSel = item.querySelector('.item-req-input-type');
     if (customRow) {
       customRow.style.display = (sel.value === 'other') ? 'block' : 'none';
     }
@@ -938,7 +988,31 @@ declare(strict_types=1);
     if (labelInput && placeholder && !labelInput.value) {
       labelInput.placeholder = placeholder;
     }
-    syncSpecialReqInputType();
+    syncSpecialReqItemInputType(inputTypeSel);
+  }
+
+  function handleOptionalHeadClick(e) {
+    if (e.target.closest('.gig-switch')) return;
+    var toggle = document.getElementById('proj_special_req_toggle');
+    if (toggle) {
+      toggle.checked = !toggle.checked;
+      toggleSpecialReq(toggle.checked);
+    }
+  }
+
+  function toggleSpecialReq(enabled) {
+    var card = document.getElementById('projSpecialReqCard');
+    var body = document.getElementById('projSpecialReqBody');
+    var statusText = document.getElementById('projSpecialReqSwitchStatus');
+    var toggle = document.getElementById('proj_special_req_toggle');
+    var list = document.getElementById('projSpecialReqItemsList');
+    if (toggle) toggle.checked = !!enabled;
+    if (card) card.classList.toggle('active', !!enabled);
+    if (statusText) statusText.textContent = enabled ? 'Aktif' : 'Tidak Aktif';
+    if (body) body.style.display = enabled ? 'block' : 'none';
+    if (enabled && list && list.children.length === 0) {
+      addSpecialReqItem();
+    }
   }
 
   function nextProjectStep() {
@@ -971,6 +1045,8 @@ declare(strict_types=1);
 
   function openPostProjectModal() {
     setProjectStep(1);
+    var list = document.getElementById('projSpecialReqItemsList');
+    if (list) list.innerHTML = '';
     toggleSpecialReq(false);
     document.getElementById('postProjectModal').classList.add('open');
   }
@@ -1006,32 +1082,38 @@ declare(strict_types=1);
     const salaryVal = Number((salaryRaw + '').replace(/[^\d]/g, ''));
 
     var toggleEl = document.getElementById('proj_special_req_toggle');
-    var reqTypeEl = document.getElementById('proj_special_req_type');
-    var customTypeEl = document.getElementById('proj_special_req_custom_type');
-    var reqLabelEl = document.getElementById('proj_special_req_label');
-    var reqInputTypeEl = document.getElementById('proj_special_req_input_type');
-    var specialRequirement = null;
-    if (toggleEl && toggleEl.checked && reqTypeEl && reqLabelEl && reqLabelEl.value.trim() !== '') {
-      var chosenOpt = reqInputTypeEl ? reqInputTypeEl.options[reqInputTypeEl.selectedIndex] : null;
-      var chosenMode = chosenOpt ? chosenOpt.getAttribute('data-mode') : 'file';
-      var chosenAccept = chosenOpt ? chosenOpt.getAttribute('data-accept') : '.pdf';
-      var chosenHint = chosenOpt ? chosenOpt.getAttribute('data-hint') : (chosenOpt ? chosenOpt.text : 'PDF');
-      var chosenVal = reqInputTypeEl ? reqInputTypeEl.value : 'document';
+    var specialRequirements = [];
+    if (toggleEl && toggleEl.checked) {
+      var items = document.querySelectorAll('.proj-special-req-item');
+      items.forEach(function(item) {
+        var reqTypeEl = item.querySelector('.item-req-type');
+        var customTypeEl = item.querySelector('.item-req-custom-type');
+        var reqLabelEl = item.querySelector('.item-req-label');
+        var reqInputTypeEl = item.querySelector('.item-req-input-type');
+        var isPublicEl = item.querySelector('.item-req-is-public');
+        if (reqTypeEl && reqLabelEl && reqLabelEl.value.trim() !== '') {
+          var chosenOpt = reqInputTypeEl ? reqInputTypeEl.options[reqInputTypeEl.selectedIndex] : null;
+          var chosenMode = chosenOpt ? chosenOpt.getAttribute('data-mode') : 'file';
+          var chosenAccept = chosenOpt ? chosenOpt.getAttribute('data-accept') : '.pdf';
+          var chosenHint = chosenOpt ? chosenOpt.getAttribute('data-hint') : (chosenOpt ? chosenOpt.text : 'PDF');
+          var chosenVal = reqInputTypeEl ? reqInputTypeEl.value : 'document';
+          var isPublic = isPublicEl ? isPublicEl.checked : true;
 
-      var isPublicEl = document.getElementById('proj_special_req_is_public');
-      var isPublic = isPublicEl ? isPublicEl.checked : true;
-
-      specialRequirement = {
-        type: reqTypeEl.value,
-        custom_type: (reqTypeEl.value === 'other' && customTypeEl) ? customTypeEl.value.trim() : '',
-        label: reqLabelEl.value.trim(),
-        input_type: chosenVal,
-        input_mode: chosenMode,
-        accept: chosenAccept,
-        format_hint: chosenHint,
-        is_public: isPublic
-      };
+          specialRequirements.push({
+            type: reqTypeEl.value,
+            custom_type: (reqTypeEl.value === 'other' && customTypeEl) ? customTypeEl.value.trim() : '',
+            label: reqLabelEl.value.trim(),
+            input_type: chosenVal,
+            input_mode: chosenMode,
+            accept: chosenAccept,
+            format_hint: chosenHint,
+            is_public: isPublic
+          });
+        }
+      });
     }
+
+    var specialRequirement = specialRequirements.length > 0 ? specialRequirements[0] : null;
 
     const payload = {
       title: title,
@@ -1052,7 +1134,8 @@ declare(strict_types=1);
       location_detail: city + ', ' + province,
       location_city: city,
       location_province: province,
-      special_requirement: specialRequirement
+      special_requirement: specialRequirement,
+      special_requirements: specialRequirements.length > 0 ? specialRequirements : null
     };
     fetch('vacancy-submit.php', {
       method: 'POST',

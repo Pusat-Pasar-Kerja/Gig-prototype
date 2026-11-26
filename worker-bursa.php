@@ -22,8 +22,12 @@ $vacancies = $allActiveVacancies;
 // Filter by Keyword / Skill / Title / Client / Special Requirement
 if ($q !== '') {
     $vacancies = array_values(array_filter($vacancies, static function ($job) use ($q) {
-        $spec = $job['special_requirement'] ?? [];
-        $specText = is_array($spec) ? (($spec['label'] ?? '') . ' ' . ($spec['type_label'] ?? '') . ' ' . ($spec['file_type_label'] ?? '') . ' ' . ($spec['format_hint'] ?? '')) : '';
+        $specList = function_exists('gig_vacancy_get_special_requirements') ? gig_vacancy_get_special_requirements($job) : [];
+        $specTextParts = [];
+        foreach ($specList as $s) {
+            $specTextParts[] = ($s['label'] ?? '') . ' ' . ($s['type_label'] ?? '') . ' ' . ($s['file_type_label'] ?? '') . ' ' . ($s['format_hint'] ?? '');
+        }
+        $specText = implode(' ', $specTextParts);
         $hay = strtolower($job['title'] . ' ' . $job['category'] . ' ' . implode(' ', $job['skills']) . ' ' . $job['desc'] . ' ' . $job['client'] . ' ' . $specText);
         return str_contains($hay, strtolower($q));
     }));
@@ -32,12 +36,19 @@ if ($q !== '') {
 // Filter by Special Requirement
 if ($selectedSpec !== '' && $selectedSpec !== 'all') {
     $vacancies = array_values(array_filter($vacancies, static function ($job) use ($selectedSpec) {
-        $hasSpec = !empty($job['special_requirement']['label']) && (!isset($job['special_requirement']['is_public']) || !empty($job['special_requirement']['is_public']));
+        $specList = function_exists('gig_vacancy_get_special_requirements') ? gig_vacancy_get_special_requirements($job) : [];
+        $hasPublicSpec = false;
+        foreach ($specList as $s) {
+            if (!empty($s['label']) && (!isset($s['is_public']) || !empty($s['is_public']))) {
+                $hasPublicSpec = true;
+                break;
+            }
+        }
         if ($selectedSpec === 'with_req') {
-            return $hasSpec;
+            return $hasPublicSpec;
         }
         if ($selectedSpec === 'without_req') {
-            return !$hasSpec;
+            return !$hasPublicSpec;
         }
         return true;
     }));
@@ -579,7 +590,13 @@ a.proyek-card-item:hover .apply-cta {
       'onsite' => ['label' => '🏢 On-site / Hybrid', 'count' => $onsiteCount],
     ];
 
-    $specWithCount = count(array_filter($allActiveVacancies, static fn($j) => !empty($j['special_requirement']['label']) && (!isset($j['special_requirement']['is_public']) || !empty($j['special_requirement']['is_public']))));
+    $specWithCount = count(array_filter($allActiveVacancies, static function($j) {
+        $specs = function_exists('gig_vacancy_get_special_requirements') ? gig_vacancy_get_special_requirements($j) : [];
+        foreach ($specs as $s) {
+            if (!empty($s['label']) && (!isset($s['is_public']) || !empty($s['is_public']))) return true;
+        }
+        return false;
+    }));
     $specWithoutCount = count($allActiveVacancies) - $specWithCount;
     $specMap = [
       'all' => ['label' => 'Semua Proyek', 'count' => count($allActiveVacancies)],
@@ -751,24 +768,26 @@ a.proyek-card-item:hover .apply-cta {
                 <h3 class="card-project-title"><?php echo htmlspecialchars($job['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
 
                 <?php
-                  $cardSpec = is_array($job['special_requirement'] ?? null) ? $job['special_requirement'] : null;
-                  $cardSpecIsPublic = !isset($cardSpec['is_public']) || !empty($cardSpec['is_public']);
-                  if ($cardSpec !== null && !empty($cardSpec['label']) && $cardSpecIsPublic):
-                    $rawCardType = (string)($cardSpec['type'] ?? '');
-                    $cardSpecType = (string)($cardSpec['type_label'] ?? '');
-                    if ($rawCardType === 'other' && !empty($cardSpec['custom_type'])) {
-                        $cardSpecType = (string)$cardSpec['custom_type'];
+                  $allCardSpecs = function_exists('gig_vacancy_get_special_requirements') ? gig_vacancy_get_special_requirements($job) : [];
+                  $publicCardSpecs = array_values(array_filter($allCardSpecs, fn($s) => !empty($s['label']) && (!isset($s['is_public']) || !empty($s['is_public']))));
+                  if (!empty($publicCardSpecs)):
+                    $firstSpec = $publicCardSpecs[0];
+                    $rawCardType = (string)($firstSpec['type'] ?? '');
+                    $cardSpecType = (string)($firstSpec['type_label'] ?? '');
+                    if ($rawCardType === 'other' && !empty($firstSpec['custom_type'])) {
+                        $cardSpecType = (string)$firstSpec['custom_type'];
                     }
                     if ($cardSpecType === '') {
                         $bTypesCat = function_exists('gig_special_requirement_types') ? gig_special_requirement_types() : [];
                         $cardSpecType = (string)($bTypesCat[$rawCardType]['label'] ?? 'Kualifikasi Khusus');
                     }
 
-                    $cardInputTypeKey = strtolower((string)($cardSpec['input_type'] ?? ($cardSpec['file_type'] ?? '')));
+                    $cardInputTypeKey = strtolower((string)($firstSpec['input_type'] ?? ($firstSpec['file_type'] ?? '')));
                     $bFileCat = function_exists('gig_special_req_file_formats') ? gig_special_req_file_formats() : [];
-                    $cardSpecFormat = (string)($cardSpec['file_type_label'] ?? ($bFileCat[$cardInputTypeKey]['label'] ?? ($cardSpec['format_hint'] ?? '')));
+                    $cardSpecFormat = (string)($firstSpec['file_type_label'] ?? ($bFileCat[$cardInputTypeKey]['label'] ?? ($firstSpec['format_hint'] ?? '')));
+                    $moreCount = count($publicCardSpecs) - 1;
                 ?>
-                  <div style="margin: 0 0 10px 0;">
+                  <div style="margin: 0 0 10px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
                     <span style="display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;padding:4px 10px;border-radius:6px;font-size:0.72rem;font-weight:700;line-height:1.2;">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                       <span>Wajib <?php echo htmlspecialchars($cardSpecType, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -777,6 +796,11 @@ a.proyek-card-item:hover .apply-cta {
                         <span style="color:#4f46e5;font-weight:600;"><?php echo htmlspecialchars($cardSpecFormat, ENT_QUOTES, 'UTF-8'); ?></span>
                       <?php endif; ?>
                     </span>
+                    <?php if ($moreCount > 0): ?>
+                      <span style="font-size: 0.7rem; font-weight: 700; color: #4338ca; background: #e0e7ff; border: 1px solid #c7d2fe; padding: 3px 8px; border-radius: 6px;">
+                        +<?php echo $moreCount; ?> Kualifikasi Lainnya
+                      </span>
+                    <?php endif; ?>
                   </div>
                 <?php endif; ?>
 

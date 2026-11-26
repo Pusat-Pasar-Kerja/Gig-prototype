@@ -566,45 +566,107 @@ function gig_vacancy_normalize(array $vacancy): array
     $vacancy['vacancy_type'] = $vacancyType;
     $vacancy['entity_type']  = $entityType;
 
-    if (isset($vacancy['special_requirement']) && is_array($vacancy['special_requirement'])) {
-        $sReq = $vacancy['special_requirement'];
-        $type = (string)($sReq['type'] ?? '');
-        $typesCatalog = gig_special_requirement_types();
-        if ($type !== '' && isset($typesCatalog[$type])) {
-            $baseMeta = $typesCatalog[$type];
-            $customType = trim((string)($sReq['custom_type'] ?? ''));
-            if ($type === 'other' && $customType !== '') {
-                $sReq['type_label'] = $customType;
-            } else {
-                $sReq['type_label'] = (string)($sReq['type_label'] ?? $baseMeta['label']);
+    // Normalize special requirements (supports multiple items)
+    $rawList = [];
+    if (!empty($vacancy['special_requirements']) && is_array($vacancy['special_requirements'])) {
+        $rawList = $vacancy['special_requirements'];
+    } elseif (!empty($vacancy['special_requirement']) && is_array($vacancy['special_requirement'])) {
+        $rawList = [$vacancy['special_requirement']];
+    }
+
+    $normalizedList = [];
+    foreach ($rawList as $rItem) {
+        if (is_array($rItem)) {
+            $norm = gig_vacancy_normalize_special_req($rItem);
+            if ($norm !== null) {
+                $normalizedList[] = $norm;
             }
-            $sReq['input_mode'] = (string)($sReq['input_mode'] ?? $baseMeta['input_mode']);
-            if ($sReq['input_mode'] === 'file') {
-                $fileFormats = gig_special_req_file_formats();
-                $fileType = (string)($sReq['file_type'] ?? 'document');
-                if (!isset($fileFormats[$fileType])) {
-                    $fileType = 'document';
-                }
-                $fileMeta = $fileFormats[$fileType];
-                $sReq['file_type'] = $fileType;
-                $sReq['file_type_label'] = (string)($sReq['file_type_label'] ?? $fileMeta['label']);
-                if (empty($sReq['accept']) || $sReq['accept'] === $baseMeta['accept']) {
-                    $sReq['accept'] = $fileMeta['accept'];
-                }
-                if (empty($sReq['format_hint']) || $sReq['format_hint'] === $baseMeta['format_hint']) {
-                    $sReq['format_hint'] = $fileMeta['format_hint'];
-                }
-                if (empty($sReq['worker_hint']) || $sReq['worker_hint'] === $baseMeta['worker_hint']) {
-                    $sReq['worker_hint'] = $fileMeta['worker_hint'];
-                }
-                $sReq['allowed_exts'] = $fileMeta['allowed_exts'];
-            }
-            $sReq['is_public'] = !isset($sReq['is_public']) || !empty($sReq['is_public']);
-            $vacancy['special_requirement'] = $sReq;
         }
     }
 
+    if ($normalizedList !== []) {
+        $vacancy['special_requirements'] = $normalizedList;
+        $vacancy['special_requirement'] = $normalizedList[0];
+    } else {
+        $vacancy['special_requirements'] = null;
+        $vacancy['special_requirement'] = null;
+    }
+
     return $vacancy;
+}
+
+/**
+ * Extract all special requirements from a vacancy as a normalized list of arrays.
+ * Handles both multiple ('special_requirements') and legacy single ('special_requirement').
+ *
+ * @param array<string, mixed> $vacancy
+ * @return array<int, array<string, mixed>>
+ */
+function gig_vacancy_get_special_requirements(array $vacancy): array
+{
+    $results = [];
+    if (!empty($vacancy['special_requirements']) && is_array($vacancy['special_requirements'])) {
+        foreach ($vacancy['special_requirements'] as $req) {
+            if (is_array($req) && !empty($req['label'])) {
+                $results[] = $req;
+            }
+        }
+    } elseif (!empty($vacancy['special_requirement']) && is_array($vacancy['special_requirement']) && !empty($vacancy['special_requirement']['label'])) {
+        $results[] = $vacancy['special_requirement'];
+    }
+    return $results;
+}
+
+/**
+ * Normalize a single special requirement array item.
+ *
+ * @param array<string, mixed> $sReq
+ * @return array<string, mixed>|null
+ */
+function gig_vacancy_normalize_special_req(array $sReq): ?array
+{
+    $label = trim((string)($sReq['label'] ?? ''));
+    if ($label === '') {
+        return null;
+    }
+    $typesCatalog = gig_special_requirement_types();
+    $type = (string)($sReq['type'] ?? '');
+    if ($type === '' || !isset($typesCatalog[$type])) {
+        $type = 'certificate';
+    }
+    $baseMeta = $typesCatalog[$type];
+    $customType = trim((string)($sReq['custom_type'] ?? ''));
+    if ($type === 'other' && $customType !== '') {
+        $sReq['type_label'] = $customType;
+    } else {
+        $sReq['type_label'] = (string)($sReq['type_label'] ?? $baseMeta['label']);
+    }
+    $sReq['type'] = $type;
+    $sReq['label'] = $label;
+    $sReq['input_mode'] = (string)($sReq['input_mode'] ?? $baseMeta['input_mode']);
+
+    if ($sReq['input_mode'] === 'file') {
+        $fileFormats = gig_special_req_file_formats();
+        $fileType = (string)($sReq['file_type'] ?? 'document');
+        if (!isset($fileFormats[$fileType])) {
+            $fileType = 'document';
+        }
+        $fileMeta = $fileFormats[$fileType];
+        $sReq['file_type'] = $fileType;
+        $sReq['file_type_label'] = (string)($sReq['file_type_label'] ?? $fileMeta['label']);
+        if (empty($sReq['accept']) || $sReq['accept'] === $baseMeta['accept']) {
+            $sReq['accept'] = $fileMeta['accept'];
+        }
+        if (empty($sReq['format_hint']) || $sReq['format_hint'] === $baseMeta['format_hint']) {
+            $sReq['format_hint'] = $fileMeta['format_hint'];
+        }
+        if (empty($sReq['worker_hint']) || $sReq['worker_hint'] === $baseMeta['worker_hint']) {
+            $sReq['worker_hint'] = $fileMeta['worker_hint'];
+        }
+        $sReq['allowed_exts'] = $fileMeta['allowed_exts'];
+    }
+    $sReq['is_public'] = !isset($sReq['is_public']) || !empty($sReq['is_public']);
+    return $sReq;
 }
 
 /** @param array<string, mixed> $vacancy */
@@ -755,6 +817,7 @@ function gig_vacancy_save_submission(string $employerUsername, array $vacancy): 
         'employer' => $employerUsername,
         'deliverables' => (string)($vacancy['deliverables'] ?? ''),
         'special_requirement' => $vacancy['special_requirement'] ?? null,
+        'special_requirements' => $vacancy['special_requirements'] ?? null,
     ];
 
     if ($db === null) {

@@ -140,40 +140,54 @@ require __DIR__ . '/includes/worker-layout-start.php';
           </div>
         </div>
 
-        <?php if (is_array($appSpecial) && !empty($appSpecial['label'])): 
-          $specLamaranType = !empty($appSpecial['custom_type']) ? (string)$appSpecial['custom_type'] : (string)($appSpecial['type_label'] ?? 'Kualifikasi Khusus');
-          $isLamaranArchive = (($appSpecial['file_type'] ?? '') === 'archive') || in_array(strtolower(pathinfo((string)($appSpecial['file_name'] ?? ''), PATHINFO_EXTENSION)), ['zip', 'rar', '7z'], true);
+        <?php
+          $appSpecialList = [];
+          if (is_array($appSpecial)) {
+              if (isset($appSpecial[0]) && is_array($appSpecial[0])) {
+                  $appSpecialList = $appSpecial;
+              } elseif (!empty($appSpecial['label'])) {
+                  $appSpecialList = [$appSpecial];
+              }
+          }
+          if (!empty($appSpecialList)):
         ?>
-          <div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-            <div style="display:flex;align-items:center;gap:12px;min-width:200px;">
-              <span style="font-size:1.4rem;">
-                <?php echo (($appSpecial['input_mode'] ?? '') === 'file') ? ($isLamaranArchive ? '📦' : '📄') : ((($appSpecial['input_mode'] ?? '') === 'url') ? '🔗' : '📝'); ?>
-              </span>
-              <div>
-                <div style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:4px;border:1px solid #dbeafe;">
-                  Kualifikasi: <?php echo htmlspecialchars($specLamaranType, ENT_QUOTES, 'UTF-8'); ?>
+          <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+            <?php foreach ($appSpecialList as $appSpecialItem): 
+              $specLamaranType = !empty($appSpecialItem['custom_type']) ? (string)$appSpecialItem['custom_type'] : (string)($appSpecialItem['type_label'] ?? 'Kualifikasi Khusus');
+              $isLamaranArchive = (($appSpecialItem['file_type'] ?? '') === 'archive') || in_array(strtolower(pathinfo((string)($appSpecialItem['file_name'] ?? ''), PATHINFO_EXTENSION)), ['zip', 'rar', '7z'], true);
+            ?>
+              <div style="padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                <div style="display:flex;align-items:center;gap:12px;min-width:200px;">
+                  <span style="font-size:1.4rem;">
+                    <?php echo (($appSpecialItem['input_mode'] ?? '') === 'file') ? ($isLamaranArchive ? '📦' : '📄') : ((($appSpecialItem['input_mode'] ?? '') === 'url') ? '🔗' : '📝'); ?>
+                  </span>
+                  <div>
+                    <div style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:4px;border:1px solid #dbeafe;">
+                      Kualifikasi: <?php echo htmlspecialchars($specLamaranType, ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                    <div style="font-size:0.86rem;font-weight:700;color:#0f172a;margin-top:4px;">
+                      <?php echo htmlspecialchars((string)($appSpecialItem['label'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                  </div>
                 </div>
-                <div style="font-size:0.86rem;font-weight:700;color:#0f172a;margin-top:4px;">
-                  <?php echo htmlspecialchars((string)($appSpecial['label'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+
+                <div>
+                  <?php if (($appSpecialItem['input_mode'] ?? '') === 'file' && !empty($appSpecialItem['file_path'])): ?>
+                    <a href="<?php echo htmlspecialchars((string)$appSpecialItem['file_path'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" style="padding:6px 14px;background:#2563eb;color:#ffffff;border-radius:6px;font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(37,99,235,0.2);">
+                      <span>Lihat Berkas: <?php echo htmlspecialchars((string)($appSpecialItem['file_name'] ?? ($isLamaranArchive ? 'Berkas Kompresi' : 'Dokumen')), ENT_QUOTES, 'UTF-8'); ?></span> ↗
+                    </a>
+                  <?php elseif (($appSpecialItem['input_mode'] ?? '') === 'url' && !empty($appSpecialItem['value'])): ?>
+                    <a href="<?php echo htmlspecialchars((string)$appSpecialItem['value'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" style="padding:6px 14px;background:#2563eb;color:#ffffff;border-radius:6px;font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(37,99,235,0.2);">
+                      <span>Buka Tautan Portofolio</span> ↗
+                    </a>
+                  <?php else: ?>
+                    <span style="font-size:0.82rem;font-weight:600;color:#334155;background:#ffffff;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;">
+                      <?php echo htmlspecialchars((string)($appSpecialItem['value'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                  <?php endif; ?>
                 </div>
               </div>
-            </div>
-
-            <div>
-              <?php if (($appSpecial['input_mode'] ?? '') === 'file' && !empty($appSpecial['file_path'])): ?>
-                <a href="<?php echo htmlspecialchars((string)$appSpecial['file_path'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" style="padding:6px 14px;background:#2563eb;color:#ffffff;border-radius:6px;font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(37,99,235,0.2);">
-                  <span>Lihat Berkas: <?php echo htmlspecialchars((string)($appSpecial['file_name'] ?? ($isLamaranArchive ? 'Berkas Kompresi' : 'Dokumen')), ENT_QUOTES, 'UTF-8'); ?></span> ↗
-                </a>
-              <?php elseif (($appSpecial['input_mode'] ?? '') === 'url' && !empty($appSpecial['value'])): ?>
-                <a href="<?php echo htmlspecialchars((string)$appSpecial['value'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer" style="padding:6px 14px;background:#2563eb;color:#ffffff;border-radius:6px;font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;box-shadow:0 1px 4px rgba(37,99,235,0.2);">
-                  <span>Buka Tautan Portofolio</span> ↗
-                </a>
-              <?php else: ?>
-                <span style="font-size:0.82rem;font-weight:600;color:#334155;background:#ffffff;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;">
-                  <?php echo htmlspecialchars((string)($appSpecial['value'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
-                </span>
-              <?php endif; ?>
-            </div>
+            <?php endforeach; ?>
           </div>
         <?php endif; ?>
 
