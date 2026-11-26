@@ -69,24 +69,24 @@ if (is_array($rawSpecial)) {
             $fileType = 'document';
             $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
             $accept = '.pdf,.doc,.docx';
-            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 5 MB)';
-            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 5 MB).';
+            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
+            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
             $allowedExts = ['pdf', 'doc', 'docx'];
         } elseif (in_array($chosenKey, ['image', 'jpg', 'jpeg', 'png', 'file_image', 'image_only'], true)) {
             $inputMode = 'file';
             $fileType = 'image';
             $fileTypeLabel = 'Gambar (JPG, JPEG, PNG)';
             $accept = '.jpg,.jpeg,.png';
-            $formatHint = 'Gambar (JPG, JPEG, PNG, maks. 5 MB)';
-            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).';
+            $formatHint = 'Gambar (JPG, JPEG, PNG, maks. 2 MB)';
+            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 2 MB).';
             $allowedExts = ['jpg', 'jpeg', 'png'];
         } elseif (in_array($chosenKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true)) {
             $inputMode = 'file';
             $fileType = 'archive';
             $fileTypeLabel = 'Berkas Kompresi (ZIP, RAR, 7Z)';
             $accept = '.zip,.rar,.7z';
-            $formatHint = 'Berkas Kompresi ZIP, RAR, 7Z (maks. 10 MB)';
-            $workerHint = 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 10 MB).';
+            $formatHint = 'Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)';
+            $workerHint = 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 2 MB).';
             $allowedExts = ['zip', 'rar', '7z'];
         } elseif ($chosenKey === 'url') {
             $inputMode = 'url';
@@ -109,8 +109,8 @@ if (is_array($rawSpecial)) {
             $fileType = 'document';
             $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
             $accept = '.pdf,.doc,.docx';
-            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 5 MB)';
-            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 5 MB).';
+            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
+            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
             $allowedExts = ['pdf', 'doc', 'docx'];
         } else {
             $inputMode = (string)($meta['input_mode'] ?? 'file');
@@ -134,7 +134,7 @@ if (is_array($rawSpecial)) {
                 $fileTypeLabel = 'PDF';
                 $accept = '.pdf';
                 $formatHint = 'PDF (.pdf)';
-                $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 5 MB).';
+                $workerHint = 'Unggah berkas dalam format PDF (.pdf, maks. 2 MB).';
                 $allowedExts = ['pdf'];
             }
         }

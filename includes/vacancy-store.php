@@ -54,7 +54,7 @@ function gig_special_requirement_types(): array
             'accept'      => '.pdf,.jpg,.jpeg,.png',
             'format_hint' => 'Upload File (PDF atau Gambar)',
             'placeholder' => 'Contoh: Sertifikat AWS Cloud Practitioner / BNSP',
-            'worker_hint' => 'Unggah bukti sertifikat dalam format PDF atau gambar (JPG, JPEG, PNG, maks. 5 MB).',
+            'worker_hint' => 'Unggah bukti sertifikat dalam format PDF atau gambar (JPG, JPEG, PNG, maks. 2 MB).',
         ],
         'license' => [
             'label'       => 'Lisensi / Surat Izin Praktik / SKK',
@@ -62,7 +62,7 @@ function gig_special_requirement_types(): array
             'accept'      => '.pdf,.jpg,.jpeg,.png',
             'format_hint' => 'Upload File (PDF atau Gambar)',
             'placeholder' => 'Contoh: SKK Konstruksi / Surat Izin Praktik Aktif',
-            'worker_hint' => 'Unggah dokumen lisensi atau izin resmi dalam format PDF atau gambar (JPG, JPEG, PNG, maks. 5 MB).',
+            'worker_hint' => 'Unggah dokumen lisensi atau izin resmi dalam format PDF atau gambar (JPG, JPEG, PNG, maks. 2 MB).',
         ],
         'social_media' => [
             'label'       => 'Username / Akun Media Sosial',
@@ -101,8 +101,8 @@ function gig_special_req_file_formats(): array
         'short_label'  => 'Dokumen (PDF, DOC, DOCX)',
         'accept'       => '.pdf,.doc,.docx',
         'allowed_exts' => ['pdf', 'doc', 'docx'],
-        'format_hint'  => 'Dokumen (PDF, DOC, DOCX, maks. 5 MB)',
-        'worker_hint'  => 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 5 MB).',
+        'format_hint'  => 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)',
+        'worker_hint'  => 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).',
     ];
 
     $imageFormat = [
@@ -110,8 +110,8 @@ function gig_special_req_file_formats(): array
         'short_label'  => 'Gambar (JPG, JPEG, PNG)',
         'accept'       => '.jpg,.jpeg,.png',
         'allowed_exts' => ['jpg', 'jpeg', 'png'],
-        'format_hint'  => 'Gambar (JPG, JPEG, PNG, maks. 5 MB)',
-        'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).',
+        'format_hint'  => 'Gambar (JPG, JPEG, PNG, maks. 2 MB)',
+        'worker_hint'  => 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 2 MB).',
     ];
 
     $archiveFormat = [
@@ -119,8 +119,8 @@ function gig_special_req_file_formats(): array
         'short_label'  => 'Berkas Kompresi (ZIP, RAR, 7Z)',
         'accept'       => '.zip,.rar,.7z',
         'allowed_exts' => ['zip', 'rar', '7z'],
-        'format_hint'  => 'Berkas Kompresi ZIP, RAR, 7Z (maks. 10 MB)',
-        'worker_hint'  => 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 10 MB).',
+        'format_hint'  => 'Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)',
+        'worker_hint'  => 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 2 MB).',
     ];
 
     return [
@@ -935,24 +935,24 @@ function gig_vacancy_update_special_requirement(string $vacancyId, ?array $reqDa
             $fileType = 'document';
             $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
             $accept = '.pdf,.doc,.docx';
-            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 5 MB)';
-            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 5 MB).';
+            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
+            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
             $allowedExts = ['pdf', 'doc', 'docx'];
         } elseif (in_array($chosenInputType, ['image', 'jpg', 'jpeg', 'png'], true)) {
             $inputMode = 'file';
             $fileType = 'image';
             $fileTypeLabel = 'Gambar (JPG, JPEG, PNG)';
             $accept = '.jpg,.jpeg,.png';
-            $formatHint = 'Gambar (JPG, JPEG, PNG, maks. 5 MB)';
-            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 5 MB).';
+            $formatHint = 'Gambar (JPG, JPEG, PNG, maks. 2 MB)';
+            $workerHint = 'Unggah gambar dalam format JPG, JPEG, atau PNG (maks. 2 MB).';
             $allowedExts = ['jpg', 'jpeg', 'png'];
         } elseif (in_array($chosenInputType, ['archive', 'compressed', 'zip', 'rar', '7z'], true)) {
             $inputMode = 'file';
             $fileType = 'archive';
             $fileTypeLabel = 'Berkas Kompresi (ZIP, RAR, 7Z)';
             $accept = '.zip,.rar,.7z';
-            $formatHint = 'Berkas Kompresi ZIP, RAR, 7Z (maks. 10 MB)';
-            $workerHint = 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 10 MB).';
+            $formatHint = 'Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)';
+            $workerHint = 'Unggah berkas kompresi dalam format ZIP, RAR, atau 7Z (maks. 2 MB).';
             $allowedExts = ['zip', 'rar', '7z'];
         } elseif ($chosenInputType === 'url') {
             $inputMode = 'url';
@@ -975,8 +975,8 @@ function gig_vacancy_update_special_requirement(string $vacancyId, ?array $reqDa
             $fileType = 'document';
             $fileTypeLabel = 'Dokumen (PDF, DOC, DOCX)';
             $accept = '.pdf,.doc,.docx';
-            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 5 MB)';
-            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 5 MB).';
+            $formatHint = 'Dokumen (PDF, DOC, DOCX, maks. 2 MB)';
+            $workerHint = 'Unggah berkas dokumen dalam format PDF, DOC, atau DOCX (maks. 2 MB).';
             $allowedExts = ['pdf', 'doc', 'docx'];
         }
 

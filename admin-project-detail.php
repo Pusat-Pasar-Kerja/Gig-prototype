@@ -566,9 +566,9 @@ require __DIR__ . '/includes/admin-layout-start.php';
             }
           ?>
           <select name="special_req_input_type" id="admin_req_input_type" style="width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.84rem;">
-            <option value="document" <?php echo in_array($currInputType, ['document', 'pdf', 'doc', 'docx'], true) ? 'selected' : ''; ?>>Dokumen (PDF, DOC, DOCX, maks. 5 MB)</option>
-            <option value="image" <?php echo in_array($currInputType, ['image', 'jpg', 'jpeg', 'png'], true) ? 'selected' : ''; ?>>Gambar (JPG, JPEG, PNG, maks. 5 MB)</option>
-            <option value="archive" <?php echo in_array($currInputType, ['archive', 'compressed', 'zip', 'rar', '7z'], true) ? 'selected' : ''; ?>>Berkas Kompresi (ZIP, RAR, 7Z, maks. 10 MB)</option>
+            <option value="document" <?php echo in_array($currInputType, ['document', 'pdf', 'doc', 'docx'], true) ? 'selected' : ''; ?>>Dokumen (PDF, DOC, DOCX, maks. 2 MB)</option>
+            <option value="image" <?php echo in_array($currInputType, ['image', 'jpg', 'jpeg', 'png'], true) ? 'selected' : ''; ?>>Gambar (JPG, JPEG, PNG, maks. 2 MB)</option>
+            <option value="archive" <?php echo in_array($currInputType, ['archive', 'compressed', 'zip', 'rar', '7z'], true) ? 'selected' : ''; ?>>Berkas Kompresi (ZIP, RAR, 7Z, maks. 2 MB)</option>
             <option value="url" <?php echo $currInputType === 'url' ? 'selected' : ''; ?>>Link / URL</option>
             <option value="text" <?php echo in_array($currInputType, ['text', 'textarea'], true) ? 'selected' : ''; ?>>Text</option>
           </select>

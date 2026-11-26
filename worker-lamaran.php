@@ -144,16 +144,16 @@ require __DIR__ . '/includes/worker-layout-start.php';
           $specLamaranType = !empty($appSpecial['custom_type']) ? (string)$appSpecial['custom_type'] : (string)($appSpecial['type_label'] ?? 'Kualifikasi Khusus');
           $isLamaranArchive = (($appSpecial['file_type'] ?? '') === 'archive') || in_array(strtolower(pathinfo((string)($appSpecial['file_name'] ?? ''), PATHINFO_EXTENSION)), ['zip', 'rar', '7z'], true);
         ?>
-          <div style="margin-top:14px;padding:12px 14px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;min-width:200px;">
-              <span style="font-size:1.3rem;">
+          <div style="margin-top:14px;padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;gap:12px;min-width:200px;">
+              <span style="font-size:1.4rem;">
                 <?php echo (($appSpecial['input_mode'] ?? '') === 'file') ? ($isLamaranArchive ? '📦' : '📄') : ((($appSpecial['input_mode'] ?? '') === 'url') ? '🔗' : '📝'); ?>
               </span>
               <div>
-                <div style="font-size:0.72rem;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.04em;">
-                  📎 Kualifikasi Khusus: <?php echo htmlspecialchars($specLamaranType, ENT_QUOTES, 'UTF-8'); ?>
+                <div style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:4px;border:1px solid #dbeafe;">
+                  Kualifikasi: <?php echo htmlspecialchars($specLamaranType, ENT_QUOTES, 'UTF-8'); ?>
                 </div>
-                <div style="font-size:0.86rem;font-weight:700;color:#0f172a;margin-top:2px;">
+                <div style="font-size:0.86rem;font-weight:700;color:#0f172a;margin-top:4px;">
                   <?php echo htmlspecialchars((string)($appSpecial['label'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
                 </div>
               </div>

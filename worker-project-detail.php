@@ -89,12 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $job && !$fromOffers && isset($_POS
                     }
 
                     $isArchive = in_array($ext, ['zip', 'rar', '7z'], true) || in_array(($specialReq['file_type'] ?? ''), ['archive', 'zip', 'rar', '7z'], true) || ($inputTypeKey === 'archive');
-                    $maxBytes = $isArchive ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
-                    $maxMbText = $isArchive ? '10 MB' : '5 MB';
+                    $maxBytes = 2 * 1024 * 1024;
+                    $maxMbText = '2 MB';
 
                     if (!in_array($ext, $allowedExts, true)) {
                         $formatDesc = (string)($specialReq['file_type_label'] ?? ($catMeta['label'] ?? strtoupper(implode(', ', $allowedExts))));
-                        $validationError = 'Format berkas tidak didukung. Pemberi kerja mensyaratkan berkas: ' . $formatDesc . '.';
+                        $validationError = 'Format berkas tidak didukung. Format yang diizinkan: ' . $formatDesc . '.';
                     } elseif ($size > $maxBytes) {
                         $validationError = 'Ukuran berkas melebihi batas maksimal ' . $maxMbText . '.';
                     } else {
@@ -335,7 +335,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(15, 23, 42, 0.55);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -343,7 +343,9 @@ require __DIR__ . '/includes/worker-layout-start.php';
     z-index: 9999;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.22s ease;
+    padding: 20px;
+    box-sizing: border-box;
   }
 
   .modal-backdrop.open {
@@ -353,24 +355,75 @@ require __DIR__ . '/includes/worker-layout-start.php';
 
   .modal-card {
     background: #ffffff;
-    border-radius: 16px;
+    border-radius: 20px;
     width: 100%;
-    max-width: 520px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    max-width: 540px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05);
     overflow: hidden;
+    transform: scale(0.96) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .modal-backdrop.open .modal-card {
+    transform: scale(1) translateY(0);
   }
 
   .modal-header {
-    background: #1e293b;
-    color: #ffffff;
-    padding: 16px 24px;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 20px 24px 18px;
+    border-bottom: 1px solid #f1f5f9;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .modal-header h3 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.01em;
+  }
+
+  .modal-header p {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .modal-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .modal-close-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #cbd5e1;
   }
 
   .modal-body {
     padding: 24px;
+    overflow-y: auto;
   }
 </style>
 
@@ -685,39 +738,41 @@ require __DIR__ . '/includes/worker-layout-start.php';
             $dCatMeta = $dFileCatalog[$dInputTypeKey] ?? null;
             $dReqFileLabel = (string)($detailSpecialReq['file_type_label'] ?? ($dCatMeta['label'] ?? ($detailSpecialReq['format_hint'] ?? 'Dokumen (PDF, DOC, DOCX)')));
             $isArchiveDetail = in_array($dInputTypeKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true) || in_array(($detailSpecialReq['file_type'] ?? ''), ['archive', 'compressed', 'zip', 'rar', '7z'], true);
-            $maxDetailMb = $isArchiveDetail ? '10 MB' : '5 MB';
+            $maxDetailMb = '2 MB';
         ?>
-          <div style="margin-top: 16px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 18px 20px;">
-            <div style="display:flex;align-items:center;gap:6px;font-size: 0.74rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              <span>Kualifikasi Khusus Wajib Saat Melamar</span>
+          <div style="margin-top: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 22px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.74rem; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 9px; border-radius: 6px; border: 1px solid #dbeafe;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <span>Kualifikasi Khusus: <?php echo htmlspecialchars($dReqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+              </span>
+              <span style="font-size: 0.72rem; font-weight: 700; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 6px;">
+                ✓ Wajib Saat Melamar
+              </span>
             </div>
-            <div style="font-size: 0.98rem; font-weight: 800; color: #0f172a; margin-bottom: 10px;">
+            <div style="font-size: 1rem; font-weight: 800; color: #0f172a; margin-bottom: 10px; line-height: 1.4;">
               <?php echo htmlspecialchars((string)$detailSpecialReq['label'], ENT_QUOTES, 'UTF-8'); ?>
             </div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-              <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
-                🏷️ <?php echo htmlspecialchars($dReqTypeLabel, ENT_QUOTES, 'UTF-8'); ?>
-              </span>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
               <?php if ($dReqMode === 'file'): ?>
-                <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                <span style="font-size: 0.75rem; font-weight: 700; background: #ffffff; color: #334155; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
                   📁 <?php echo htmlspecialchars($dReqFileLabel, ENT_QUOTES, 'UTF-8'); ?>
                 </span>
-                <span style="font-size:0.75rem;font-weight:700;background:#f1f5f9;color:#475569;padding:4px 10px;border-radius:6px;">
-                  ⚖️ Maks. <?php echo $maxDetailMb; ?>
+                <span style="font-size: 0.75rem; font-weight: 700; background: #ffffff; color: #64748b; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px;">
+                  ⚖️ Maks. 2 MB
                 </span>
               <?php elseif ($dReqMode === 'url'): ?>
-                <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                <span style="font-size: 0.75rem; font-weight: 700; background: #ffffff; color: #334155; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
                   🔗 Tautan / URL
                 </span>
               <?php else: ?>
-                <span style="font-size:0.75rem;font-weight:700;background:#dbeafe;color:#1e40af;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                <span style="font-size: 0.75rem; font-weight: 700; background: #ffffff; color: #334155; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
                   📝 Teks
                 </span>
               <?php endif; ?>
             </div>
-            <div style="font-size: 0.8rem; color: #475569; line-height: 1.5; background: #ffffff; padding: 10px 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
-              💡 <strong>Instruksi Pelamar:</strong> Pemberi kerja mewajibkan Anda melampirkan berkas/informasi ini saat mengklik tombol <strong>Lamar Proyek Ini</strong>. Mohon pastikan dokumen Anda telah disiapkan sesuai format yang diminta.
+            <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5; background: #ffffff; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              ℹ️ <strong>Catatan:</strong> Dokumen/kualifikasi ini akan diminta saat Anda menekan tombol <strong>Lamar Proyek Ini</strong>. Pastikan berkas Anda telah disiapkan sesuai format dan ukuran maksimal 2 MB.
             </div>
           </div>
         <?php endif; ?>
@@ -759,8 +814,11 @@ require __DIR__ . '/includes/worker-layout-start.php';
   <div class="modal-backdrop" id="applyModal" onclick="if(event.target.id==='applyModal') closeApplyModal();">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 style="font-size: 1rem; font-weight: 800; color:#ffffff;">Persetujuan Syarat & Ketentuan Lamaran Proyek</h3>
-        <button type="button" onclick="closeApplyModal()" style="background:none; border:none; color:#fff; font-size:1.4rem; cursor:pointer;">&times;</button>
+        <div>
+          <h3>Persetujuan Syarat & Ketentuan Lamaran Proyek</h3>
+          <p>Lengkapi persyaratan kualifikasi dan setujui ketentuan sebelum mengajukan lamaran.</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeApplyModal()">&times;</button>
       </div>
       <form method="post" action="" enctype="multipart/form-data" class="modal-body">
         <input type="hidden" name="do_apply" value="1" />
@@ -788,89 +846,100 @@ require __DIR__ . '/includes/worker-layout-start.php';
 
             $reqAccept = (string)($specialReq['accept'] ?? ($mCatMeta['accept'] ?? '.pdf,.doc,.docx'));
             $reqFileLabel = (string)($specialReq['file_type_label'] ?? ($mCatMeta['label'] ?? ($specialReq['format_hint'] ?? 'Dokumen (PDF, DOC, DOCX)')));
-            $isArchiveReq = in_array($mInputTypeKey, ['archive', 'compressed', 'zip', 'rar', '7z'], true) || in_array(($specialReq['file_type'] ?? ''), ['archive', 'compressed', 'zip', 'rar', '7z'], true);
-            $maxAllowedMb = $isArchiveReq ? 10 : 5;
+            $maxAllowedMb = 2;
             $modalIsPublic = !isset($specialReq['is_public']) || !empty($specialReq['is_public']);
         ?>
-          <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:18px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.03em;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                <span>Persyaratan Kualifikasi Khusus<?php echo $reqTypeLabel !== '' ? ' · ' . htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8') : ''; ?></span>
-              </div>
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.74rem; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 9px; border-radius: 6px; border: 1px solid #dbeafe;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <span>Persyaratan Kualifikasi: <?php echo htmlspecialchars($reqTypeLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+              </span>
               <?php if (!$modalIsPublic): ?>
-                <span style="font-size:0.68rem;font-weight:700;color:#475569;background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 6px;border-radius:4px;">
+                <span style="font-size: 0.7rem; font-weight: 700; color: #475569; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
                   🔒 Dirahasiakan dari publik
                 </span>
               <?php endif; ?>
             </div>
-            <label style="display:block;font-size:0.9rem;font-weight:800;color:#0f172a;margin-bottom:8px;">
-              <?php echo htmlspecialchars($reqLabel, ENT_QUOTES, 'UTF-8'); ?> <span style="color:#dc2626;">*</span>
+
+            <label style="display: block; font-size: 0.94rem; font-weight: 800; color: #0f172a; margin-bottom: 6px; line-height: 1.4;">
+              <?php echo htmlspecialchars($reqLabel, ENT_QUOTES, 'UTF-8'); ?> <span style="color: #ef4444;">*</span>
             </label>
 
+            <?php if ($reqHint !== ''): ?>
+              <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; margin-bottom: 12px;">
+                <?php echo htmlspecialchars($reqHint, ENT_QUOTES, 'UTF-8'); ?>
+              </div>
+            <?php endif; ?>
+
             <?php if ($reqMode === 'file'): ?>
-              <div id="dropzoneBox" onclick="document.getElementById('specialReqInput').click();" style="border:2px dashed #93c5fd;background:#f8fafc;border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff';" onmouseout="this.style.borderColor='#93c5fd';this.style.background='#f8fafc';">
-                <div style="font-size:2rem;margin-bottom:4px;"><?php echo $isArchiveReq ? '📦' : '📁'; ?></div>
-                <div id="specFilePromptText" style="font-size:0.88rem;font-weight:700;color:#2563eb;margin-bottom:4px;">
-                  Klik untuk Memilih File
+              <div id="dropzoneBox" onclick="document.getElementById('specialReqInput').click();" style="border: 2px dashed #cbd5e1; background: #f8fafc; border-radius: 12px; padding: 22px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='#3b82f6';this.style.background='#f0f7ff';" onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
+                <div style="width: 44px; height: 44px; margin: 0 auto 10px; border-radius: 10px; background: #ffffff; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
                 </div>
-                <div style="font-size:0.76rem;color:#64748b;line-height:1.4;">
-                  Format yang diizinkan: <strong style="color:#1e40af;"><?php echo htmlspecialchars($reqFileLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
-                  <br />Ukuran file maksimal <strong><?php echo $maxAllowedMb; ?> MB</strong>
+                <div id="specFilePromptText" style="font-size: 0.88rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+                  Pilih Berkas dari Perangkat
                 </div>
-                <input type="file" id="specialReqInput" name="special_req_file" accept="<?php echo htmlspecialchars($reqAccept, ENT_QUOTES, 'UTF-8'); ?>" data-max-mb="<?php echo $maxAllowedMb; ?>" required style="display:none;" onchange="handleSpecialFileChosen(this)" />
+                <div style="font-size: 0.76rem; color: #64748b; line-height: 1.4;">
+                  Format: <span style="font-weight: 700; color: #334155;"><?php echo htmlspecialchars($reqFileLabel, ENT_QUOTES, 'UTF-8'); ?></span> &bull; Ukuran maksimal <strong>2 MB</strong>
+                </div>
+                <input type="file" id="specialReqInput" name="special_req_file" accept="<?php echo htmlspecialchars($reqAccept, ENT_QUOTES, 'UTF-8'); ?>" data-max-mb="2" required style="display:none;" onchange="handleSpecialFileChosen(this)" />
               </div>
 
               <!-- Chosen file preview badge -->
-              <div id="specFileChosenPreview" style="display:none;margin-top:10px;padding:10px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;align-items:center;justify-content:space-between;gap:10px;">
-                <div style="display:flex;align-items:center;gap:10px;overflow:hidden;">
-                  <span style="font-size:1.3rem;">📄</span>
-                  <div style="overflow:hidden;text-overflow:ellipsis;">
-                    <div id="specChosenFileName" style="font-size:0.84rem;font-weight:700;color:#065f46;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-                    <div id="specChosenFileSize" style="font-size:0.72rem;color:#047857;"></div>
+              <div id="specFileChosenPreview" style="display: none; margin-top: 10px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                  <div style="width: 32px; height: 32px; border-radius: 8px; background: #dcfce7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #15803d;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  </div>
+                  <div style="overflow: hidden; text-overflow: ellipsis;">
+                    <div id="specChosenFileName" style="font-size: 0.84rem; font-weight: 700; color: #166534; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                    <div id="specChosenFileSize" style="font-size: 0.72rem; color: #15803d;"></div>
                   </div>
                 </div>
-                <button type="button" onclick="document.getElementById('specialReqInput').click();" style="padding:4px 10px;background:#ffffff;border:1px solid #6ee7b7;color:#047857;border-radius:6px;font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap;">
-                  Ganti File
+                <button type="button" onclick="document.getElementById('specialReqInput').click();" style="padding: 5px 12px; background: #ffffff; border: 1px solid #86efac; color: #15803d; border-radius: 6px; font-size: 0.76rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.15s ease;">
+                  Ganti Berkas
                 </button>
               </div>
 
-              <div id="specFileErrorMsg" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:0.78rem;color:#b91c1c;font-weight:600;"></div>
+              <div id="specFileErrorMsg" style="display: none; margin-top: 8px; padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 0.78rem; color: #b91c1c; font-weight: 600;"></div>
 
             <?php elseif ($reqMode === 'url'): ?>
-              <div style="position:relative;">
-                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1rem;color:#64748b;">🔗</span>
-                <input type="url" id="specialReqInput" name="special_req_value" required placeholder="https://..." style="width:100%;padding:10px 12px 10px 38px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.86rem;font-weight:600;color:#0f172a;" />
+              <div style="position: relative;">
+                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.95rem; color: #64748b;">🔗</span>
+                <input type="url" id="specialReqInput" name="special_req_value" required placeholder="https://..." style="width: 100%; padding: 11px 12px 11px 38px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; font-size: 0.86rem; font-weight: 600; color: #0f172a; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb';" onblur="this.style.borderColor='#cbd5e1';" />
               </div>
 
             <?php elseif ($reqMode === 'textarea'): ?>
-              <textarea id="specialReqInput" name="special_req_value" rows="3" required placeholder="Tuliskan jawaban atau penjelasan Anda..." style="width:100%;padding:10px 12px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.86rem;resize:vertical;color:#0f172a;"></textarea>
+              <textarea id="specialReqInput" name="special_req_value" rows="3" required placeholder="Tuliskan jawaban atau keterangan Anda..." style="width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; font-size: 0.86rem; resize: vertical; color: #0f172a; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb';" onblur="this.style.borderColor='#cbd5e1';"></textarea>
 
             <?php else: ?>
-              <input type="text" id="specialReqInput" name="special_req_value" required placeholder="Contoh: @username atau akun" style="width:100%;padding:10px 12px;border:1px solid #93c5fd;border-radius:8px;background:#ffffff;font-size:0.86rem;color:#0f172a;" />
-            <?php endif; ?>
-
-            <?php if ($reqHint !== ''): ?>
-              <div style="font-size:0.75rem;color:#475569;margin-top:8px;display:flex;align-items:center;gap:4px;">
-                <span>ℹ️</span> <?php echo htmlspecialchars($reqHint, ENT_QUOTES, 'UTF-8'); ?>
-              </div>
+              <input type="text" id="specialReqInput" name="special_req_value" required placeholder="Contoh: @username atau akun" style="width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #ffffff; font-size: 0.86rem; color: #0f172a; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb';" onblur="this.style.borderColor='#cbd5e1';" />
             <?php endif; ?>
           </div>
         <?php endif; ?>
 
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;">
-          <div style="font-size:0.82rem;color:#334155;line-height:1.6;margin-bottom:12px;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <div style="font-size: 0.8rem; color: #475569; line-height: 1.6; margin-bottom: 12px;">
             Saya telah membaca detail proyek, memahami bahwa komunikasi, negosiasi, pelaksanaan pekerjaan, dan transaksi/pembayaran dilakukan di luar Karirhub, serta menyetujui data profil Gig Worker yang diizinkan digunakan dan ditampilkan kepada Pemberi Kerja untuk proses seleksi proyek ini.
           </div>
-          <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;color:#0f172a;font-weight:600;cursor:pointer;">
-            <input type="checkbox" name="consent_agreed" value="1" id="applyConsentCheckbox" onchange="syncApplyConsentState()" style="margin-top:2px;accent-color:#2563eb;" />
-            <span>Saya menyetujui syarat & ketentuan dan persetujuan data profil di atas.</span>
+          <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; color: #0f172a; font-weight: 700; cursor: pointer; user-select: none;">
+            <input type="checkbox" name="consent_agreed" value="1" id="applyConsentCheckbox" onchange="syncApplyConsentState()" style="margin-top: 2px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0;" />
+            <span>Saya menyetujui syarat &amp; ketentuan dan persetujuan data profil di atas.</span>
           </label>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn-action-sm" onclick="closeApplyModal()" style="background:#f1f5f9; color:var(--text-main);">Batal</button>
-          <button type="submit" id="applySubmitBtn" class="btn-primary-add" style="padding:10px 20px;background:#9ca3af;border-color:#9ca3af;cursor:not-allowed;opacity:0.9;" disabled>Kirim Lamaran Proyek</button>
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px;">
+          <button type="button" onclick="closeApplyModal()" style="padding: 10px 18px; border-radius: 10px; font-size: 0.88rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+            Batal
+          </button>
+          <button type="submit" id="applySubmitBtn" style="padding: 10px 22px; border-radius: 10px; font-size: 0.88rem; font-weight: 800; background: #9ca3af; color: #ffffff; border: none; cursor: not-allowed; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px;" disabled>
+            Kirim Lamaran Proyek
+          </button>
         </div>
       </form>
     </div>
@@ -884,15 +953,17 @@ require __DIR__ . '/includes/worker-layout-start.php';
       if (!cb || !submitBtn) return;
       submitBtn.disabled = !cb.checked;
       if (cb.checked) {
-        submitBtn.style.background = '';
-        submitBtn.style.borderColor = '';
-        submitBtn.style.cursor = '';
-        submitBtn.style.opacity = '';
+        submitBtn.style.background = '#2563eb';
+        submitBtn.style.borderColor = '#2563eb';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.style.opacity = '1';
+        submitBtn.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.25)';
       } else {
         submitBtn.style.background = '#9ca3af';
         submitBtn.style.borderColor = '#9ca3af';
         submitBtn.style.cursor = 'not-allowed';
         submitBtn.style.opacity = '0.9';
+        submitBtn.style.boxShadow = 'none';
       }
     }
 
@@ -924,11 +995,11 @@ require __DIR__ . '/includes/worker-layout-start.php';
 
       if (!file) {
         if (preview) preview.style.display = 'none';
-        if (promptEl) promptEl.textContent = 'Klik untuk Memilih File';
+        if (promptEl) promptEl.textContent = 'Pilih Berkas dari Perangkat';
         return;
       }
 
-      const maxMb = Number(input.dataset.maxMb || 5);
+      const maxMb = Number(input.dataset.maxMb || 2);
       if (file.size > maxMb * 1024 * 1024) {
         if (errEl) {
           errEl.textContent = 'Ukuran berkas ' + (file.size / (1024*1024)).toFixed(2) + ' MB melebihi batas maksimal ' + maxMb + ' MB.';
@@ -936,7 +1007,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
         }
         input.value = '';
         if (preview) preview.style.display = 'none';
-        if (promptEl) promptEl.textContent = 'Klik untuk Memilih File';
+        if (promptEl) promptEl.textContent = 'Pilih Berkas dari Perangkat';
         return;
       }
 
@@ -950,7 +1021,7 @@ require __DIR__ . '/includes/worker-layout-start.php';
           }
           input.value = '';
           if (preview) preview.style.display = 'none';
-          if (promptEl) promptEl.textContent = 'Klik untuk Memilih File';
+          if (promptEl) promptEl.textContent = 'Pilih Berkas dari Perangkat';
           return;
         }
       }

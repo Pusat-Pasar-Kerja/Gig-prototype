@@ -705,9 +705,9 @@ declare(strict_types=1);
                     <div class="form-row" style="margin-bottom: 12px;">
                       <label for="proj_special_req_input_type">Tipe Input / Format Berkas untuk Pelamar *</label>
                       <select id="proj_special_req_input_type" onchange="syncSpecialReqInputType()">
-                        <option value="document" data-mode="file" data-accept=".pdf,.doc,.docx" data-hint="Dokumen PDF, DOC, DOCX (maks. 5 MB)">Dokumen (PDF, DOC, DOCX)</option>
-                        <option value="image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Gambar JPG, JPEG, PNG (maks. 5 MB)">Gambar (JPG, JPEG, PNG)</option>
-                        <option value="archive" data-mode="file" data-accept=".zip,.rar,.7z" data-hint="Berkas Kompresi ZIP, RAR, 7Z (maks. 10 MB)">Berkas Kompresi (ZIP, RAR, 7Z)</option>
+                        <option value="document" data-mode="file" data-accept=".pdf,.doc,.docx" data-hint="Dokumen PDF, DOC, DOCX (maks. 2 MB)">Dokumen (PDF, DOC, DOCX)</option>
+                        <option value="image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Gambar JPG, JPEG, PNG (maks. 2 MB)">Gambar (JPG, JPEG, PNG)</option>
+                        <option value="archive" data-mode="file" data-accept=".zip,.rar,.7z" data-hint="Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)">Berkas Kompresi (ZIP, RAR, 7Z)</option>
                         <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
                         <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
                       </select>
@@ -716,7 +716,7 @@ declare(strict_types=1);
 
                     <div style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px;">
                       <span>&#128206;</span>
-                      <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">Dokumen PDF, DOC, DOCX (maks. 5 MB)</strong></span>
+                      <span>Format input untuk Pelamar: <strong id="projSpecialReqFormatPreview">Dokumen PDF, DOC, DOCX (maks. 2 MB)</strong></span>
                     </div>
 
                     <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
