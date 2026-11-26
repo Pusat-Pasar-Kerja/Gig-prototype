@@ -682,7 +682,72 @@ declare(strict_types=1);
                     </div>
 
                     <!-- Container for multiple qualification items -->
-                    <div id="projSpecialReqItemsList"></div>
+                    <div id="projSpecialReqItemsList">
+                      <div class="proj-special-req-item" style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                          <span style="font-size:0.84rem; font-weight:800; color:#2563eb; display:flex; align-items:center; gap:6px;">
+                            <span class="req-idx-badge" style="width:20px; height:20px; border-radius:50%; background:#eff6ff; color:#2563eb; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:800;">1</span>
+                            Kualifikasi Khusus <span class="req-idx-num">#1</span>
+                          </span>
+                          <button type="button" class="btn-remove-req" onclick="removeSpecialReqItem(this)" style="background:none; border:none; color:#ef4444; font-size:0.78rem; font-weight:700; cursor:pointer; display:none; align-items:center; gap:4px; padding:2px 8px; border-radius:6px; transition:background 0.15s;" onmouseover="this.style.background='#fef2f2';" onmouseout="this.style.background='none';" title="Hapus syarat ini">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            Hapus
+                          </button>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom: 12px;">
+                          <label>Jenis Kualifikasi Khusus *</label>
+                          <select class="item-req-type" onchange="syncSpecialReqItemUI(this)">
+                            <?php foreach ($specialReqTypes as $reqKey => $reqMeta): ?>
+                              <option
+                                value="<?php echo htmlspecialchars($reqKey, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-format="<?php echo htmlspecialchars($reqMeta['format_hint'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-placeholder="<?php echo htmlspecialchars($reqMeta['placeholder'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-input-mode="<?php echo htmlspecialchars($reqMeta['input_mode'], ENT_QUOTES, 'UTF-8'); ?>"
+                              ><?php echo htmlspecialchars($reqMeta['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </div>
+
+                        <div class="form-row item-custom-type-row" style="display: none; margin-bottom: 12px;">
+                          <label>Nama Jenis Kualifikasi (Lainnya) *</label>
+                          <input type="text" class="item-req-custom-type" placeholder="Contoh: Surat Izin Mengemudi (SIM B2) / SKCK / Sertifikat TOEFL" />
+                          <div class="gig-note" style="margin-top: 3px;">Tuliskan nama kategori atau jenis kualifikasi yang belum tertera pada pilihan di atas.</div>
+                        </div>
+
+                        <div class="form-row" style="margin-bottom: 12px;">
+                          <label>Detail / Nama Kualifikasi yang Diminta *</label>
+                          <input type="text" class="item-req-label" placeholder="Contoh: Sertifikat AWS Cloud Practitioner / BNSP" />
+                        </div>
+
+                        <div class="form-row" style="margin-bottom: 12px;">
+                          <label>Tipe Input / Format Berkas untuk Pelamar *</label>
+                          <select class="item-req-input-type" onchange="syncSpecialReqItemInputType(this)">
+                            <option value="document" data-mode="file" data-accept=".pdf,.doc,.docx" data-hint="Dokumen PDF, DOC, DOCX (maks. 2 MB)">Dokumen (PDF, DOC, DOCX)</option>
+                            <option value="image" data-mode="file" data-accept=".jpg,.jpeg,.png" data-hint="Gambar JPG, JPEG, PNG (maks. 2 MB)">Gambar (JPG, JPEG, PNG)</option>
+                            <option value="archive" data-mode="file" data-accept=".zip,.rar,.7z" data-hint="Berkas Kompresi ZIP, RAR, 7Z (maks. 2 MB)">Berkas Kompresi (ZIP, RAR, 7Z)</option>
+                            <option value="url" data-mode="url" data-accept="" data-hint="Link / URL">Link / URL</option>
+                            <option value="text" data-mode="text" data-accept="" data-hint="Text">Text</option>
+                          </select>
+                          <div class="gig-note" style="margin-top: 3px;">Pilih format berkas atau tipe input yang wajib disediakan oleh pelamar saat melamar lowongan ini.</div>
+                        </div>
+
+                        <div class="item-format-preview-bar" style="font-size: 0.78rem; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+                          <span>&#128206;</span>
+                          <span>Format input untuk Pelamar: <strong class="item-format-preview-text">Dokumen PDF, DOC, DOCX (maks. 2 MB)</strong></span>
+                        </div>
+
+                        <div style="padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                          <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" class="item-req-is-public" checked style="margin-top: 2px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;" />
+                            <span style="font-size: 0.83rem; line-height: 1.45; color: #1e293b;">
+                              <strong style="font-weight: 700;">Tampilkan kualifikasi khusus</strong>
+                              <span style="color: #64748b; margin-left: 4px;">(Kualifikasi khusus ini akan ditampilkan secara publik pada halaman rincian lowongan agar calon pelamar dapat mengetahuinya sebelum melamar.)</span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
 
                     <!-- Add More Button -->
                     <button type="button" id="btnAddSpecialReqItem" onclick="addSpecialReqItem()" style="width:100%; padding:11px 16px; border:1.5px dashed #3b82f6; background:#eff6ff; color:#2563eb; border-radius:10px; font-size:0.86rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.15s ease;" onmouseover="this.style.background='#dbeafe';" onmouseout="this.style.background='#eff6ff';">
@@ -845,6 +910,16 @@ declare(strict_types=1);
     return true;
   }
 
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   window.GIG_SPECIAL_REQ_TYPES = <?php echo json_encode($specialReqTypes, JSON_UNESCAPED_UNICODE); ?>;
 
   function updateSpecialReqNumbers() {
@@ -856,7 +931,7 @@ declare(strict_types=1);
       if (badge) badge.textContent = (idx + 1);
       if (numText) numText.textContent = '#' + (idx + 1);
       if (removeBtn) {
-        removeBtn.style.display = (items.length > 1) ? 'inline-flex' : 'none';
+        removeBtn.style.display = (items.length > 1 && idx > 0) ? 'inline-flex' : 'none';
       }
     });
   }
@@ -943,7 +1018,8 @@ declare(strict_types=1);
 
   function removeSpecialReqItem(btn) {
     var item = btn.closest('.proj-special-req-item');
-    if (item) {
+    var list = document.getElementById('projSpecialReqItemsList');
+    if (item && list && list.querySelectorAll('.proj-special-req-item').length > 1) {
       item.remove();
       updateSpecialReqNumbers();
     }
@@ -1010,8 +1086,34 @@ declare(strict_types=1);
     if (card) card.classList.toggle('active', !!enabled);
     if (statusText) statusText.textContent = enabled ? 'Aktif' : 'Tidak Aktif';
     if (body) body.style.display = enabled ? 'block' : 'none';
-    if (enabled && list && list.children.length === 0) {
+    if (enabled && list && list.querySelectorAll('.proj-special-req-item').length === 0) {
       addSpecialReqItem();
+    }
+  }
+
+  function resetSpecialReqListToInitial() {
+    var list = document.getElementById('projSpecialReqItemsList');
+    if (!list) return;
+    var items = list.querySelectorAll('.proj-special-req-item');
+    for (var i = 1; i < items.length; i++) {
+      items[i].remove();
+    }
+    if (items.length === 0) {
+      addSpecialReqItem();
+    } else {
+      var first = items[0];
+      var typeSel = first.querySelector('.item-req-type');
+      if (typeSel) {
+        typeSel.selectedIndex = 0;
+        syncSpecialReqItemUI(typeSel);
+      }
+      var customInput = first.querySelector('.item-req-custom-type');
+      if (customInput) customInput.value = '';
+      var labelInput = first.querySelector('.item-req-label');
+      if (labelInput) labelInput.value = '';
+      var isPublicCb = first.querySelector('.item-req-is-public');
+      if (isPublicCb) isPublicCb.checked = true;
+      updateSpecialReqNumbers();
     }
   }
 
@@ -1045,8 +1147,7 @@ declare(strict_types=1);
 
   function openPostProjectModal() {
     setProjectStep(1);
-    var list = document.getElementById('projSpecialReqItemsList');
-    if (list) list.innerHTML = '';
+    resetSpecialReqListToInitial();
     toggleSpecialReq(false);
     document.getElementById('postProjectModal').classList.add('open');
   }
