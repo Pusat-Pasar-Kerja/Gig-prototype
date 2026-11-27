@@ -194,7 +194,7 @@ require __DIR__ . '/includes/admin-layout-start.php';
         <span class="req-badge <?php echo htmlspecialchars($statusBadgeClass, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8'); ?></span>
       </div>
     </div>
-    <button type="button" class="req-btn" onclick="openAdminDecisionModal({entityType:'vacancy', entityName:'lowongan proyek', vacancyId:<?php echo json_encode((string)$vacancy['id']); ?>, action:'vacancy_decision'})">Ambil Keputusan</button>
+    <button type="button" class="req-btn" id="btnAdminTakeDecision" onclick="handleProjectDecisionClick()">Ambil Keputusan</button>
   </article>
 
   <div class="req-grid-top">
@@ -406,4 +406,20 @@ require __DIR__ . '/includes/admin-layout-start.php';
     </article>
   </div>
 </section>
+
+<script>
+function handleProjectDecisionClick() {
+  if (typeof openAdminDecisionModal === 'function') {
+    openAdminDecisionModal({
+      entityType: 'vacancy',
+      entityName: 'lowongan',
+      vacancyId: <?php echo json_encode((string)$vacancy['id']); ?>,
+      action: 'vacancy_decision'
+    });
+  } else {
+    console.error('openAdminDecisionModal function not found');
+  }
+}
+</script>
+
 <?php require __DIR__ . '/includes/admin-layout-end.php'; ?>

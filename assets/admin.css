@@ -752,10 +752,10 @@ a, a:hover, a:focus, a:active, a:visited {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: none;
+  background: transparent;
   color: #64748b;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -768,7 +768,6 @@ a, a:hover, a:focus, a:active, a:visited {
 .decision-close:hover {
   background: #f1f5f9;
   color: #0f172a;
-  border-color: #cbd5e1;
 }
 
 .decision-modal-body {
@@ -929,17 +928,18 @@ a, a:hover, a:focus, a:active, a:visited {
 }
 
 .decision-opt-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: #1e293b;
+  background: transparent;
 }
-.decision-opt-icon.approve { background: #d1fae5; color: #059669; }
-.decision-opt-icon.reject { background: #fee2e2; color: #dc2626; }
-.decision-opt-icon.revision { background: #fef3c7; color: #d97706; }
+.decision-opt-icon.approve { background: transparent; color: #1e293b; }
+.decision-opt-icon.reject { background: transparent; color: #1e293b; }
+.decision-opt-icon.revision { background: transparent; color: #1e293b; }
 
 .decision-opt-label {
   font-size: 0.95rem;
@@ -1065,6 +1065,12 @@ a, a:hover, a:focus, a:active, a:visited {
 }
 .btn-decision-submit.reject:hover {
   background: #dc2626;
+}
+.btn-decision-submit.primary-cyan {
+  background: #0ea5e9;
+}
+.btn-decision-submit.primary-cyan:hover {
+  background: #0284c7;
 }
 
 /* Exit Confirmation Dialog Styling */

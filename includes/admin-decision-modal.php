@@ -23,8 +23,8 @@ declare(strict_types=1);
 
       <div class="decision-modal-body">
         <!-- SECTION 1: KETIDAKPATUHAN -->
-        <div class="decision-section">
-          <div class="decision-sec-header">
+        <div class="decision-section" id="compliance-section">
+          <div class="decision-sec-header" id="compliance-sec-header">
             <div class="decision-sec-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="4" y1="6" x2="20" y2="6"></line>
@@ -92,20 +92,20 @@ declare(strict_types=1);
 
           <div class="decision-radio-list">
             <!-- OPTION 1: SETUJUI -->
-            <div class="decision-radio-card is-selected" data-opt="approve" onclick="selectDecisionRadio('approve')">
+            <div class="decision-radio-card" data-opt="approve" onclick="selectDecisionRadio('approve')">
               <div class="custom-radio"></div>
               <div class="decision-opt-icon approve">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="16 10 11 15 8 12"></polyline></svg>
               </div>
               <span class="decision-opt-label">Setujui</span>
-              <input type="radio" name="decision_option" value="approve" checked style="display:none;" />
+              <input type="radio" name="decision_option" value="approve" style="display:none;" />
             </div>
 
             <!-- OPTION 2: TOLAK -->
             <div class="decision-radio-card" data-opt="reject" onclick="selectDecisionRadio('reject')">
               <div class="custom-radio"></div>
               <div class="decision-opt-icon reject">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
               </div>
               <span class="decision-opt-label">Tolak</span>
               <input type="radio" name="decision_option" value="reject" style="display:none;" />
@@ -115,7 +115,7 @@ declare(strict_types=1);
             <div class="decision-radio-card" data-opt="revision" onclick="selectDecisionRadio('revision')">
               <div class="custom-radio"></div>
               <div class="decision-opt-icon revision">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
               </div>
               <span class="decision-opt-label">Revisi</span>
               <input type="radio" name="decision_option" value="revision" style="display:none;" />
@@ -205,8 +205,31 @@ function openAdminDecisionModal(config = {}) {
   noteInput.value = '';
   noteInput.required = false;
 
-  // Default to approve
-  selectDecisionRadio('approve');
+  const compHeader = document.getElementById('compliance-sec-header');
+  const bannerApprove = document.getElementById('callout-banner-approve');
+  const bannerReject = document.getElementById('callout-banner-reject');
+  const noteBox = document.getElementById('decision-note-box');
+  const submitBtn = document.getElementById('decision-submit-btn');
+
+  if (entityType === 'vacancy') {
+    if (compHeader) compHeader.style.display = 'none';
+    if (bannerApprove) bannerApprove.style.display = 'none';
+    if (bannerReject) bannerReject.style.display = 'none';
+    if (noteBox) noteBox.style.display = 'none';
+    submitBtn.innerText = 'Konfirmasi';
+    submitBtn.className = 'btn-decision-submit primary-cyan';
+
+    // In Image 2, radios start unselected
+    document.getElementById('modal-form-decision').value = '';
+    document.querySelectorAll('.decision-radio-card').forEach(card => {
+      card.classList.remove('is-selected');
+      const rad = card.querySelector('input[type="radio"]');
+      if (rad) rad.checked = false;
+    });
+  } else {
+    if (compHeader) compHeader.style.display = 'flex';
+    selectDecisionRadio('approve');
+  }
 
   modalBackdrop.style.display = 'flex';
   requestAnimationFrame(() => {
@@ -216,6 +239,10 @@ function openAdminDecisionModal(config = {}) {
 
 function handleModalCloseAttempt(e) {
   if (e) e.stopPropagation();
+  if (!isFormDirty) {
+    confirmCloseDecisionModal();
+    return;
+  }
   openExitConfirmModal();
 }
 
@@ -317,6 +344,27 @@ function updateDecisionState(optValue) {
     entityLabel = 'Lowongan';
   }
 
+  if (currentEntityType === 'vacancy') {
+    submitBtn.innerText = 'Konfirmasi';
+    submitBtn.className = 'btn-decision-submit primary-cyan';
+    if (bannerApprove) bannerApprove.style.display = 'none';
+    if (bannerReject) bannerReject.style.display = 'none';
+
+    if (optValue === 'approve') {
+      noteBox.style.display = 'none';
+      noteInput.required = false;
+    } else if (optValue === 'reject') {
+      noteBox.style.display = 'flex';
+      noteInput.required = true;
+      noteInput.placeholder = 'Masukkan alasan penolakan lowongan...';
+    } else if (optValue === 'revision') {
+      noteBox.style.display = 'flex';
+      noteInput.required = true;
+      noteInput.placeholder = 'Masukkan catatan revisi untuk lowongan...';
+    }
+    return;
+  }
+
   if (optValue === 'approve') {
     submitBtn.innerText = `Setujui ${entityLabel}`;
     submitBtn.className = 'btn-decision-submit approve';
@@ -361,4 +409,25 @@ function updateDecisionState(optValue) {
     bannerReject.style.display = 'none';
   }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('decision-form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      const decisionVal = document.getElementById('modal-form-decision').value;
+      if (!decisionVal) {
+        e.preventDefault();
+        alert('Silakan pilih salah satu keputusan (Setujui, Tolak, atau Revisi) sebelum konfirmasi.');
+        return false;
+      }
+      const noteInput = document.getElementById('modal-note-input');
+      if ((decisionVal === 'reject' || decisionVal === 'revision') && noteInput && noteInput.required && !noteInput.value.trim()) {
+        e.preventDefault();
+        alert('Harap isi catatan untuk keputusan ' + (decisionVal === 'reject' ? 'Tolak' : 'Revisi') + '.');
+        noteInput.focus();
+        return false;
+      }
+    });
+  }
+});
 </script>
